@@ -53,20 +53,6 @@ export function useHomeLogic(setCamaraAbierta) {
         return;
       }
 
-      // ❌ no existe en ubicación
-      const existe = cacheUbicacion.some(
-        r => r.articulo === data
-      );
-
-      if (!existe) {
-        Alert.alert(
-          'Error',
-          `El artículo ${data} no pertenece a la ubicación ${ubicacion}`
-        );
-
-        setModoScanner(null);
-        return;
-      }
 
       // ❌ duplicado
       if (escaneadosSesion.includes(data)) {

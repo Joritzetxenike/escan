@@ -4,7 +4,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { styles } from '../styles';
 
 export default function Scanner({ onBack, onCodeScanned, hintText }) {
-  
+
   /* ---------- PERMISOS ---------- */
   const [permission, requestPermission] = useCameraPermissions();
 
@@ -12,64 +12,76 @@ export default function Scanner({ onBack, onCodeScanned, hintText }) {
   const scanBuffer = useRef({
     value: '',
     count: 0,
-    firstSeen: 0,
+    lastTime: 0,
   });
 
   /* ---------- VALIDACIÓN ---------- */
   const esCodigoValido = (data) => {
     if (!data) return false;
     if (data.length < 6) return false;
-    //if (!/^[A-Z0-9]+$/i.test(data)) return false;
     return true;
   };
 
   /* ---------- HANDLER ---------- */
-  const handleBarcodeScanned = ({ data }) => {
+  const handleBarcodeScanned = ({ type, data }) => {
+    console.log('SCAN:', type, data);
+
+   // if (type !== 'code128') return;
     if (!esCodigoValido(data)) return;
 
     const now = Date.now();
 
-    if (data !== scanBuffer.current.value) {
+    // 👉 si cambia el código, reinicia buffer
+    if (scanBuffer.current.value !== data) {
       scanBuffer.current = {
         value: data,
         count: 1,
-        firstSeen: now,
+        lastTime: now,
       };
       return;
     }
 
+    // 👉 mismo código = suma estabilidad
     scanBuffer.current.count += 1;
+    scanBuffer.current.lastTime = now;
 
-    const tiempo = now - scanBuffer.current.firstSeen;
+    console.log(`VALIDACIÓN ${data}: ${scanBuffer.current.count}/10`);
 
-    if (
-      scanBuffer.current.count >= 2 &&
-      tiempo < 1000
-    ) {
+    // 🎯 VALIDACIÓN FINAL (10 lecturas)
+    if (scanBuffer.current.count >= 10) {
+      console.log('✔ CÓDIGO VALIDADO:', data);
+
       onCodeScanned(data);
 
+      // reset
       scanBuffer.current = {
         value: '',
         count: 0,
-        firstSeen: 0,
-      };
-      return;
-    }
-
-    if (tiempo > 1000) {
-      scanBuffer.current = {
-        value: '',
-        count: 0,
-        firstSeen: 0,
+        lastTime: 0,
       };
     }
   };
 
-  /* ---------- CONTROL DE PERMISOS ---------- */
+  /* ---------- RESET POR TIMEOUT ---------- */
+  const resetIfStale = () => {
+    const now = Date.now();
 
-  if (!permission) {
-    return <View />;
-  }
+    if (
+      scanBuffer.current.value &&
+      now - scanBuffer.current.lastTime > 1200
+    ) {
+      scanBuffer.current = {
+        value: '',
+        count: 0,
+        lastTime: 0,
+      };
+    }
+  };
+
+  setTimeout(resetIfStale, 500);
+
+  /* ---------- PERMISOS ---------- */
+  if (!permission) return <View />;
 
   if (!permission.granted) {
     return (
@@ -87,14 +99,10 @@ export default function Scanner({ onBack, onCodeScanned, hintText }) {
   }
 
   /* ---------- UI ---------- */
-
   return (
     <View style={{ flex: 1 }}>
       <CameraView
         style={StyleSheet.absoluteFillObject}
-        barcodeScannerSettings={{
-          barcodeTypes: ['ean128'],
-        }}
         onBarcodeScanned={handleBarcodeScanned}
       />
 
