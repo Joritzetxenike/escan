@@ -1,31 +1,103 @@
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { useState } from 'react';
-import { CameraView } from 'expo-camera';
+import { useRef } from 'react';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import { styles } from '../styles';
 
 export default function Scanner({ onBack, onCodeScanned, hintText }) {
-  const [escaneando, setEscaneando] = useState(false);
+  
+  /* ---------- PERMISOS ---------- */
+  const [permission, requestPermission] = useCameraPermissions();
 
-  const handleBarcodeScanned = ({ data }) => {
-    if (escaneando) return;
-    setEscaneando(true);
+  /* ---------- BUFFER DE LECTURAS ---------- */
+  const scanBuffer = useRef({
+    value: '',
+    count: 0,
+    firstSeen: 0,
+  });
 
-    onCodeScanned(data);
-
-    setTimeout(() => setEscaneando(false), 1000);
+  /* ---------- VALIDACIÓN ---------- */
+  const esCodigoValido = (data) => {
+    if (!data) return false;
+    if (data.length < 6) return false;
+    //if (!/^[A-Z0-9]+$/i.test(data)) return false;
+    return true;
   };
+
+  /* ---------- HANDLER ---------- */
+  const handleBarcodeScanned = ({ data }) => {
+    if (!esCodigoValido(data)) return;
+
+    const now = Date.now();
+
+    if (data !== scanBuffer.current.value) {
+      scanBuffer.current = {
+        value: data,
+        count: 1,
+        firstSeen: now,
+      };
+      return;
+    }
+
+    scanBuffer.current.count += 1;
+
+    const tiempo = now - scanBuffer.current.firstSeen;
+
+    if (
+      scanBuffer.current.count >= 2 &&
+      tiempo < 1000
+    ) {
+      onCodeScanned(data);
+
+      scanBuffer.current = {
+        value: '',
+        count: 0,
+        firstSeen: 0,
+      };
+      return;
+    }
+
+    if (tiempo > 1000) {
+      scanBuffer.current = {
+        value: '',
+        count: 0,
+        firstSeen: 0,
+      };
+    }
+  };
+
+  /* ---------- CONTROL DE PERMISOS ---------- */
+
+  if (!permission) {
+    return <View />;
+  }
+
+  if (!permission.granted) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text>Necesitamos permiso para usar la cámara</Text>
+
+        <TouchableOpacity
+          style={[styles.customButton, { marginTop: 20 }]}
+          onPress={requestPermission}
+        >
+          <Text style={styles.buttonText}>Dar permiso</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  /* ---------- UI ---------- */
 
   return (
     <View style={{ flex: 1 }}>
       <CameraView
         style={StyleSheet.absoluteFillObject}
         barcodeScannerSettings={{
-          barcodeTypes: ['code128'],
+          barcodeTypes: ['ean128'],
         }}
         onBarcodeScanned={handleBarcodeScanned}
       />
 
-      {/* Overlay */}
       <View style={styles.overlay}>
         <TouchableOpacity style={styles.backButton} onPress={onBack}>
           <Text style={styles.backButtonText}>← Volver</Text>
