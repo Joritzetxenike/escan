@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Modal, View, Text, TextInput, TouchableOpacity } from 'react-native';
-import { styles } from '../styles';
+import { styles } from '../styles/styles';
 
 export default function ManualCodeModal({
   visible,

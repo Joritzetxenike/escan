@@ -2,7 +2,7 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import Scanner from '../components/Scanner';
 import CantidadModal from '../components/CantidadModal';
 import ManualCodeModal from '../components/ManualCodeModal';
-import { styles } from '../styles';
+import { styles } from '../styles/styles';
 
 export default function HomeView({
   state,

@@ -1,7 +1,7 @@
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRef } from 'react';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { styles } from '../styles';
+import { styles } from '../styles/styles';
 
 export default function Scanner({ onBack, onCodeScanned, hintText }) {
 

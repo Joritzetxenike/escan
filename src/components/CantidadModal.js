@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, Modal, TextInput, TouchableOpacity } from 'react-native';
-import { styles } from '../styles';
+import { styles } from '../styles/styles';
 
 export default function CantidadModal({ 
   visible, 
