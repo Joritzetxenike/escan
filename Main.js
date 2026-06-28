@@ -2,10 +2,10 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import HomeScreen from './screens/HomeScreen';
-import ListaScreen from './screens/ListaScreen';
-import EstadoScreen from "./screens/EstadoScreen";
-
+//import HomeScreen from "./src/screens/HomeScreen";
+//import ListaScreen from "./src/screens/ListaScreen";
+//import EstadoScreen from "./src/screens/EstadoScreen";
+import HomeScreen from './src/screens/HomeScreen';
 import { useState } from 'react';
 
 const Tab = createBottomTabNavigator();

@@ -12,7 +12,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import { styles } from '../styles';
+import { styles } from '../styles/styles';
 
 export default function ListaScreen() {
   const [csvs, setCsvs] = useState([]);
