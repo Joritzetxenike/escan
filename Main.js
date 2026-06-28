@@ -4,6 +4,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import HomeScreen from './screens/HomeScreen';
 import ListaScreen from './screens/ListaScreen';
+import EstadoScreen from "./screens/EstadoScreen";
+
 import { useState } from 'react';
 
 const Tab = createBottomTabNavigator();
@@ -40,6 +42,8 @@ export default function Main() {
         </Tab.Screen>
 
         <Tab.Screen name="Lista" component={ListaScreen} />
+
+        <Tab.Screen name="Estado" component={EstadoScreen}/>
       </Tab.Navigator>
     </NavigationContainer>
   );
