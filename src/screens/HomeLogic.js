@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Alert } from 'react-native';
-import { guardarRegistro, leerCsvUbicacion } from '../helpers/csvHelper';
+//import { guardarRegistro, leerCsvUbicacion } from '../helpers/csvHelper';
 //import * as Haptics from 'expo-haptics';
+
+import DataProvider from '../providers/DataProvider';
 
 export function useHomeLogic(setCamaraAbierta) {
   const [modoScanner, setModoScanner] = useState(null);
@@ -36,7 +38,7 @@ export function useHomeLogic(setCamaraAbierta) {
       setUbicacion(data);
       setModoScanner(null);
 
-      const registros = await leerCsvUbicacion(data);
+      const registros = await DataProvider.obtenerArticulosUbicacion(data);
       setCacheUbicacion(registros);
 
       setEscaneadosSesion([]);
@@ -98,7 +100,7 @@ export function useHomeLogic(setCamaraAbierta) {
     };
 
     try {
-      await guardarRegistro(nuevoRegistro);
+      await DataProvider.guardarMovimiento(nuevoRegistro);
 
       setUltimosArticulos(prev =>
         [nuevoRegistro, ...prev].slice(0, 5)
