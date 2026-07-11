@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Alert } from 'react-native';
-//import { guardarRegistro, leerCsvUbicacion } from '../helpers/csvHelper';
-//import * as Haptics from 'expo-haptics';
 
-import DataProvider from '../providers/DataProvider';
+import InventoryService from '../services/InventoryService';
 
 export function useHomeLogic(setCamaraAbierta) {
   const [modoScanner, setModoScanner] = useState(null);
@@ -14,7 +12,7 @@ export function useHomeLogic(setCamaraAbierta) {
   const [mostrarCantidad, setMostrarCantidad] = useState(false);
   const [ultimosArticulos, setUltimosArticulos] = useState([]);
 
-  const [cacheUbicacion, setCacheUbicacion] = useState([]);
+  //const [cacheUbicacion, setCacheUbicacion] = useState([]);
   const [escaneadosSesion, setEscaneadosSesion] = useState([]);
 
   const [mostrarManual, setMostrarManual] = useState(false);
@@ -26,53 +24,61 @@ export function useHomeLogic(setCamaraAbierta) {
   }, [modoScanner]);
 
   /* ---------- CONTROL SCANNER ---------- */
-  const iniciarScanner = (tipo) => setModoScanner(tipo);
-  const cerrarScanner = () => setModoScanner(null);
+  const abrirScanner = (tipo) => {
+    setModoScanner(tipo);
+  };
 
-  /* ---------- MOTOR CENTRAL (IMPORTANTE) ---------- */
- const procesarCodigo = async (data, origen = 'scanner') => {
-  try {
-
-    /* ---------- UBICACIÓN ---------- */
-    if (modoScanner === 'ubicacion' || origen === 'ubicacion') {
-      setUbicacion(data);
+  const cerrarScanner = () => {
       setModoScanner(null);
+  };
 
-      const registros = await DataProvider.obtenerArticulosUbicacion(data);
-      setCacheUbicacion(registros);
+  const procesarArticulo = (codigo) => {
 
-      setEscaneadosSesion([]);
+    const resultado = InventoryService.validarArticulo(
+      codigo,
+      ubicacion,
+      escaneadosSesion
+    );
 
+    if (!resultado.ok) {
+      Alert.alert(resultado.titulo, resultado.mensaje);
       return;
     }
 
-    /* ---------- ARTÍCULO ---------- */
-    if (modoScanner === 'articulo' || origen === 'articulo' || origen === 'manual') {
+    setArticuloTemp(codigo);
 
-      if (!ubicacion) {
-        Alert.alert('Error', 'Primero escanea una ubicación');
-        setModoScanner(null);
-        return;
-      }
+    setEscaneadosSesion(prev => [...prev, codigo]);
 
+    setMostrarCantidad(true);
+  };
+  const cargarUbicacion = async (codigo) => {
+    setUbicacion(codigo);
 
-      // ❌ duplicado
-      if (escaneadosSesion.includes(data)) {
-        Alert.alert(
-          'Artículo duplicado',
-          `El artículo ${data} ya ha sido escaneado en la ubicación ${ubicacion}`
-        );
+    const articulos = await InventoryService.cargarUbicacion(codigo);
 
-        setModoScanner(null);
-        return;
-      }
+    setEscaneadosSesion([]);
 
-      // ✅ válido
-      setArticuloTemp(data);
-      setEscaneadosSesion(prev => [...prev, data]);
+    return articulos;
+  };
+    /* ---------- MOTOR CENTRAL (IMPORTANTE) ---------- */
+  const procesarCodigo = async (codigo, origen = 'scanner') => {
 
-      setModoScanner(null);
-      setMostrarCantidad(true);
+  try {
+
+    if (modoScanner === 'ubicacion' || origen === 'ubicacion') {
+      await cargarUbicacion(codigo);
+      cerrarScanner();
+      return;
+    }   
+
+    if (
+      modoScanner === 'articulo' ||
+      origen === 'articulo' ||
+      origen === 'manual'
+    ) {
+      procesarArticulo(codigo);
+      cerrarScanner();
+      return;
     }
 
   } catch (e) {
@@ -92,27 +98,41 @@ export function useHomeLogic(setCamaraAbierta) {
   };
 
   /* ---------- GUARDAR ---------- */
-  const confirmarCantidad = async (cantidad) => {
-    const nuevoRegistro = {
-      ubicacion,
-      articulo: articuloTemp,
-      cantidad,
-    };
+  const limpiarArticulo = () => {
 
-    try {
-      await DataProvider.guardarMovimiento(nuevoRegistro);
+      setArticuloTemp(null);
 
-      setUltimosArticulos(prev =>
-        [nuevoRegistro, ...prev].slice(0, 5)
-      );
+      setCodigoManual('');
 
-    } catch (e) {
-      Alert.alert('Error', 'No se pudo guardar el registro');
-    }
+      setMostrarManual(false);
 
-    setArticuloTemp(null);
-    setMostrarCantidad(false);
+      setMostrarCantidad(false);
   };
+
+const confirmarCantidad = async (cantidad) => {
+
+  try {
+
+    const movimiento = InventoryService.crearMovimiento(
+      ubicacion,
+      articuloTemp,
+      cantidad
+    );
+
+    await InventoryService.guardarMovimiento(movimiento);
+
+    setUltimosArticulos(prev =>
+      [movimiento, ...prev].slice(0, 5)
+    );
+
+    limpiarArticulo();
+
+  } catch (e) {
+    console.error(e);
+    Alert.alert('Error', 'No se pudo guardar el registro');
+  }
+};
+
 
   /* ---------- RETURN ---------- */
   return {
@@ -122,7 +142,7 @@ export function useHomeLogic(setCamaraAbierta) {
     mostrarCantidad,
     ultimosArticulos,
 
-    iniciarScanner,
+    abrirScanner,
     cerrarScanner,
 
     onCodeScanned,

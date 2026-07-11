@@ -35,7 +35,7 @@ export default function HomeView({
       <View style={styles.homeContent}>
         <TouchableOpacity
           style={[styles.customButton, { marginBottom: 15 }]}
-          onPress={() => actions.iniciarScanner('ubicacion')}
+          onPress={() => actions.abrirScanner('ubicacion')}
         >
           <Text style={styles.buttonText}>Escanear ubicación</Text>
         </TouchableOpacity>
@@ -48,7 +48,7 @@ export default function HomeView({
         <View style={{ flexDirection: 'row', marginTop: 30 }}>
           <TouchableOpacity
             style={[styles.customButton, { flex: 1, marginRight: 8 }]}
-            onPress={() => actions.iniciarScanner('articulo')}
+            onPress={() => actions.abrirScanner('articulo')}
           >
             <Text style={styles.buttonText}>Escanear artículo</Text>
           </TouchableOpacity>

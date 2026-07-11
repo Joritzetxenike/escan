@@ -5,7 +5,7 @@
  * exactamente estos métodos.
  */
 
-const IDataProvider = {
+const InventoryDataProvider = {
   /* =======================================================
    * UBICACIONES
    * ======================================================= */
