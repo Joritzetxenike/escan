@@ -3,8 +3,8 @@ import { Alert } from 'react-native';
 
 import InventoryService from '../services/InventoryService';
 
-export function useHomeLogic(setCamaraAbierta) {
-  const [modoScanner, setModoScanner] = useState(null);
+export function useHomeLogic(navigation) {
+  //const [modoScanner, setModoScanner] = useState(null);
 
   const [ubicacion, setUbicacion] = useState(null);
   const [articuloTemp, setArticuloTemp] = useState(null);
@@ -18,18 +18,26 @@ export function useHomeLogic(setCamaraAbierta) {
   const [mostrarManual, setMostrarManual] = useState(false);
   const [codigoManual, setCodigoManual] = useState(''); 
 
-  /* ---------- CAMARA ---------- */
-  useEffect(() => {
-    setCamaraAbierta(modoScanner !== null);
-  }, [modoScanner]);
+  const abrirScannerUbicacion = () => {
 
-  /* ---------- CONTROL SCANNER ---------- */
-  const abrirScanner = (tipo) => {
-    setModoScanner(tipo);
+    navigation.navigate(
+        "Scanner",
+        {
+            tipo: "ubicacion"
+        }
+    );
+
   };
 
-  const cerrarScanner = () => {
-      setModoScanner(null);
+  const abrirScannerArticulo = () => {
+
+      navigation.navigate(
+          "Scanner",
+          {
+              tipo: "articulo"
+          }
+      );
+
   };
 
   const procesarArticulo = (codigo) => {
@@ -61,32 +69,25 @@ export function useHomeLogic(setCamaraAbierta) {
     return articulos;
   };
     /* ---------- MOTOR CENTRAL (IMPORTANTE) ---------- */
-  const procesarCodigo = async (codigo, origen = 'scanner') => {
+  const procesarEscaneo = async (tipo, codigo) => {
 
-  try {
+    try {
 
-    if (modoScanner === 'ubicacion' || origen === 'ubicacion') {
-      await cargarUbicacion(codigo);
-      cerrarScanner();
-      return;
-    }   
+      if (tipo === 'ubicacion') {
+        await cargarUbicacion(codigo);
+        return;
+      }
 
-    if (
-      modoScanner === 'articulo' ||
-      origen === 'articulo' ||
-      origen === 'manual'
-    ) {
-      procesarArticulo(codigo);
-      cerrarScanner();
-      return;
+      if (tipo === 'articulo') {
+        procesarArticulo(codigo);
+        return;
+      }
+
+    } catch (e) {
+      console.error(e);
+      Alert.alert('Error', 'Error procesando el código');
     }
-
-  } catch (e) {
-    console.error(e);
-    Alert.alert('Error', 'Error procesando código');
-  }
-};
-
+  };
   /* ---------- SCANNER ---------- */
   const onCodeScanned = (data) => {
     procesarCodigo(data, 'scanner');
@@ -136,23 +137,23 @@ const confirmarCantidad = async (cantidad) => {
 
   /* ---------- RETURN ---------- */
   return {
-    modoScanner,
+
     ubicacion,
     articuloTemp,
     mostrarCantidad,
     ultimosArticulos,
 
-    abrirScanner,
-    cerrarScanner,
+    abrirScannerUbicacion,
+    abrirScannerArticulo,
 
-    onCodeScanned,
-    onManualCode,
+    procesarEscaneo,
 
     confirmarCantidad,
     setMostrarCantidad,
 
     mostrarManual,
     setMostrarManual,
+
     codigoManual,
     setCodigoManual,
   };

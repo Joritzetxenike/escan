@@ -1,8 +1,9 @@
-import HomeView from './HomeView';
-import { useHomeLogic } from './HomeLogic';
+import HomeView from './../views/HomeView';
+import { useHomeLogic } from '../logic/HomeLogic';
 
-export default function HomeScreen({ setCamaraAbierta }) {
-  const logic = useHomeLogic(setCamaraAbierta);
+export default function HomeScreen({ navigation }) {
+
+  const logic = useHomeLogic(navigation);
 
   return (
     <HomeView

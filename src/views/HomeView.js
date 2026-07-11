@@ -1,5 +1,5 @@
 import { View, Text, TouchableOpacity } from 'react-native';
-import Scanner from '../components/Scanner';
+
 import CantidadModal from '../components/CantidadModal';
 import ManualCodeModal from '../components/ManualCodeModal';
 import { styles } from '../styles/styles';
@@ -8,20 +8,7 @@ export default function HomeView({
   state,
   actions,
 }) {
-  /* ---------- ESCÁNER ---------- */
-  if (state.modoScanner) {
-    return (
-      <Scanner
-        hintText={
-          state.modoScanner === 'ubicacion'
-            ? 'Escanea una ubicación'
-            : 'Escanea un artículo'
-        }
-        onBack={actions.cerrarScanner}
-        onCodeScanned={actions.onCodeScanned}
-      />
-    );
-  }
+
 
   /* ---------- VISTA PRINCIPAL ---------- */
   return (
@@ -35,7 +22,7 @@ export default function HomeView({
       <View style={styles.homeContent}>
         <TouchableOpacity
           style={[styles.customButton, { marginBottom: 15 }]}
-          onPress={() => actions.abrirScanner('ubicacion')}
+          onPress={actions.abrirScannerUbicacion}
         >
           <Text style={styles.buttonText}>Escanear ubicación</Text>
         </TouchableOpacity>
@@ -48,7 +35,7 @@ export default function HomeView({
         <View style={{ flexDirection: 'row', marginTop: 30 }}>
           <TouchableOpacity
             style={[styles.customButton, { flex: 1, marginRight: 8 }]}
-            onPress={() => actions.abrirScanner('articulo')}
+            onPress={actions.abrirScannerArticulo}
           >
             <Text style={styles.buttonText}>Escanear artículo</Text>
           </TouchableOpacity>
@@ -83,7 +70,7 @@ export default function HomeView({
       <ManualCodeModal
         visible={state.mostrarManual}
         onConfirm={(codigo) => {
-          actions.onManualCode(codigo);
+          console.log(codigo);
           actions.setMostrarManual(false);
         }}
         onCancel={() => actions.setMostrarManual(false)}
