@@ -1,55 +1,83 @@
-import { useEffect, useRef } from 'react';
+import { useRef, useEffect } from 'react';
 import { useCameraPermissions } from 'expo-camera';
 
 import ScannerService from '../services/ScannerService';
 
-import {
-    RESET_INTERVAL
-} from '../constants/scannerConstants';
+export function useScannerLogic(navigation, route) {
 
-export function useScannerLogic(onCodeScanned) {
+  const [permission, requestPermission] = useCameraPermissions();
 
-    const [permission, requestPermission] =
-        useCameraPermissions();
+  const scanBuffer = useRef({
+    value: '',
+    count: 0,
+    lastTime: 0,
+  });
 
-    const scanBuffer = useRef(
-        ScannerService.crearBuffer()
+  /* ---------- TEXTO ---------- */
+
+  const hintText =
+    route.params?.tipo === 'ubicacion'
+      ? 'Escanea una ubicación'
+      : 'Escanea un artículo';
+
+  /* ---------- VOLVER ---------- */
+
+  const volver = () => {
+    navigation.goBack();
+  };
+
+  /* ---------- RESET AUTOMÁTICO ---------- */
+
+  useEffect(() => {
+
+    const interval = setInterval(() => {
+      scanBuffer.current = ScannerService.resetBufferIfStale(
+        scanBuffer.current
+      );
+    }, 500);
+
+    return () => clearInterval(interval);
+
+  }, []);
+
+  /* ---------- SCANNER ---------- */
+
+  const handleBarcodeScanned = ({ type, data }) => {
+
+    console.log('SCAN:', type, data);
+
+    if (!ScannerService.esCodigoValido(data))
+      return;
+
+    const resultado = ScannerService.actualizarBuffer(
+      scanBuffer.current,
+      data
     );
 
-    const handleBarcodeScanned = ({ type, data }) => {
+    scanBuffer.current = resultado.buffer;
 
-        const resultado =
-            ScannerService.procesarLectura(
-                scanBuffer.current,
-                type,
-                data
-            );
+    if (!resultado.validado)
+      return;
 
-        scanBuffer.current = resultado.buffer;
+    navigation.navigate(
+      route.params.returnScreen,
+      {
+        codigo: data,
+        tipo: route.params.tipo,
+      }
+    );
+  };
 
-        if (resultado.valido) {
-            onCodeScanned(resultado.codigo);
-        }
-    };
+  return {
 
-    useEffect(() => {
+    permission,
+    requestPermission,
 
-        const interval = setInterval(() => {
+    hintText,
 
-            scanBuffer.current =
-                ScannerService.limpiarBufferCaducado(
-                    scanBuffer.current
-                );
+    volver,
 
-        }, RESET_INTERVAL);
+    handleBarcodeScanned,
 
-        return () => clearInterval(interval);
-
-    }, []);
-
-    return {
-        permission,
-        requestPermission,
-        handleBarcodeScanned,
-    };
+  };
 }

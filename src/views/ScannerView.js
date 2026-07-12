@@ -1,22 +1,10 @@
-import {
-    View,
-    Text,
-    TouchableOpacity,
-    StyleSheet
-} from 'react-native';
-
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { CameraView } from 'expo-camera';
-
 import { styles } from '../styles/styles';
 
 export default function ScannerView({
-
     state,
     actions,
-
-    onBack,
-    hintText
-
 }) {
 
     if (!state.permission) {
@@ -26,7 +14,6 @@ export default function ScannerView({
     if (!state.permission.granted) {
 
         return (
-
             <View
                 style={{
                     flex:1,
@@ -42,19 +29,16 @@ export default function ScannerView({
                 <TouchableOpacity
                     style={[
                         styles.customButton,
-                        {marginTop:20}
+                        {marginTop:40}
                     ]}
                     onPress={actions.requestPermission}
                 >
-
                     <Text style={styles.buttonText}>
                         Dar permiso
                     </Text>
-
                 </TouchableOpacity>
 
             </View>
-
         );
     }
 
@@ -64,28 +48,24 @@ export default function ScannerView({
 
             <CameraView
                 style={StyleSheet.absoluteFillObject}
-                onBarcodeScanned={
-                    actions.handleBarcodeScanned
-                }
+                onBarcodeScanned={actions.handleBarcodeScanned}
             />
 
             <View style={styles.overlay}>
 
                 <TouchableOpacity
                     style={styles.backButton}
-                    onPress={onBack}
+                    onPress={actions.volver}
                 >
-
                     <Text style={styles.backButtonText}>
                         ← Volver
                     </Text>
-
                 </TouchableOpacity>
 
                 <View style={styles.scanFrame}/>
 
                 <Text style={styles.hintText}>
-                    {hintText}
+                    {state.hintText}
                 </Text>
 
             </View>
@@ -93,4 +73,5 @@ export default function ScannerView({
         </View>
 
     );
+
 }

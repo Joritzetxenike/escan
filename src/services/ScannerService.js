@@ -1,82 +1,83 @@
-import {
-  MIN_CODE_LENGTH,
-  REQUIRED_READS,
-} from '../constants/scannerConstants';
+const LECTURAS_NECESARIAS = 10;
+const TIMEOUT = 1200;
 
-const crearBuffer = () => ({
-  value: '',
-  count: 0,
-  lastTime: 0,
-});
+const ScannerService = {
 
-const esCodigoValido = (codigo) => {
-  if (!codigo) return false;
-  if (codigo.length < MIN_CODE_LENGTH) return false;
+  esCodigoValido(data) {
 
-  return true;
-};
+    if (!data) return false;
 
-const procesarLectura = (buffer, type, codigo) => {
+    if (data.length < 6) return false;
 
-  if (!esCodigoValido(codigo)) {
-    return {
-      valido: false,
-      buffer,
+    return true;
+  },
+
+  actualizarBuffer(buffer, data) {
+
+    const now = Date.now();
+
+    // Código nuevo
+    if (buffer.value !== data) {
+
+      return {
+        validado: false,
+        buffer: {
+          value: data,
+          count: 1,
+          lastTime: now,
+        },
+      };
+    }
+
+    // Mismo código
+    const nuevoBuffer = {
+      value: data,
+      count: buffer.count + 1,
+      lastTime: now,
     };
-  }
 
-  const now = Date.now();
+    console.log(
+      `VALIDACIÓN ${data}: ${nuevoBuffer.count}/${LECTURAS_NECESARIAS}`
+    );
 
-  // Código diferente
-  if (buffer.value !== codigo) {
+    // Ya es válido
+    if (nuevoBuffer.count >= LECTURAS_NECESARIAS) {
+
+      return {
+        validado: true,
+        buffer: {
+          value: '',
+          count: 0,
+          lastTime: 0,
+        },
+      };
+    }
+
     return {
-      valido: false,
-      buffer: {
-        value: codigo,
-        count: 1,
-        lastTime: now,
-      },
+      validado: false,
+      buffer: nuevoBuffer,
     };
-  }
+  },
 
-  // Mismo código
-  const nuevoBuffer = {
-    value: codigo,
-    count: buffer.count + 1,
-    lastTime: now,
-  };
+  resetBufferIfStale(buffer) {
 
-  if (nuevoBuffer.count >= REQUIRED_READS) {
-    return {
-      valido: true,
-      codigo,
-      buffer: crearBuffer(),
-    };
-  }
+    if (!buffer.value)
+      return buffer;
 
-  return {
-    valido: false,
-    buffer: nuevoBuffer,
-  };
-};
+    const now = Date.now();
 
-const limpiarBufferCaducado = (buffer) => {
+    if (now - buffer.lastTime > TIMEOUT) {
 
-  if (!buffer.value) {
+      return {
+        value: '',
+        count: 0,
+        lastTime: 0,
+      };
+    }
+
     return buffer;
-  }
+  },
 
-  const now = Date.now();
-
-  if (now - buffer.lastTime > 1200) {
-    return crearBuffer();
-  }
-
-  return buffer;
 };
 
-export default {
-  crearBuffer,
-  procesarLectura,
-  limpiarBufferCaducado,
-};
+export default ScannerService;
