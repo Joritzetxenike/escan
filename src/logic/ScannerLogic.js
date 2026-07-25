@@ -13,60 +13,109 @@ export function useScannerLogic(navigation, route) {
     lastTime: 0,
   });
 
-  /* ---------- TEXTO ---------- */
+  /* =====================================================
+   * CONFIGURACIÓN
+   * ===================================================== */
+
+  const tipo = route.params?.tipo;
 
   const hintText =
-    route.params?.tipo === 'ubicacion'
+    tipo === 'ubicacion'
       ? 'Escanea una ubicación'
       : 'Escanea un artículo';
 
-  /* ---------- VOLVER ---------- */
+
+  /* =====================================================
+   * VOLVER
+   * ===================================================== */
 
   const volver = () => {
     navigation.goBack();
   };
 
-  /* ---------- RESET AUTOMÁTICO ---------- */
+
+  /* =====================================================
+   * RESET AUTOMÁTICO DEL BUFFER
+   * ===================================================== */
 
   useEffect(() => {
 
     const interval = setInterval(() => {
-      scanBuffer.current = ScannerService.resetBufferIfStale(
-        scanBuffer.current
-      );
+
+      scanBuffer.current =
+        ScannerService.resetBufferIfStale(
+          scanBuffer.current
+        );
+
     }, 500);
 
     return () => clearInterval(interval);
 
   }, []);
 
-  /* ---------- SCANNER ---------- */
+
+  /* =====================================================
+   * CÓDIGO ESCANEADO
+   * ===================================================== */
 
   const handleBarcodeScanned = ({ type, data }) => {
 
     console.log('SCAN:', type, data);
 
-    if (!ScannerService.esCodigoValido(data))
-      return;
+    /* ---------- VALIDACIÓN BÁSICA ---------- */
 
-    const resultado = ScannerService.actualizarBuffer(
-      scanBuffer.current,
-      data
-    );
+    if (!ScannerService.esCodigoValido(data)) {
+      return;
+    }
+
+
+    /* ---------- ACTUALIZAR BUFFER ---------- */
+
+    const resultado =
+      ScannerService.actualizarBuffer(
+        scanBuffer.current,
+        data
+      );
 
     scanBuffer.current = resultado.buffer;
 
-    if (!resultado.validado)
-      return;
 
-    navigation.navigate(
-      route.params.returnScreen,
-      {
+    /* ---------- TODAVÍA NO VALIDADO ---------- */
+
+    if (!resultado.validado) {
+      return;
+    }
+
+
+    /* =================================================
+     * CÓDIGO VALIDADO
+     * ================================================= */
+
+    console.log('CÓDIGO VALIDADO:', data);
+
+
+    /* ---------- DEVOLVER RESULTADO ---------- */
+
+    if (route.params?.onScan) {
+
+      route.params.onScan({
         codigo: data,
-        tipo: route.params.tipo,
-      }
-    );
+        tipo: tipo,
+      });
+
+    }
+
+
+    /* ---------- VOLVER A LA PANTALLA ANTERIOR ---------- */
+
+    navigation.goBack();
+
   };
+
+
+  /* =====================================================
+   * RETURN
+   * ===================================================== */
 
   return {
 

@@ -1,160 +1,327 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Alert } from 'react-native';
 
 import InventoryService from '../services/InventoryService';
 
 export function useHomeLogic(navigation) {
-  //const [modoScanner, setModoScanner] = useState(null);
+
+  /* =====================================================
+   * ESTADO
+   * ===================================================== */
 
   const [ubicacion, setUbicacion] = useState(null);
+
   const [articuloTemp, setArticuloTemp] = useState(null);
 
   const [mostrarCantidad, setMostrarCantidad] = useState(false);
+
   const [ultimosArticulos, setUltimosArticulos] = useState([]);
 
-  //const [cacheUbicacion, setCacheUbicacion] = useState([]);
   const [escaneadosSesion, setEscaneadosSesion] = useState([]);
 
   const [mostrarManual, setMostrarManual] = useState(false);
-  const [codigoManual, setCodigoManual] = useState(''); 
+
+  const [codigoManual, setCodigoManual] = useState('');
+
+
+  /* =====================================================
+   * NAVEGACIÓN AL SCANNER
+   * ===================================================== */
 
   const abrirScannerUbicacion = () => {
 
-    navigation.navigate(
-        "Scanner",
-        {
-            tipo: "ubicacion"
-        }
-    );
+    navigation.navigate('Scanner', {
+
+      tipo: 'ubicacion',
+
+      onScan: ({ codigo }) => {
+        procesarEscaneo('ubicacion', codigo);
+      },
+
+    });
 
   };
+
 
   const abrirScannerArticulo = () => {
 
-      navigation.navigate(
-          "Scanner",
-          {
-              tipo: "articulo"
-          }
-      );
+    navigation.navigate('Scanner', {
+
+      tipo: 'articulo',
+
+      onScan: ({ codigo }) => {
+        procesarEscaneo('articulo', codigo);
+      },
+
+    });
 
   };
 
-  const procesarArticulo = (codigo) => {
 
-    const resultado = InventoryService.validarArticulo(
-      codigo,
-      ubicacion,
-      escaneadosSesion
-    );
+  /* =====================================================
+   * UBICACIÓN
+   * ===================================================== */
 
-    if (!resultado.ok) {
-      Alert.alert(resultado.titulo, resultado.mensaje);
-      return;
-    }
-
-    setArticuloTemp(codigo);
-
-    setEscaneadosSesion(prev => [...prev, codigo]);
-
-    setMostrarCantidad(true);
-  };
   const cargarUbicacion = async (codigo) => {
-    setUbicacion(codigo);
-
-    const articulos = await InventoryService.cargarUbicacion(codigo);
-
-    setEscaneadosSesion([]);
-
-    return articulos;
-  };
-    /* ---------- MOTOR CENTRAL (IMPORTANTE) ---------- */
-  const procesarEscaneo = async (tipo, codigo) => {
 
     try {
 
-      if (tipo === 'ubicacion') {
-        await cargarUbicacion(codigo);
-        return;
-      }
+      setUbicacion(codigo);
 
-      if (tipo === 'articulo') {
-        procesarArticulo(codigo);
-        return;
-      }
+      const articulos =
+        await InventoryService.cargarUbicacion(codigo);
+
+      // Reiniciamos los artículos escaneados
+      // para la nueva ubicación
+      setEscaneadosSesion([]);
+
+      return articulos;
 
     } catch (e) {
-      console.error(e);
-      Alert.alert('Error', 'Error procesando el código');
+
+      console.error(
+        'Error cargando ubicación:',
+        e
+      );
+
+      throw e;
     }
-  };
-  /* ---------- SCANNER ---------- */
-  const onCodeScanned = (data) => {
-    procesarCodigo(data, 'scanner');
+
   };
 
-  /* ---------- MANUAL INPUT ---------- */
+
+  /* =====================================================
+   * ARTÍCULO
+   * ===================================================== */
+
+  const procesarArticulo = (codigo) => {
+
+    const resultado =
+      InventoryService.validarArticulo(
+        codigo,
+        ubicacion,
+        escaneadosSesion
+      );
+
+
+    /* ---------- ARTÍCULO NO VÁLIDO ---------- */
+
+    if (!resultado.ok) {
+
+      Alert.alert(
+        resultado.titulo,
+        resultado.mensaje
+      );
+
+      return;
+    }
+
+
+    /* ---------- ARTÍCULO VÁLIDO ---------- */
+
+    setArticuloTemp(codigo);
+
+    setEscaneadosSesion(
+      prev => [
+        ...prev,
+        codigo,
+      ]
+    );
+
+    setMostrarCantidad(true);
+
+  };
+
+
+  /* =====================================================
+   * PROCESAR RESULTADO DEL SCANNER
+   * ===================================================== */
+
+  const procesarEscaneo = async (
+    tipo,
+    codigo
+  ) => {
+
+    try {
+
+      console.log(
+        'Procesando escaneo:',
+        tipo,
+        codigo
+      );
+
+
+      /* ---------- UBICACIÓN ---------- */
+
+      if (tipo === 'ubicacion') {
+
+        await cargarUbicacion(codigo);
+
+        return;
+      }
+
+
+      /* ---------- ARTÍCULO ---------- */
+
+      if (tipo === 'articulo') {
+
+        procesarArticulo(codigo);
+
+        return;
+      }
+
+
+      /* ---------- TIPO DESCONOCIDO ---------- */
+
+      console.warn(
+        'Tipo de escaneo desconocido:',
+        tipo
+      );
+
+    } catch (e) {
+
+      console.error(e);
+
+      Alert.alert(
+        'Error',
+        'Error procesando el código'
+      );
+
+    }
+
+  };
+
+
+  /* =====================================================
+   * CÓDIGO MANUAL
+   * ===================================================== */
+
   const onManualCode = (codigo) => {
-    procesarCodigo(codigo, 'manual');
+
+    procesarEscaneo(
+      'articulo',
+      codigo
+    );
+
   };
 
-  /* ---------- GUARDAR ---------- */
+
+  /* =====================================================
+   * LIMPIAR ARTÍCULO
+   * ===================================================== */
+
   const limpiarArticulo = () => {
 
-      setArticuloTemp(null);
+    setArticuloTemp(null);
 
-      setCodigoManual('');
+    setCodigoManual('');
 
-      setMostrarManual(false);
+    setMostrarManual(false);
 
-      setMostrarCantidad(false);
+    setMostrarCantidad(false);
+
   };
 
-const confirmarCantidad = async (cantidad) => {
 
-  try {
+  /* =====================================================
+   * CONFIRMAR CANTIDAD
+   * ===================================================== */
 
-    const movimiento = InventoryService.crearMovimiento(
-      ubicacion,
-      articuloTemp,
-      cantidad
-    );
+  const confirmarCantidad = async (
+    cantidad
+  ) => {
 
-    await InventoryService.guardarMovimiento(movimiento);
+    try {
 
-    setUltimosArticulos(prev =>
-      [movimiento, ...prev].slice(0, 5)
-    );
-
-    limpiarArticulo();
-
-  } catch (e) {
-    console.error(e);
-    Alert.alert('Error', 'No se pudo guardar el registro');
-  }
-};
+      const movimiento =
+        InventoryService.crearMovimiento(
+          ubicacion,
+          articuloTemp,
+          cantidad
+        );
 
 
-  /* ---------- RETURN ---------- */
+      await InventoryService.guardarMovimiento(
+        movimiento
+      );
+
+
+      /* ---------- ACTUALIZAR ÚLTIMOS ---------- */
+
+      setUltimosArticulos(
+        prev => [
+          movimiento,
+          ...prev,
+        ].slice(0, 5)
+      );
+
+
+      /* ---------- LIMPIAR ---------- */
+
+      limpiarArticulo();
+
+    } catch (e) {
+
+      console.error(e);
+
+      Alert.alert(
+        'Error',
+        'No se pudo guardar el registro'
+      );
+
+    }
+
+  };
+
+
+  /* =====================================================
+   * RETURN
+   * ===================================================== */
+
   return {
 
+    /* ---------- ESTADO ---------- */
+
     ubicacion,
+
     articuloTemp,
+
     mostrarCantidad,
+
     ultimosArticulos,
 
+
+    /* ---------- SCANNER ---------- */
+
     abrirScannerUbicacion,
+
     abrirScannerArticulo,
+
+
+    /* ---------- PROCESAMIENTO ---------- */
 
     procesarEscaneo,
 
+    onManualCode,
+
+
+    /* ---------- CANTIDAD ---------- */
+
     confirmarCantidad,
+
     setMostrarCantidad,
 
+
+    /* ---------- MODAL MANUAL ---------- */
+
     mostrarManual,
+
     setMostrarManual,
 
     codigoManual,
+
     setCodigoManual,
+
   };
+
 }
