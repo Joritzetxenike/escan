@@ -16,15 +16,18 @@ const getUbicacionPath = (ubicacion) =>
 const parseRegistros = (csv) => {
   if (!csv) return [];
 
-  return csv.split('\n').map(line => {
-    const [ubicacion, articulo, cantidad] = line.split(',');
+  return csv
+    .split('\n')
+    .filter(line => line.trim() !== '')
+    .map(line => {
+      const [ubicacion, articulo, cantidad] = line.split(',');
 
-    return {
-      ubicacion,
-      articulo,
-      cantidad: Number(cantidad),
-    };
-  });
+      return {
+        ubicacion,
+        articulo,
+        cantidad: Number(cantidad),
+      };
+    });
 };
 
 const serializeRegistros = (registros) =>
