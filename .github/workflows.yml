@@ -1,0 +1,54 @@
+name: Build Android APK
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    name: Build and Release APK
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Descargar código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Instalar EAS CLI
+        run: npm install -g eas-cli
+
+      - name: Construir APK con EAS
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          eas build \
+            --platform android \
+            --profile preview \
+            --non-interactive \
+            --json > build.json
+
+      - name: Descargar APK
+        run: |
+          APK_URL=$(node -e "const fs=require('fs'); const d=JSON.parse(fs.readFileSync('build.json')); console.log(d[0].artifacts.buildUrl)")
+          curl -L "$APK_URL" -o "escan-${{ github.ref_name }}.apk"
+
+      - name: Crear GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            "escan-${{ github.ref_name }}.apk" \
+            --title "Escan ${{ github.ref_name }}" \
+            --generate-notes
