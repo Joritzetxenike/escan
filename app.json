@@ -2,7 +2,7 @@
   "expo": {
     "name": "escan",
     "slug": "escan",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "default",
     "icon": "./src/assets/icon.jpg",
     "userInterfaceStyle": "light",
