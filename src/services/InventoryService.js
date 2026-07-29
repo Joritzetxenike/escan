@@ -10,7 +10,7 @@ const InventoryService = {
     return await DataProvider.guardarMovimiento(movimiento);
   },
 
-  validarArticulo(codigoArticulo, ubicacion, articulosEscaneados) {
+  async validarArticulo(codigoArticulo, ubicacion, articulosEscaneados) {
 
     if (!ubicacion) {
       return {
@@ -28,8 +28,20 @@ const InventoryService = {
       };
     }
 
+    const articulo = await DataProvider.obtenerArticulo(codigoArticulo);
+
+    if (!articulo) {
+      return {
+        ok: false,
+        titulo: 'Artículo no encontrado',
+        mensaje: `El código ${codigoArticulo} no existe en el maestro`,
+      };
+    }
+
     return {
       ok: true,
+      articulo,
+      esSIC: articulo.tipo === 'SIC',
     };
   },
 

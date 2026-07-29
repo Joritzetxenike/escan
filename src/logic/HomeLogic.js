@@ -94,10 +94,10 @@ export function useHomeLogic(navigation) {
    * ARTÍCULO
    * ===================================================== */
 
-  const procesarArticulo = (codigo) => {
+  const procesarArticulo = async (codigo) => {
 
     const resultado =
-      InventoryService.validarArticulo(
+      await InventoryService.validarArticulo(
         codigo,
         ubicacion,
         escaneadosSesion
@@ -114,6 +114,18 @@ export function useHomeLogic(navigation) {
       );
 
       return;
+    }
+
+
+    /* ---------- AVISO SIC ---------- */
+
+    if (resultado.esSIC) {
+
+      Alert.alert(
+        'Artículo SIC',
+        `El código ${codigo} es un SIC. Asegúrate de que sea el artículo correcto antes de continuar.`
+      );
+
     }
 
 
@@ -165,7 +177,7 @@ export function useHomeLogic(navigation) {
 
       if (tipo === 'articulo') {
 
-        procesarArticulo(codigo);
+        await procesarArticulo(codigo);
 
         return;
       }

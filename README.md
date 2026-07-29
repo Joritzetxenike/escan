@@ -125,13 +125,64 @@ El escáner requiere que un mismo código se lea **10 veces consecutivas en 1200
 
 ## Modelo de datos (Supabase)
 
+### Esquema DDL
+
+```sql
+CREATE TABLE public.maestroSeccion (
+  seccion character varying NOT NULL,
+  stat USER-DEFINED,
+  CONSTRAINT maestroSeccion_pkey PRIMARY KEY (seccion)
+);
+
+CREATE TABLE public.maestroArea (
+  seccion character varying NOT NULL,
+  area character varying NOT NULL,
+  stat USER-DEFINED,
+  CONSTRAINT maestroArea_pkey PRIMARY KEY (seccion, area),
+  CONSTRAINT maestro_area_seccion_fkey FOREIGN KEY (seccion) REFERENCES public.maestroSeccion(seccion)
+);
+
+CREATE TABLE public.maestroUbicacion (
+  seccion character varying NOT NULL,
+  area character varying NOT NULL,
+  subzona character varying NOT NULL,
+  stat USER-DEFINED,
+  CONSTRAINT maestroUbicacion_pkey PRIMARY KEY (seccion, area, subzona),
+  CONSTRAINT maestro_ubicacion_seccion_area_fkey FOREIGN KEY (seccion, area) REFERENCES public.maestroArea(seccion, area)
+);
+
+CREATE TABLE public.maestroArticulo (
+  item character varying NOT NULL,
+  dsca character varying NOT NULL,
+  tipo USER-DEFINED,
+  CONSTRAINT maestroArticulo_pkey PRIMARY KEY (item)
+);
+
+CREATE TABLE public.conteo (
+  ubicacion character varying NOT NULL,
+  item character varying NOT NULL,
+  cant smallint,
+  CONSTRAINT conteo_pkey PRIMARY KEY (ubicacion, item),
+  CONSTRAINT conteo_item_fkey FOREIGN KEY (item) REFERENCES public.maestroArticulo(item)
+);
+```
+
+### Descripción de tablas
+
 | Tabla              | Uso                                      |
 | ------------------ | ---------------------------------------- |
 | `maestroSeccion`   | Secciones de la planta                   |
 | `maestroArea`      | Áreas dentro de cada sección             |
-| `maestroUbicacion` | Ubicaciones individuales                 |
-| `maestroArticulo`  | Catálogo de artículos (`item`, `dsca`)   |
-| `conteo`           | Movimientos (`ubicacion`, `item`, `cant`)|
+| `maestroUbicacion` | Ubicaciones individuales (PK compuesta: sección, área, subzona) |
+| `maestroArticulo`  | Catálogo de artículos (`item` = código, `dsca` = descripción, `tipo` = tipo de artículo, ej. `'SIC'`) |
+| `conteo`           | Movimientos / conteo por ubicación-artículo |
+
+### Notas sobre el modelo
+
+- La columna `tipo` en `maestroArticulo` es de tipo `USER-DEFINED` (enum). Si el tipo es `'SIC'`, la app muestra un aviso al escanear el artículo.
+- `conteo.ubicacion` almacena la ubicación completa como string con formato `seccion-area-subzona` (ej. `A-01-01`).
+- `conteo.item` es FK a `maestroArticulo.item`.
+- Las columnas `stat` en las tablas de ubicación son del tipo enum con valores `'Inicio'`, `'Proceso'`, `'Fin'`.
 
 ---
 
