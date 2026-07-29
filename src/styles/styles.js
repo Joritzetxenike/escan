@@ -11,7 +11,7 @@ container: {
 
   /* ---------- BOTONES ---------- */
   customButton: {
-    backgroundColor: '#007BFF',
+    backgroundColor: '#000000',
     paddingVertical: 15,
     paddingHorizontal: 25,
     borderRadius: 8,
