@@ -37,7 +37,7 @@ container: {
 
 homeContent: {
   flex: 1,
-  marginTop: 40,   // ⬅️ más abajo (antes era 10)
+  marginTop: 50,   // ⬅️ más abajo (antes era 10)
   width: '100%',
   alignItems: 'center',
 },
@@ -122,7 +122,7 @@ homeContent: {
 header: {
   width: '100%',
   backgroundColor: '#007BFF',
-  paddingTop: 30,      // espacio para notch / status bar
+  paddingTop: 50,      // espacio para notch / status bar
   paddingBottom: 15,
   alignItems: 'center',
 },
