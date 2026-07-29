@@ -48,7 +48,7 @@ export default function HomeView({
         >
 
           <Text style={styles.buttonText}>
-            Escanear ubicaciónAAAAA
+            Escanear ubicación
           </Text>
 
         </TouchableOpacity>

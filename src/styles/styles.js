@@ -11,7 +11,7 @@ container: {
 
   /* ---------- BOTONES ---------- */
   customButton: {
-    backgroundColor: '#000000',
+    backgroundColor: '#007BFF',
     paddingVertical: 15,
     paddingHorizontal: 25,
     borderRadius: 8,
@@ -59,7 +59,7 @@ homeContent: {
   /* ---------- CÁMARA ---------- */
   scannerContainer: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: '#007BFF',
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
