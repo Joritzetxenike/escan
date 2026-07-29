@@ -6,13 +6,13 @@ import {
   TouchableOpacity,
   Alert,
   StyleSheet,
-  Modal,
 } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { styles } from '../styles/styles';
+import ArticulosModal from '../components/ArticulosModal';
 
 export default function ListaScreen() {
   const [csvs, setCsvs] = useState([]);
@@ -126,18 +126,6 @@ export default function ListaScreen() {
     </View>
   );
 
-  /* ---------- RENDER ITEM REGISTRO ---------- */
-  const renderRegistro = ({ item, index }) => (
-    <View style={stylesCsv.rowRegistro}>
-      <Text style={{ flex: 2 }}>{item.ubicacion}</Text>
-      <Text style={{ flex: 3 }}>{item.articulo}</Text>
-      <Text style={{ flex: 1, textAlign: 'center' }}>{item.cantidad}</Text>
-      <TouchableOpacity onPress={() => borrarRegistro(index)} style={{ flex: 0.5, alignItems: 'center' }}>
-        <MaterialIcons name="delete-outline" size={22} color="#C62828" />
-      </TouchableOpacity>
-    </View>
-  );
-
   return (
     <View style={[styles.container, { flex: 1, padding: 10 }]}>
       <Text style={[styles.headerTitle, { fontSize: 26, marginBottom: 20 }]}>
@@ -154,43 +142,13 @@ export default function ListaScreen() {
         />
       )}
 
-      {/* ---------- MODAL DE REGISTROS ---------- */}
-      <Modal
+      <ArticulosModal
         visible={modalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={stylesCsv.modalBackground}>
-          <View style={stylesCsv.modalContainer}>
-            <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 10 }}>
-              Contenido: {csvSeleccionado}
-            </Text>
-
-            {/* Cabecera */}
-            <View style={stylesCsv.rowRegistro}>
-              <Text style={{ flex: 2, fontWeight: 'bold' }}>Ubicación</Text>
-              <Text style={{ flex: 3, fontWeight: 'bold' }}>Artículo</Text>
-              <Text style={{ flex: 1, fontWeight: 'bold', textAlign: 'center' }}>Cantidad</Text>
-              <Text style={{ flex: 0.5 }}></Text>
-            </View>
-
-            <FlatList
-              data={registros}
-              keyExtractor={(_, index) => index.toString()}
-              renderItem={renderRegistro}
-              style={{ maxHeight: '80%' }}
-            />
-
-            <TouchableOpacity
-              style={[stylesCsv.customButton, { marginTop: 10 }]}
-              onPress={() => setModalVisible(false)}
-            >
-              <Text style={stylesCsv.buttonText}>Cerrar</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+        titulo={csvSeleccionado}
+        articulos={registros}
+        onCerrar={() => setModalVisible(false)}
+        onEliminar={borrarRegistro}
+      />
     </View>
   );
 }
@@ -202,35 +160,5 @@ const stylesCsv = StyleSheet.create({
     paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: '#ddd',
-  },
-  rowRegistro: {
-    flexDirection: 'row',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ccc',
-    paddingHorizontal: 5,
-    alignItems: 'center',
-  },
-  modalBackground: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  modalContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 15,
-    maxHeight: '90%',
-  },
-  customButton: {
-    backgroundColor: '#007BFF',
-    padding: 10,
-    borderRadius: 6,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: '#fff',
-    fontWeight: 'bold',
   },
 });

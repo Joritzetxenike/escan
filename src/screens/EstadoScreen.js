@@ -5,10 +5,13 @@ View,
 Text,
 TouchableOpacity,
 ActivityIndicator,
+Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { obtenerUbicaciones } from "../services/ubicacionesService";
+import InventoryService from "../services/InventoryService";
+import ArticulosModal from "../components/ArticulosModal";
 
 export default function EstadoScreen() {
 
@@ -22,6 +25,13 @@ const [seccionesAbiertas, setSeccionesAbiertas] = useState({});
 
 // Áreas abiertas
 const [areasAbiertas, setAreasAbiertas] = useState({});
+
+// Modal de artículos
+const [modalVisible, setModalVisible] = useState(false);
+const [modalUbicacion, setModalUbicacion] = useState(null);
+const [articulosUbicacion, setArticulosUbicacion] = useState([]);
+const [editandoCantidad, setEditandoCantidad] = useState(null);
+const [nuevaCantidad, setNuevaCantidad] = useState("");
 
 const coloresEstado = {
     Inicio: "#95A5A6",
@@ -74,6 +84,74 @@ const alternarArea = (seccion, area) => {
     }));
 };
 
+const abrirModalUbicacion = async (ubicacionId) => {
+    try {
+        const articulos = await InventoryService.cargarUbicacion(ubicacionId);
+        setModalUbicacion(ubicacionId);
+        setArticulosUbicacion(articulos);
+        setEditandoCantidad(null);
+        setNuevaCantidad("");
+        setModalVisible(true);
+    } catch (e) {
+        console.error(e);
+        Alert.alert("Error", "No se pudieron cargar los artículos");
+    }
+};
+
+const handleGuardarCantidad = async (index) => {
+    const cant = Number(nuevaCantidad);
+    if (!Number.isInteger(cant) || cant < 0) {
+        Alert.alert("Error", "Introduce una cantidad válida");
+        return;
+    }
+
+    const articulo = articulosUbicacion[index];
+    try {
+        await InventoryService.actualizarMovimiento({
+            ubicacion: articulo.ubicacion,
+            articulo: articulo.articulo,
+            cantidad: cant,
+        });
+        const actualizados = [...articulosUbicacion];
+        actualizados[index].cantidad = cant;
+        setArticulosUbicacion(actualizados);
+        setEditandoCantidad(null);
+        setNuevaCantidad("");
+    } catch (e) {
+        console.error(e);
+        Alert.alert("Error", "No se pudo actualizar la cantidad");
+    }
+};
+
+const handleEliminarArticulo = (index) => {
+    const articulo = articulosUbicacion[index];
+    Alert.alert(
+        "Eliminar artículo",
+        `¿Eliminar ${articulo.articulo} de ${articulo.ubicacion}?`,
+        [
+            { text: "Cancelar", style: "cancel" },
+            {
+                text: "Eliminar",
+                style: "destructive",
+                onPress: async () => {
+                    try {
+                        await InventoryService.eliminarMovimiento(
+                            articulo.ubicacion,
+                            articulo.articulo
+                        );
+                        setArticulosUbicacion(prev =>
+                            prev.filter((_, i) => i !== index)
+                        );
+                    } catch (e) {
+                        console.error(e);
+                        Alert.alert("Error", "No se pudo eliminar el artículo");
+                    }
+                },
+            },
+        ]
+    );
+};
+
 if (cargando) {
     return (
         <View
@@ -89,293 +167,318 @@ if (cargando) {
 }
 
 return (
-    <ScrollView
-        contentContainerStyle={{
-            padding: 15,
-            paddingBottom: 30,
-            paddingTop: insets.top + 10,
-        }}
-    >
+    <View style={{ flex: 1 }}>
+        <ScrollView
+            contentContainerStyle={{
+                padding: 15,
+                paddingBottom: 30,
+                paddingTop: insets.top + 10,
+            }}
+        >
 
-        {secciones.map((seccion) => {
+            {secciones.map((seccion) => {
 
-            const seccionAbierta =
-                seccionesAbiertas[seccion.seccion];
+                const seccionAbierta =
+                    seccionesAbiertas[seccion.seccion];
 
-            return (
-                <View
-                    key={seccion.seccion}
-                    style={{
-                        marginBottom: 10,
-                    }}
-                >
-
-                    {/* =========================
-                        SECCIÓN
-                    ========================= */}
-
-                    <TouchableOpacity
-                        onPress={() =>
-                            alternarSeccion(seccion.seccion)
-                        }
-                        activeOpacity={0.7}
+                return (
+                    <View
+                        key={seccion.seccion}
                         style={{
-                            flexDirection: "row",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                            backgroundColor: "#E8E8E8",
-                            padding: 15,
-                            borderRadius: 10,
+                            marginBottom: 10,
                         }}
                     >
 
-                        <View
+                        {/* =========================
+                            SECCIÓN
+                        ========================= */}
+
+                        <TouchableOpacity
+                            onPress={() =>
+                                alternarSeccion(seccion.seccion)
+                            }
+                            activeOpacity={0.7}
                             style={{
                                 flexDirection: "row",
                                 alignItems: "center",
-                                flex: 1,
-                            }}
-                        >
-
-                            <Text
-                                style={{
-                                    fontSize: 18,
-                                    fontWeight: "bold",
-                                    marginRight: 10,
-                                }}
-                            >
-                                {seccionAbierta ? "▼" : "▶"}
-                            </Text>
-
-                            <Text
-                                style={{
-                                    fontSize: 20,
-                                    fontWeight: "bold",
-                                }}
-                            >
-                                Sección {seccion.seccion}
-                            </Text>
-
-                        </View>
-
-                        <View
-                            style={{
-                                flexDirection: "row",
-                                alignItems: "center",
+                                justifyContent: "space-between",
+                                backgroundColor: "#E8E8E8",
+                                padding: 15,
+                                borderRadius: 10,
                             }}
                         >
 
                             <View
                                 style={{
-                                    width: 16,
-                                    height: 16,
-                                    borderRadius: 8,
-                                    backgroundColor:
-                                        obtenerColor(seccion.stat),
-                                    marginRight: 7,
+                                    flexDirection: "row",
+                                    alignItems: "center",
+                                    flex: 1,
                                 }}
-                            />
+                            >
 
-                            <Text>
-                                {seccion.stat}
-                            </Text>
-
-                        </View>
-
-                    </TouchableOpacity>
-
-
-                    {/* =========================
-                        ÁREAS
-                    ========================= */}
-
-                    {seccionAbierta &&
-                        seccion.areas?.map((area) => {
-
-                            const areaId =
-                                `${seccion.seccion}-${area.area}`;
-
-                            const areaAbierta =
-                                areasAbiertas[areaId];
-
-                            return (
-                                <View
-                                    key={areaId}
+                                <Text
                                     style={{
-                                        marginLeft: 15,
-                                        marginTop: 6,
+                                        fontSize: 18,
+                                        fontWeight: "bold",
+                                        marginRight: 10,
                                     }}
                                 >
+                                    {seccionAbierta ? "▼" : "▶"}
+                                </Text>
 
-                                    <TouchableOpacity
-                                        onPress={() =>
-                                            alternarArea(
-                                                seccion.seccion,
-                                                area.area
-                                            )
-                                        }
-                                        activeOpacity={0.7}
+                                <Text
+                                    style={{
+                                        fontSize: 20,
+                                        fontWeight: "bold",
+                                    }}
+                                >
+                                    Sección {seccion.seccion}
+                                </Text>
+
+                            </View>
+
+                            <View
+                                style={{
+                                    flexDirection: "row",
+                                    alignItems: "center",
+                                }}
+                            >
+
+                                <View
+                                    style={{
+                                        width: 16,
+                                        height: 16,
+                                        borderRadius: 8,
+                                        backgroundColor:
+                                            obtenerColor(seccion.stat),
+                                        marginRight: 7,
+                                    }}
+                                />
+
+                                <Text>
+                                    {seccion.stat}
+                                </Text>
+
+                            </View>
+
+                        </TouchableOpacity>
+
+
+                        {/* =========================
+                            ÁREAS
+                        ========================= */}
+
+                        {seccionAbierta &&
+                            seccion.areas?.map((area) => {
+
+                                const areaId =
+                                    `${seccion.seccion}-${area.area}`;
+
+                                const areaAbierta =
+                                    areasAbiertas[areaId];
+
+                                return (
+                                    <View
+                                        key={areaId}
                                         style={{
-                                            flexDirection: "row",
-                                            alignItems: "center",
-                                            justifyContent: "space-between",
-                                            backgroundColor: "#F5F5F5",
-                                            padding: 12,
-                                            borderRadius: 8,
+                                            marginLeft: 15,
+                                            marginTop: 6,
                                         }}
                                     >
 
-                                        <View
+                                        <TouchableOpacity
+                                            onPress={() =>
+                                                alternarArea(
+                                                    seccion.seccion,
+                                                    area.area
+                                                )
+                                            }
+                                            activeOpacity={0.7}
                                             style={{
                                                 flexDirection: "row",
                                                 alignItems: "center",
-                                                flex: 1,
-                                            }}
-                                        >
-
-                                            <Text
-                                                style={{
-                                                    fontSize: 16,
-                                                    marginRight: 8,
-                                                }}
-                                            >
-                                                {areaAbierta
-                                                    ? "▼"
-                                                    : "▶"}
-                                            </Text>
-
-                                            <Text
-                                                style={{
-                                                    fontSize: 17,
-                                                    fontWeight: "600",
-                                                }}
-                                            >
-                                                Área {area.area}
-                                            </Text>
-
-                                        </View>
-
-                                        <View
-                                            style={{
-                                                flexDirection: "row",
-                                                alignItems: "center",
+                                                justifyContent: "space-between",
+                                                backgroundColor: "#F5F5F5",
+                                                padding: 12,
+                                                borderRadius: 8,
                                             }}
                                         >
 
                                             <View
                                                 style={{
-                                                    width: 13,
-                                                    height: 13,
-                                                    borderRadius: 7,
-                                                    backgroundColor:
-                                                        obtenerColor(
-                                                            area.stat
-                                                        ),
-                                                    marginRight: 6,
-                                                }}
-                                            />
-
-                                            <Text
-                                                style={{
-                                                    fontSize: 12,
-                                                    color: "#777",
+                                                    flexDirection: "row",
+                                                    alignItems: "center",
+                                                    flex: 1,
                                                 }}
                                             >
-                                                {area.stat}
-                                            </Text>
 
-                                        </View>
-
-                                    </TouchableOpacity>
-
-
-                                    {/* =========================
-                                        UBICACIONES
-                                    ========================= */}
-
-                                    {areaAbierta &&
-                                        area.ubicaciones?.map(
-                                            (ubicacion) => (
-
-                                                <View
-                                                    key={
-                                                        ubicacion.ubicacion
-                                                    }
+                                                <Text
                                                     style={{
-                                                        flexDirection: "row",
-                                                        alignItems: "center",
-                                                        justifyContent:
-                                                            "space-between",
-                                                        backgroundColor:
-                                                            "#FFFFFF",
-                                                        padding: 12,
-                                                        marginLeft: 20,
-                                                        marginTop: 4,
-                                                        borderRadius: 7,
-                                                        elevation: 1,
+                                                        fontSize: 16,
+                                                        marginRight: 8,
                                                     }}
                                                 >
+                                                    {areaAbierta
+                                                        ? "▼"
+                                                        : "▶"}
+                                                </Text>
 
-                                                    <Text
-                                                        style={{
-                                                            fontSize: 15,
-                                                        }}
-                                                    >
-                                                        {
+                                                <Text
+                                                    style={{
+                                                        fontSize: 17,
+                                                        fontWeight: "600",
+                                                    }}
+                                                >
+                                                    Área {area.area}
+                                                </Text>
+
+                                            </View>
+
+                                            <View
+                                                style={{
+                                                    flexDirection: "row",
+                                                    alignItems: "center",
+                                                }}
+                                            >
+
+                                                <View
+                                                    style={{
+                                                        width: 13,
+                                                        height: 13,
+                                                        borderRadius: 7,
+                                                        backgroundColor:
+                                                            obtenerColor(
+                                                                area.stat
+                                                            ),
+                                                        marginRight: 6,
+                                                    }}
+                                                />
+
+                                                <Text
+                                                    style={{
+                                                        fontSize: 12,
+                                                        color: "#777",
+                                                    }}
+                                                >
+                                                    {area.stat}
+                                                </Text>
+
+                                            </View>
+
+                                        </TouchableOpacity>
+
+
+                                        {/* =========================
+                                            UBICACIONES
+                                        ========================= */}
+
+                                        {areaAbierta &&
+                                            area.ubicaciones?.map(
+                                                (ubicacion) => (
+
+                                                    <TouchableOpacity
+                                                        key={
                                                             ubicacion.ubicacion
                                                         }
-                                                    </Text>
-
-                                                    <View
+                                                        onPress={() =>
+                                                            abrirModalUbicacion(
+                                                                ubicacion.ubicacion
+                                                            )
+                                                        }
+                                                        activeOpacity={0.7}
                                                         style={{
-                                                            flexDirection:
-                                                                "row",
-                                                            alignItems:
-                                                                "center",
+                                                            flexDirection: "row",
+                                                            alignItems: "center",
+                                                            justifyContent:
+                                                                "space-between",
+                                                            backgroundColor:
+                                                                "#FFFFFF",
+                                                            padding: 12,
+                                                            marginLeft: 20,
+                                                            marginTop: 4,
+                                                            borderRadius: 7,
+                                                            elevation: 1,
                                                         }}
                                                     >
-
-                                                        <View
-                                                            style={{
-                                                                width: 13,
-                                                                height: 13,
-                                                                borderRadius:
-                                                                    7,
-                                                                backgroundColor:
-                                                                    obtenerColor(
-                                                                        ubicacion.stat
-                                                                    ),
-                                                                marginRight: 6,
-                                                            }}
-                                                        />
 
                                                         <Text
                                                             style={{
-                                                                fontSize: 12,
-                                                                color: "#777",
+                                                                fontSize: 15,
+                                                                flex: 1,
                                                             }}
                                                         >
                                                             {
-                                                                ubicacion.stat
+                                                                ubicacion.ubicacion
                                                             }
                                                         </Text>
 
-                                                    </View>
+                                                        <View
+                                                            style={{
+                                                                flexDirection:
+                                                                    "row",
+                                                                alignItems:
+                                                                    "center",
+                                                            }}
+                                                        >
 
-                                                </View>
+                                                            <View
+                                                                style={{
+                                                                    width: 13,
+                                                                    height: 13,
+                                                                    borderRadius:
+                                                                        7,
+                                                                    backgroundColor:
+                                                                        obtenerColor(
+                                                                            ubicacion.stat
+                                                                        ),
+                                                                    marginRight: 6,
+                                                                }}
+                                                            />
 
-                                            )
-                                        )}
+                                                            <Text
+                                                                style={{
+                                                                    fontSize: 12,
+                                                                    color: "#777",
+                                                                }}
+                                                            >
+                                                                {
+                                                                    ubicacion.stat
+                                                                }
+                                                            </Text>
 
-                                </View>
-                            );
-                        })}
+                                                        </View>
 
-                </View>
-            );
-        })}
+                                                    </TouchableOpacity>
 
-    </ScrollView>
+                                                )
+                                            )}
+
+                                    </View>
+                                );
+                            })}
+
+                    </View>
+                );
+            })}
+
+        </ScrollView>
+
+        <ArticulosModal
+            visible={modalVisible}
+            titulo={modalUbicacion}
+            articulos={articulosUbicacion}
+            onCerrar={() => setModalVisible(false)}
+            editandoIndex={editandoCantidad}
+            editandoValor={nuevaCantidad}
+            onIniciarEdicion={(index) => {
+                setEditandoCantidad(index);
+                setNuevaCantidad(String(articulosUbicacion[index].cantidad ?? 0));
+            }}
+            onChangeValor={setNuevaCantidad}
+            onGuardarEdicion={handleGuardarCantidad}
+            onEliminar={handleEliminarArticulo}
+        />
+    </View>
 );
 
 

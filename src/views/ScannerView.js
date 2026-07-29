@@ -81,9 +81,10 @@ export default function ScannerView({
 
       <CameraView
         style={StyleSheet.absoluteFillObject}
-        onBarcodeScanned={
-          actions.handleBarcodeScanned
-        }
+        onBarcodeScanned={actions.handleBarcodeScanned}
+        barcodeScannerSettings={{
+          barcodeTypes: ['qr', 'code128', 'ean13', 'ean8', 'upc_a', 'upc_e', 'code39', 'code93', 'codabar', 'itf14', 'pdf417', 'aztec', 'datamatrix'],
+        }}
       />
 
 
