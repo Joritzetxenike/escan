@@ -1,5 +1,5 @@
 // Ajusta la ruta si tu archivo del cliente está en otro lugar
-import supabase from '../supabaseClient';
+import supabase from './supabaseClient';
 
 /**
  * NOTAS / SUPUESTOS sobre el esquema recibido:
@@ -41,33 +41,64 @@ const SupabaseProvider = {
    * ======================================================= */
 
   async obtenerUbicaciones() {
-    const { data, error } = await supabase
-      .from('maestroUbicacion')
-      .select('seccion, area, subzona, stat');
+  const { data, error } = await supabase
+    .from('maestroSeccion')
+    .select(`
+      seccion,
+      stat,
+      maestroArea (
+        area,
+        stat,
+        maestroUbicacion (
+          subzona,
+          stat
+        )
+      )
+    `);
 
-    if (error) throw error;
+  if (error) {
+    console.error('Error obteniendo estructura de ubicaciones:', error);
+    throw error;
+  }
 
-    return (data || []).map((u) => ({
-      ubicacion: buildUbicacionId(u.seccion, u.area, u.subzona),
-      seccion: u.seccion,
-      area: u.area,
-      subzona: u.subzona,
-      stat: u.stat,
-    }));
-  },
+  return (data || []).map((seccion) => ({
+    seccion: seccion.seccion,
+    stat: seccion.stat,
 
+    areas: (seccion.maestroArea || []).map((area) => ({
+      area: area.area,
+      stat: area.stat,
+
+      ubicaciones: (area.maestroUbicacion || []).map((ubicacion) => ({
+        subzona: ubicacion.subzona,
+        stat: ubicacion.stat,
+
+        ubicacion:
+          `${seccion.seccion}-${area.area}-${ubicacion.subzona}`,
+      })),
+    })),
+  }));
+},
   async obtenerEstadoUbicaciones() {
-    const { data, error } = await supabase
-      .from('maestroUbicacion')
-      .select('seccion, area, subzona, stat');
+  const { data, error } = await supabase
+    .from('maestroSeccion')
+    .select(`
+      seccion,
+      stat,
+      maestroArea (
+        area,
+        stat,
+        maestroUbicacion (
+          subzona,
+          stat
+        )
+      )
+    `);
 
-    if (error) throw error;
+  if (error) throw error;
 
-    return (data || []).map((u) => ({
-      ubicacion: buildUbicacionId(u.seccion, u.area, u.subzona),
-      stat: u.stat,
-    }));
-  },
+  return data;
+},
 
   async obtenerArticulosUbicacion(ubicacion) {
     const { data, error } = await supabase
@@ -127,23 +158,102 @@ const SupabaseProvider = {
    * ======================================================= */
 
   async guardarMovimiento({ ubicacion, articulo, cantidad }) {
-    const { data, error } = await supabase
-      .from('conteo')
-      .upsert(
-        { ubicacion, item: articulo, cant: cantidad },
-        { onConflict: 'ubicacion,item' }
-      )
-      .select()
-      .single();
 
-    if (error) throw error;
+  console.log('=== GUARDAR MOVIMIENTO ===');
+  console.log('Ubicación:', ubicacion);
+  console.log('Artículo:', articulo);
+  console.log('Cantidad:', cantidad);
 
-    return {
-      ubicacion: data.ubicacion,
-      articulo: data.item,
-      cantidad: data.cant,
-    };
-  },
+  // ==========================================
+  // 1. GUARDAR CONTEO
+  // ==========================================
+
+  const { data, error } = await supabase
+    .from('conteo')
+    .upsert(
+      {
+        ubicacion,
+        item: articulo,
+        cant: cantidad,
+      },
+      {
+        onConflict: 'ubicacion,item',
+      }
+    )
+    .select()
+    .single();
+
+  console.log('CONTEO:', data);
+  console.log('ERROR CONTEO:', error);
+
+  if (error) throw error;
+
+
+  const [seccion, area, subzona] = ubicacion.split('-');
+
+  // ==========================================
+  // 2. UBICACIÓN
+  // ==========================================
+
+  console.log('Actualizando maestroUbicacion...');
+
+  const { data: ubicacionData, error: ubicacionError } = await supabase
+    .from('maestroUbicacion')
+    .update({ stat: 'Proceso' })
+    .eq('seccion', seccion)
+    .eq('area', area)
+    .eq('subzona', subzona)
+    .select();
+
+  console.log('UBICACION DATA:', ubicacionData);
+  console.log('UBICACION ERROR:', ubicacionError);
+
+  if (ubicacionError) throw ubicacionError;
+
+
+  // ==========================================
+  // 3. ÁREA
+  // ==========================================
+
+  console.log('Actualizando maestroArea...');
+
+  const { data: areaData, error: areaError } = await supabase
+    .from('maestroArea')
+    .update({ stat: 'Proceso' })
+    .eq('seccion', seccion)
+    .eq('area', area)
+    .select();
+
+  console.log('AREA DATA:', areaData);
+  console.log('AREA ERROR:', areaError);
+
+  if (areaError) throw areaError;
+
+
+  // ==========================================
+  // 4. SECCIÓN
+  // ==========================================
+
+  console.log('Actualizando maestroSeccion...');
+
+  const { data: seccionData, error: seccionError } = await supabase
+    .from('maestroSeccion')
+    .update({ stat: 'Proceso' })
+    .eq('seccion', seccion)
+    .select();
+
+  console.log('SECCION DATA:', seccionData);
+  console.log('SECCION ERROR:', seccionError);
+
+  if (seccionError) throw seccionError;
+
+
+  return {
+    ubicacion: data.ubicacion,
+    articulo: data.item,
+    cantidad: data.cant,
+  };
+},
 
   async actualizarMovimiento({ ubicacion, articulo, cantidad }) {
     const { data, error } = await supabase
