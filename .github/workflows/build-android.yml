@@ -23,6 +23,23 @@ jobs:
           node-version: 22
           cache: npm
 
+      - name: Subir versión en app.json
+        run: |
+          VERSION="${{ github.ref_name }}"
+          VERSION="${VERSION#v}"
+          node -e "
+            const fs = require('fs');
+            const app = JSON.parse(fs.readFileSync('app.json', 'utf8'));
+            app.expo.version = '$VERSION';
+            fs.writeFileSync('app.json', JSON.stringify(app, null, 2) + '\n');
+          "
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add app.json
+          git commit -m "chore: bump version to $VERSION [skip ci]"
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
+          git push origin HEAD:master
+
       - name: Instalar dependencias
         run: npm ci
 
@@ -49,7 +66,6 @@ jobs:
         run: |
           APK_URL=$(node -e "const fs=require('fs'); const d=JSON.parse(fs.readFileSync('/tmp/build.json')); console.log(d[0].artifacts.buildUrl)")
           curl -L "$APK_URL" -o "escan-${{ github.ref_name }}.apk"
-
 
       - name: Crear GitHub Release
         env:
