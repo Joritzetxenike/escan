@@ -11,7 +11,6 @@ export default function Main() {
   const [updateInfo, setUpdateInfo] = useState(null);
 
   useEffect(() => {
-    if (Constants.executionEnvironment !== 'standalone') return;
 
     (async () => {
       const result = await comprobarActualizacion();
