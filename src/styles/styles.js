@@ -53,7 +53,7 @@ container: {
 
 homeContent: {
   flex: 1,
-  marginTop: 50,   // ⬅️ más abajo (antes era 10)
+  marginTop: 20,
   width: '100%',
   alignItems: 'center',
 },
@@ -135,19 +135,6 @@ homeContent: {
     marginTop: 10,
     fontSize: 16,
   },
-header: {
-  width: '100%',
-  backgroundColor: colors.primaryDark,
-  paddingTop: 50,      // espacio para notch / status bar
-  paddingBottom: 15,
-  alignItems: 'center',
-},
-
-headerTitle: {
-  color: '#FFFFFF',
-  fontSize: 22,
-  fontWeight: 'bold',
-},
 ultimosArticulosTitle: {
   fontSize: 18,
   fontWeight: 'bold',

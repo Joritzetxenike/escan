@@ -128,10 +128,6 @@ export default function ListaScreen() {
 
   return (
     <View style={[styles.container, { flex: 1, padding: 10 }]}>
-      <Text style={[styles.headerTitle, { fontSize: 26, marginBottom: 20 }]}>
-        Archivos CSV
-      </Text>
-
       {csvs.length === 0 ? (
         <Text style={{ fontSize: 16, color: colors.textSecondary }}>No hay archivos CSV</Text>
       ) : (

@@ -16,7 +16,16 @@ export default function MainTabs() {
   return (
     <Tab.Navigator
       screenOptions={{
-        headerShown: false,
+        headerShown: true,
+        headerStyle: {
+          backgroundColor: colors.primaryDark,
+        },
+        headerTintColor: '#FFFFFF',
+        headerTitleStyle: {
+          fontWeight: 'bold',
+          fontSize: 20,
+        },
+        headerTitleAlign: 'center',
 
         tabBarStyle: {
           backgroundColor: colors.primaryDark,
@@ -32,6 +41,7 @@ export default function MainTabs() {
         name="Home"
         component={HomeScreen}
         options={{
+          title: 'Inicio',
           tabBarIcon: ({ color, size }) => (
             <MaterialIcons name="home" size={size} color={color} />
           ),
@@ -42,6 +52,7 @@ export default function MainTabs() {
         name="Lista"
         component={ListaScreen}
         options={{
+          title: 'Lista de escaneos',
           tabBarIcon: ({ color, size }) => (
             <MaterialIcons name="list-alt" size={size} color={color} />
           ),
@@ -52,6 +63,7 @@ export default function MainTabs() {
         name="Estado"
         component={EstadoScreen}
         options={{
+          title: 'Estado',
           tabBarIcon: ({ color, size }) => (
             <MaterialIcons name="assessment" size={size} color={color} />
           ),

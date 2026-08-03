@@ -27,6 +27,7 @@ jest.mock('react-native-safe-area-context', () => ({
 describe('EstadoScreen', () => {
 
   let renderer;
+  const mockNavigation = { setOptions: jest.fn() };
 
   const textoDe = (nodo) => {
     const children = nodo.props.children;
@@ -50,7 +51,7 @@ describe('EstadoScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     act(() => {
-      renderer = create(<EstadoScreen />);
+      renderer = create(<EstadoScreen navigation={mockNavigation} />);
     });
   });
 
@@ -102,10 +103,14 @@ describe('EstadoScreen', () => {
       presionarPorTexto('Cargar ubicaciones');
     });
 
-    const touchables = renderer.root.findAllByType(TouchableOpacity);
+    // El botón de recarga se registra en la cabecera nativa (headerRight)
+    const ultimoSetOptions =
+      mockNavigation.setOptions.mock.calls.at(-1)[0];
+    const headerRight = ultimoSetOptions.headerRight();
+    const onPress = headerRight.props.onPress;
 
     await act(async () => {
-      touchables[0].props.onPress();
+      onPress();
     });
 
     expect(obtenerUbicaciones).toHaveBeenCalledTimes(2);

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import {
 ScrollView,
 View,
@@ -7,7 +7,6 @@ TouchableOpacity,
 ActivityIndicator,
 Alert,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 
 import { obtenerUbicaciones } from "../services/ubicacionesService";
@@ -15,9 +14,7 @@ import InventoryService from "../services/InventoryService";
 import ArticulosModal from "../components/ArticulosModal";
 import { colors } from "../styles/styles";
 
-export default function EstadoScreen() {
-
-const insets = useSafeAreaInsets();
+export default function EstadoScreen({ navigation }) {
 
 const [secciones, setSecciones] = useState([]);
 const [cargando, setCargando] = useState(false);
@@ -67,6 +64,27 @@ const cargar = async () => {
         setCargando(false);
     }
 };
+
+useLayoutEffect(() => {
+    navigation?.setOptions?.({
+        headerRight: () => (
+            <TouchableOpacity
+                onPress={cargar}
+                activeOpacity={0.7}
+                style={{
+                    padding: 8,
+                    marginRight: 5,
+                }}
+            >
+                <MaterialIcons
+                    name="refresh"
+                    size={26}
+                    color="#FFFFFF"
+                />
+            </TouchableOpacity>
+        ),
+    });
+}, [navigation, cargar]);
 
 const alternarSeccion = (seccion) => {
     setSeccionesAbiertas((actual) => ({
@@ -155,44 +173,6 @@ const handleEliminarArticulo = (index) => {
 
 return (
     <View style={{ flex: 1 }}>
-
-        {/* =========================
-            CABECERA
-        ========================= */}
-
-        <View
-            style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                paddingTop: insets.top + 10,
-                paddingHorizontal: 15,
-                paddingBottom: 5,
-            }}
-        >
-            <Text
-                style={{
-                    fontSize: 24,
-                    fontWeight: "bold",
-                }}
-            >
-                Estado
-            </Text>
-
-            <TouchableOpacity
-                onPress={cargar}
-                activeOpacity={0.7}
-                style={{
-                    padding: 8,
-                }}
-            >
-                <MaterialIcons
-                    name="refresh"
-                    size={28}
-                    color={colors.primary}
-                />
-            </TouchableOpacity>
-        </View>
 
         {cargando && !cargado ? (
             <View
