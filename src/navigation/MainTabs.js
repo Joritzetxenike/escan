@@ -1,9 +1,11 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { MaterialIcons } from '@expo/vector-icons';
 
 import HomeScreen from '../screens/HomeScreen';
 import ListaScreen from '../screens/ListaScreen';
 import EstadoScreen from '../screens/EstadoScreen';
+import { colors } from '../styles/styles';
 
 const Tab = createBottomTabNavigator();
 
@@ -17,28 +19,43 @@ export default function MainTabs() {
         headerShown: false,
 
         tabBarStyle: {
-          backgroundColor: '#007BFF',
+          backgroundColor: colors.primaryDark,
           height: 60 + insets.bottom,
           paddingBottom: insets.bottom,
         },
 
         tabBarActiveTintColor: '#FFFFFF',
-        tabBarInactiveTintColor: '#CCCCCC',
+        tabBarInactiveTintColor: '#9CA3AF',
       }}
     >
       <Tab.Screen
         name="Home"
         component={HomeScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="home" size={size} color={color} />
+          ),
+        }}
       />
 
       <Tab.Screen
         name="Lista"
         component={ListaScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="list-alt" size={size} color={color} />
+          ),
+        }}
       />
 
       <Tab.Screen
         name="Estado"
         component={EstadoScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="assessment" size={size} color={color} />
+          ),
+        }}
       />
     </Tab.Navigator>
   );

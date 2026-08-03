@@ -1,5 +1,20 @@
 import { StyleSheet } from 'react-native';
 
+/* =====================================================
+ * PALETA DE COLORES — tonos grises, limpio y profesional
+ * ===================================================== */
+
+export const colors = {
+  primary: '#4B5563',        // gris pizarra (botones, acentos)
+  primaryDark: '#374151',    // gris oscuro (cabecera, tab bar, scanner)
+  onPrimary: '#FFFFFF',
+  border: '#E5E7EB',
+  borderStrong: '#D1D5DB',
+  surfaceAlt: '#F3F4F6',
+  textMuted: '#6B7280',
+  danger: '#DC2626',
+};
+
 export const styles = StyleSheet.create({
 container: {
   flex: 1,
@@ -11,13 +26,13 @@ container: {
 
   /* ---------- BOTONES ---------- */
   customButton: {
-    backgroundColor: '#007BFF',
+    backgroundColor: colors.primary,
     paddingVertical: 15,
     paddingHorizontal: 25,
     borderRadius: 8,
   },
   buttonText: {
-    color: '#FFFFFF',
+    color: colors.onPrimary,
     fontSize: 16,
     fontWeight: 'bold',
   },
@@ -52,14 +67,14 @@ homeContent: {
     fontSize: 16,
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
+    borderBottomColor: colors.border,
     textAlign: 'center',
   },
 
   /* ---------- CÁMARA ---------- */
   scannerContainer: {
     flex: 1,
-    backgroundColor: '#007BFF',
+    backgroundColor: colors.primaryDark,
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
@@ -112,7 +127,7 @@ homeContent: {
   input: {
     width: '100%',
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: colors.borderStrong,
     borderRadius: 8,
     paddingVertical: 10,
     paddingHorizontal: 15,
@@ -121,7 +136,7 @@ homeContent: {
   },
 header: {
   width: '100%',
-  backgroundColor: '#007BFF',
+  backgroundColor: colors.primaryDark,
   paddingTop: 50,      // espacio para notch / status bar
   paddingBottom: 15,
   alignItems: 'center',
@@ -131,7 +146,7 @@ headerTitle: {
   color: '#FFFFFF',
   fontSize: 22,
   fontWeight: 'bold',
-},nItems: 'center',
+},
 ultimosArticulosTitle: {
   fontSize: 18,
   fontWeight: 'bold',

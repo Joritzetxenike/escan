@@ -1,4 +1,5 @@
 import { Modal, View, Text, TouchableOpacity, Linking, ScrollView, StyleSheet } from 'react-native';
+import { colors } from '../styles/styles';
 
 export default function UpdateModal({ visible, versionActual, ultimaVersion, apkUrl, notas, onCerrar }) {
   const handleActualizar = () => {
@@ -65,7 +66,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 20,
     textAlign: 'center',
-    color: '#007BFF',
+    color: colors.primaryDark,
   },
   versionRow: {
     flexDirection: 'row',
@@ -82,7 +83,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   newVersion: {
-    color: '#007BFF',
+    color: colors.primary,
     fontWeight: 'bold',
   },
   notasLabel: {
@@ -110,7 +111,7 @@ const styles = StyleSheet.create({
   },
   updateButton: {
     flex: 1,
-    backgroundColor: '#007BFF',
+    backgroundColor: colors.primary,
     paddingVertical: 14,
     borderRadius: 8,
     alignItems: 'center',

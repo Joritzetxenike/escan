@@ -11,7 +11,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import { styles } from '../styles/styles';
+import { styles, colors } from '../styles/styles';
 import ArticulosModal from '../components/ArticulosModal';
 
 export default function ListaScreen() {
@@ -117,7 +117,7 @@ export default function ListaScreen() {
       </TouchableOpacity>
 
       <TouchableOpacity onPress={() => exportarCsv(item)} style={{ marginHorizontal: 10 }}>
-        <MaterialIcons name="file-upload" size={26} color="#1976D2" />
+        <MaterialIcons name="file-upload" size={26} color={colors.primary} />
       </TouchableOpacity>
 
       <TouchableOpacity onPress={() => borrarCsv(item)}>

@@ -13,6 +13,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { obtenerUbicaciones } from "../services/ubicacionesService";
 import InventoryService from "../services/InventoryService";
 import ArticulosModal from "../components/ArticulosModal";
+import { colors } from "../styles/styles";
 
 export default function EstadoScreen() {
 
@@ -188,7 +189,7 @@ return (
                 <MaterialIcons
                     name="refresh"
                     size={28}
-                    color="#007BFF"
+                    color={colors.primary}
                 />
             </TouchableOpacity>
         </View>
@@ -216,7 +217,7 @@ return (
                     onPress={cargar}
                     activeOpacity={0.7}
                     style={{
-                        backgroundColor: "#007BFF",
+                        backgroundColor: colors.primary,
                         paddingHorizontal: 30,
                         paddingVertical: 15,
                         borderRadius: 10,

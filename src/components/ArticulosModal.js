@@ -1,5 +1,6 @@
 import { Modal, View, Text, TouchableOpacity, ScrollView, TextInput, StyleSheet } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import { colors } from '../styles/styles';
 
 export default function ArticulosModal({
   visible,
@@ -50,7 +51,7 @@ export default function ArticulosModal({
                           autoFocus
                         />
                         <TouchableOpacity onPress={() => onGuardarEdicion(index)} style={{ marginLeft: 4 }}>
-                          <Text style={{ color: '#007BFF', fontWeight: 'bold', fontSize: 16 }}>✓</Text>
+                          <Text style={{ color: colors.primary, fontWeight: 'bold', fontSize: 16 }}>✓</Text>
                         </TouchableOpacity>
                       </View>
                     ) : (
@@ -58,7 +59,7 @@ export default function ArticulosModal({
                         onPress={() => onIniciarEdicion?.(index)}
                         style={[styles.cell, { flex: 0.8, alignItems: 'center' }]}
                       >
-                        <Text style={{ fontSize: 14, fontWeight: '600', color: onIniciarEdicion ? '#007BFF' : '#333' }}>
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: onIniciarEdicion ? colors.primary : '#333' }}>
                           {item.cantidad ?? 0}
                         </Text>
                       </TouchableOpacity>
@@ -68,7 +69,7 @@ export default function ArticulosModal({
                       onPress={() => onEliminar?.(index)}
                       style={[styles.cell, { flex: 0.6, alignItems: 'center' }]}
                     >
-                      <MaterialIcons name="delete-outline" size={26} color="#C62828" />
+                      <MaterialIcons name="delete-outline" size={26} color={colors.danger} />
                     </TouchableOpacity>
                   </View>
                 ))}
@@ -113,7 +114,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingVertical: 10,
     borderBottomWidth: 2,
-    borderBottomColor: '#ccc',
+    borderBottomColor: colors.borderStrong,
     paddingHorizontal: 5,
   },
   headerCell: {
@@ -128,7 +129,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: colors.border,
     paddingHorizontal: 5,
   },
   cell: {
@@ -136,7 +137,7 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: '#007BFF',
+    borderColor: colors.primary,
     borderRadius: 4,
     padding: 2,
     width: 45,
@@ -144,7 +145,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   closeButton: {
-    backgroundColor: '#007BFF',
+    backgroundColor: colors.primary,
     padding: 12,
     borderRadius: 6,
     alignItems: 'center',
