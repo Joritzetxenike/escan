@@ -4,12 +4,12 @@ export default function EstadoCard({ ubicacion }) {
 
 
 const coloresEstado = {
-    Inicio: "#95A5A6",
+    Inicio: "#7F8C8D",
     Proceso: "#F39C12",
     Fin: "#2ECC71",
 };
 
-const color = coloresEstado[ubicacion.stat] || "#95A5A6";
+const color = coloresEstado[ubicacion.stat] || "#7F8C8D";
 
 return (
     <View
@@ -39,7 +39,7 @@ return (
             <Text
                 style={{
                     fontSize: 13,
-                    color: "#777",
+                    color: "#4B5563",
                     marginTop: 3,
                 }}
             >

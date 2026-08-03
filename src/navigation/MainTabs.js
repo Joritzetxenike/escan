@@ -25,7 +25,7 @@ export default function MainTabs() {
         },
 
         tabBarActiveTintColor: '#FFFFFF',
-        tabBarInactiveTintColor: '#9CA3AF',
+        tabBarInactiveTintColor: '#C3C9D1',
       }}
     >
       <Tab.Screen

@@ -121,7 +121,7 @@ export default function ListaScreen() {
       </TouchableOpacity>
 
       <TouchableOpacity onPress={() => borrarCsv(item)}>
-        <MaterialIcons name="delete-outline" size={26} color="#C62828" />
+        <MaterialIcons name="delete-outline" size={26} color={colors.danger} />
       </TouchableOpacity>
     </View>
   );
@@ -133,7 +133,7 @@ export default function ListaScreen() {
       </Text>
 
       {csvs.length === 0 ? (
-        <Text style={{ fontSize: 16, color: '#666' }}>No hay archivos CSV</Text>
+        <Text style={{ fontSize: 16, color: colors.textSecondary }}>No hay archivos CSV</Text>
       ) : (
         <FlatList
           data={csvs}
@@ -159,6 +159,6 @@ const stylesCsv = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
+    borderBottomColor: colors.border,
   },
 });

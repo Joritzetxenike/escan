@@ -37,7 +37,7 @@ export default function ArticulosModal({
                     <Text style={[styles.cell, { flex: 2 }]} numberOfLines={1}>
                       {item.articulo}
                     </Text>
-                    <Text style={[styles.cell, { flex: 1, textAlign: 'center', color: '#666', fontSize: 12 }]} numberOfLines={1}>
+                    <Text style={[styles.cell, { flex: 1, textAlign: 'center', color: colors.textSecondary, fontSize: 12 }]} numberOfLines={1}>
                       {item.dsca || '—'}
                     </Text>
 
@@ -59,7 +59,7 @@ export default function ArticulosModal({
                         onPress={() => onIniciarEdicion?.(index)}
                         style={[styles.cell, { flex: 0.8, alignItems: 'center' }]}
                       >
-                        <Text style={{ fontSize: 14, fontWeight: '600', color: onIniciarEdicion ? colors.primary : '#333' }}>
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: onIniciarEdicion ? colors.primary : colors.text }}>
                           {item.cantidad ?? 0}
                         </Text>
                       </TouchableOpacity>
@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
   },
   empty: {
     textAlign: 'center',
-    color: '#666',
+    color: colors.textSecondary,
     marginVertical: 20,
   },
   headerRow: {

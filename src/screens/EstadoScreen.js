@@ -37,13 +37,13 @@ const [editandoCantidad, setEditandoCantidad] = useState(null);
 const [nuevaCantidad, setNuevaCantidad] = useState("");
 
 const coloresEstado = {
-    Inicio: "#95A5A6",
+    Inicio: "#7F8C8D",
     Proceso: "#F39C12",
     Fin: "#2ECC71",
 };
 
 const obtenerColor = (estado) => {
-    return coloresEstado[estado] || "#95A5A6";
+    return coloresEstado[estado] || "#7F8C8D";
 };
 
 const cargar = async () => {
@@ -423,7 +423,7 @@ return (
                                                 <Text
                                                     style={{
                                                         fontSize: 12,
-                                                        color: "#777",
+                                                        color: "#4B5563",
                                                     }}
                                                 >
                                                     {area.stat}
@@ -504,7 +504,7 @@ return (
                                                             <Text
                                                                 style={{
                                                                     fontSize: 12,
-                                                                    color: "#777",
+                                                                    color: "#4B5563",
                                                                 }}
                                                             >
                                                                 {

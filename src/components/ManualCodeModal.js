@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Modal, View, Text, TextInput, TouchableOpacity } from 'react-native';
-import { styles } from '../styles/styles';
+import { styles, colors } from '../styles/styles';
 
 export default function ManualCodeModal({
   visible,
@@ -41,7 +41,7 @@ export default function ManualCodeModal({
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.customButton, { marginTop: 10, backgroundColor: '#ccc' }]}
+            style={[styles.customButton, { marginTop: 10, backgroundColor: colors.textSecondary }]}
             onPress={onCancel}
           >
             <Text>Cancelar</Text>

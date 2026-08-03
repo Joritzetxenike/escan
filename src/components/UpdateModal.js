@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 16,
-    color: '#666',
+    color: colors.textSecondary,
     marginRight: 8,
   },
   version: {
@@ -91,7 +91,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 15,
     marginBottom: 8,
-    color: '#333',
+    color: colors.text,
   },
   notasScroll: {
     maxHeight: 150,
@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
   },
   notasText: {
     fontSize: 14,
-    color: '#444',
+    color: '#1F2937',
     lineHeight: 20,
   },
   buttons: {
@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   laterButtonText: {
-    color: '#333',
+    color: colors.text,
     fontSize: 16,
   },
 });

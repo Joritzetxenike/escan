@@ -5,13 +5,14 @@ import { StyleSheet } from 'react-native';
  * ===================================================== */
 
 export const colors = {
-  primary: '#4B5563',        // gris pizarra (botones, acentos)
-  primaryDark: '#374151',    // gris oscuro (cabecera, tab bar, scanner)
+  primary: '#374151',        // gris oscuro (botones, acentos)
+  primaryDark: '#1F2937',    // casi negro (cabecera, tab bar, scanner)
   onPrimary: '#FFFFFF',
+  text: '#111827',           // texto principal (casi negro)
+  textSecondary: '#4B5563',  // texto secundario
   border: '#E5E7EB',
   borderStrong: '#D1D5DB',
   surfaceAlt: '#F3F4F6',
-  textMuted: '#6B7280',
   danger: '#DC2626',
 };
 

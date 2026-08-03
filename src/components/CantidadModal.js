@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, Modal, TextInput, TouchableOpacity } from 'react-native';
-import { styles } from '../styles/styles';
+import { styles, colors } from '../styles/styles';
 
 export default function CantidadModal({ 
   visible, 
@@ -54,7 +54,7 @@ export default function CantidadModal({
                 <Text style={styles.buttonText}>Confirmar</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={[styles.customButton, { backgroundColor: '#888' }]} onPress={onCancel}>
+                <TouchableOpacity style={[styles.customButton, { backgroundColor: colors.textSecondary }]} onPress={onCancel}>
                 <Text style={styles.buttonText}>Cancelar</Text>
                 </TouchableOpacity>
             </View>
