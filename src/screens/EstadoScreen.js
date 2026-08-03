@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
 ScrollView,
 View,
@@ -8,6 +8,7 @@ ActivityIndicator,
 Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { MaterialIcons } from "@expo/vector-icons";
 
 import { obtenerUbicaciones } from "../services/ubicacionesService";
 import InventoryService from "../services/InventoryService";
@@ -18,7 +19,8 @@ export default function EstadoScreen() {
 const insets = useSafeAreaInsets();
 
 const [secciones, setSecciones] = useState([]);
-const [cargando, setCargando] = useState(true);
+const [cargando, setCargando] = useState(false);
+const [cargado, setCargado] = useState(false);
 
 // Secciones abiertas
 const [seccionesAbiertas, setSeccionesAbiertas] = useState({});
@@ -43,10 +45,6 @@ const obtenerColor = (estado) => {
     return coloresEstado[estado] || "#95A5A6";
 };
 
-useEffect(() => {
-    cargar();
-}, []);
-
 const cargar = async () => {
     try {
         setCargando(true);
@@ -59,9 +57,11 @@ const cargar = async () => {
         );
 
         setSecciones(datos);
+        setCargado(true);
 
     } catch (error) {
         console.error("Error cargando ubicaciones:", error);
+        Alert.alert("Error", "No se pudieron cargar las ubicaciones");
     } finally {
         setCargando(false);
     }
@@ -152,27 +152,92 @@ const handleEliminarArticulo = (index) => {
     );
 };
 
-if (cargando) {
-    return (
-        <View
-            style={{
-                flex: 1,
-                justifyContent: "center",
-                alignItems: "center",
-            }}
-        >
-            <ActivityIndicator size="large" />
-        </View>
-    );
-}
-
 return (
     <View style={{ flex: 1 }}>
+
+        {/* =========================
+            CABECERA
+        ========================= */}
+
+        <View
+            style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                paddingTop: insets.top + 10,
+                paddingHorizontal: 15,
+                paddingBottom: 5,
+            }}
+        >
+            <Text
+                style={{
+                    fontSize: 24,
+                    fontWeight: "bold",
+                }}
+            >
+                Estado
+            </Text>
+
+            <TouchableOpacity
+                onPress={cargar}
+                activeOpacity={0.7}
+                style={{
+                    padding: 8,
+                }}
+            >
+                <MaterialIcons
+                    name="refresh"
+                    size={28}
+                    color="#007BFF"
+                />
+            </TouchableOpacity>
+        </View>
+
+        {cargando && !cargado ? (
+            <View
+                style={{
+                    flex: 1,
+                    justifyContent: "center",
+                    alignItems: "center",
+                }}
+            >
+                <ActivityIndicator size="large" />
+            </View>
+        ) : !cargado ? (
+            <View
+                style={{
+                    flex: 1,
+                    justifyContent: "center",
+                    alignItems: "center",
+                    padding: 20,
+                }}
+            >
+                <TouchableOpacity
+                    onPress={cargar}
+                    activeOpacity={0.7}
+                    style={{
+                        backgroundColor: "#007BFF",
+                        paddingHorizontal: 30,
+                        paddingVertical: 15,
+                        borderRadius: 10,
+                    }}
+                >
+                    <Text
+                        style={{
+                            color: "#fff",
+                            fontWeight: "bold",
+                            fontSize: 18,
+                        }}
+                    >
+                        Cargar ubicaciones
+                    </Text>
+                </TouchableOpacity>
+            </View>
+        ) : (
         <ScrollView
             contentContainerStyle={{
                 padding: 15,
                 paddingBottom: 30,
-                paddingTop: insets.top + 10,
             }}
         >
 
@@ -462,6 +527,7 @@ return (
             })}
 
         </ScrollView>
+        )}
 
         <ArticulosModal
             visible={modalVisible}
