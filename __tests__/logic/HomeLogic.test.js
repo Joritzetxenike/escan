@@ -14,6 +14,7 @@ jest.mock('react-native', () => ({
 jest.mock('../../src/services/InventoryService', () => ({
   cargarUbicacion: jest.fn(),
   validarArticulo: jest.fn(),
+  validarUbicacion: jest.fn(),
   crearMovimiento: jest.fn(),
   guardarMovimiento: jest.fn(),
 }));
@@ -73,7 +74,31 @@ describe('useHomeLogic', () => {
 
   describe('abrirScannerArticulo', () => {
 
-    test('navega al scanner de tipo articulo', () => {
+    test('avisa si aún no hay ubicación y no navega', () => {
+      act(() => {
+        current.abrirScannerArticulo();
+      });
+
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'Error',
+        'Primero escanea una ubicación'
+      );
+
+      expect(navigation.navigate).not.toHaveBeenCalled();
+    });
+
+    test('navega al scanner de tipo articulo si hay ubicación', async () => {
+      InventoryService.validarUbicacion.mockResolvedValue({
+        ok: true,
+        ubicacion: { seccion: 'A', area: '1', subzona: '1' },
+      });
+
+      InventoryService.cargarUbicacion.mockResolvedValue([]);
+
+      await act(async () => {
+        await current.procesarEscaneo('ubicacion', 'A1');
+      });
+
       act(() => {
         current.abrirScannerArticulo();
       });
@@ -90,15 +115,60 @@ describe('useHomeLogic', () => {
   });
 
   // =====================================================
+  // abrirModalManual
+  // =====================================================
+
+  describe('abrirModalManual', () => {
+
+    test('avisa si aún no hay ubicación y no abre el modal', () => {
+      act(() => {
+        current.abrirModalManual();
+      });
+
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'Error',
+        'Primero escanea una ubicación'
+      );
+
+      expect(current.mostrarManual).toBe(false);
+    });
+
+    test('abre el modal de código manual si hay ubicación', async () => {
+      InventoryService.validarUbicacion.mockResolvedValue({
+        ok: true,
+        ubicacion: { seccion: 'A', area: '1', subzona: '1' },
+      });
+
+      InventoryService.cargarUbicacion.mockResolvedValue([]);
+
+      await act(async () => {
+        await current.procesarEscaneo('ubicacion', 'A1');
+      });
+
+      act(() => {
+        current.abrirModalManual();
+      });
+
+      expect(current.mostrarManual).toBe(true);
+    });
+
+  });
+
+  // =====================================================
   // cargarUbicacion
   // =====================================================
 
   describe('cargarUbicacion', () => {
 
-    test('guarda la ubicación y devuelve sus artículos', async () => {
+    test('guarda la ubicación y devuelve sus artículos si es válida', async () => {
       const articulos = [
         { ubicacion: 'A1', articulo: '123456', cantidad: 5 },
       ];
+
+      InventoryService.validarUbicacion.mockResolvedValue({
+        ok: true,
+        ubicacion: { seccion: 'A', area: '1', subzona: '1' },
+      });
 
       InventoryService.cargarUbicacion.mockResolvedValue(articulos);
 
@@ -107,8 +177,30 @@ describe('useHomeLogic', () => {
       });
 
       expect(current.ubicacion).toBe('A1');
+      expect(InventoryService.validarUbicacion)
+        .toHaveBeenCalledWith('A1');
       expect(InventoryService.cargarUbicacion)
         .toHaveBeenCalledWith('A1');
+    });
+
+    test('no carga la ubicación y avisa si no existe en el maestro', async () => {
+      InventoryService.validarUbicacion.mockResolvedValue({
+        ok: false,
+        titulo: 'Ubicación no encontrada',
+        mensaje: 'El código 99999-999-Z999 no existe en el maestro',
+      });
+
+      await act(async () => {
+        await current.procesarEscaneo('ubicacion', '99999-999-Z999');
+      });
+
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'Ubicación no encontrada',
+        'El código 99999-999-Z999 no existe en el maestro'
+      );
+
+      expect(current.ubicacion).toBeNull();
+      expect(InventoryService.cargarUbicacion).not.toHaveBeenCalled();
     });
 
   });
@@ -181,6 +273,10 @@ describe('useHomeLogic', () => {
   describe('confirmarCantidad', () => {
 
     test('guarda el movimiento, actualiza últimos y limpia', async () => {
+      InventoryService.validarUbicacion.mockResolvedValue({
+        ok: true,
+        ubicacion: { seccion: 'A', area: '1', subzona: '1' },
+      });
       InventoryService.cargarUbicacion.mockResolvedValue([]);
       InventoryService.validarArticulo.mockResolvedValue({
         ok: true,

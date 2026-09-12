@@ -201,7 +201,7 @@ La app tiene **dos mecanismos de actualización**:
 
 ### 1. Check manual vía GitHub Releases (`updateService.js` + `UpdateModal`)
 
-`Main.js` consulta `https://api.github.com/repos/Joritzetxenike/escan/releases/latest` al arrancar. Si el tag más reciente es mayor que la versión embebida (`Constants.expoConfig.version`), muestra el `UpdateModal` con enlace de descarga del APK (`apkUrl`). Si la petición falla, no muestra nada.
+`Main.js` consulta `https://api.github.com/repos/Joritzetxenike/escan/releases/latest` al arrancar **solo en builds desplegadas** (`EXPO_PUBLIC_APP_ENV=production`). Si el tag más reciente es mayor que la versión embebida (`Constants.expoConfig.version`), muestra el `UpdateModal` con enlace de descarga del APK (`apkUrl`). Si la petición falla, no muestra nada. En desarrollo (`expo start` / Expo Go) la comprobación no se ejecuta.
 
 ### 2. OTA vía expo-updates (EAS Update)
 
@@ -239,11 +239,13 @@ Disparado al pushear un **tag `v*`**:
 
 ### EAS — `eas.json`
 
-| Perfil        | Uso            | Channel     | BuildType |
-| ------------- | -------------- | ----------- | --------- |
-| `development` | Dev client     | development | —         |
-| `preview`     | APK de prueba  | preview     | apk       |
-| `production`  | Play Store     | production  | app-bundle |
+| Perfil        | Uso            | Channel     | BuildType    | `EXPO_PUBLIC_APP_ENV` |
+| ------------- | -------------- | ----------- | ------------ | -------------------- |
+| `development` | Dev client     | development | —            | `development`        |
+| `preview`     | APK de prueba  | preview     | apk          | `production`         |
+| `production`  | Play Store     | production  | app-bundle   | `production`         |
+
+- Cada perfil fija la variable de entorno `EXPO_PUBLIC_APP_ENV` en `eas.json`, de modo que el check de actualizaciones de `Main.js` solo se activa en los builds desplegados (`preview`/`production`).
 
 - `cli.appVersionSource: "remote"` y `cli.requireCommit: true`.
 - `preview` y `production` con `autoIncrement: true`.
@@ -259,9 +261,14 @@ En cada push/PR a `master`: `npm ci` + `npm test` con las env vars de Supabase i
 ```
 EXPO_PUBLIC_SUPABASE_URL=https://<proyecto>.supabase.co
 EXPO_PUBLIC_SUPABASE_KEY=<anon_key>
+EXPO_PUBLIC_APP_ENV=development
 ```
 
 - `.env` está en `.gitignore`; **no se sube al repo**.
+- `EXPO_PUBLIC_APP_ENV` distingue el entorno:
+  - `development` → desarrollo con Expo (Expo Go / dev server). El check de actualización de `Main.js` **no** se ejecuta.
+  - `production` → app desplegada (APK/AAB). El check de actualización **sí** se ejecuta.
+  - En `eas.json` cada perfil fija el valor (`development`/`preview`/`production`), por lo que los builds remotos llevan su valor correcto aunque `.env` no esté subido.
 - `supabaseClient.js` lanza un error al importarse si faltan las variables → la app no arranca.
 - En CI se inyectan vía secrets del repo: `EXPO_PUBLIC_SUPABASE_URL` y `EXPO_PUBLIC_SUPABASE_KEY`.
 - `EXPO_PUBLIC_*` se embebe en el bundle en build time (EAS usa el `.env` local).
@@ -313,4 +320,4 @@ Cobertura actual: `ScannerService`, `InventoryService` (incl. `validarArticulo`)
 - `ubicacionesMock.js` no se usa activamente.
 - `domain/models/` y `domain/validators/` están vacíos (planificados).
 - La clave de Supabase en `.env` es una **anon key** (pública), diseñada para usarse con Row Level Security.
-- La petición del `UpdateModal` corre en un `useEffect` de `Main.js` sin guard de entorno: también ocurre en Expo Go/dev.
+- La petición del `UpdateModal` corre en un `useEffect` de `Main.js` solo cuando `EXPO_PUBLIC_APP_ENV === 'production'`, es decir, únicamente en la APK desplegada.

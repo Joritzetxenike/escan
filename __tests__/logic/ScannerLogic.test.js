@@ -4,6 +4,12 @@ import { create, act } from 'react-test-renderer';
 import { useScannerLogic } from '../../src/logic/ScannerLogic';
 import ScannerService from '../../src/services/ScannerService';
 
+jest.mock('react-native', () => ({
+  Alert: {
+    alert: jest.fn(),
+  },
+}));
+
 jest.mock('expo-camera', () => ({
   useCameraPermissions: jest.fn(() => [null, jest.fn()]),
 }));
@@ -12,6 +18,13 @@ jest.mock('../../src/services/ScannerService', () => ({
   esCodigoValido: jest.fn(),
   actualizarBuffer: jest.fn(),
   resetBufferIfStale: jest.fn(),
+}));
+
+jest.mock('../../src/validators/UbicacionValidator', () => ({
+  __esModule: true,
+  default: {
+    validarFormato: jest.fn(),
+  },
 }));
 
 // Harness: ejecuta el hook y expone su resultado en `current`.
@@ -104,6 +117,31 @@ describe('useScannerLogic', () => {
       act(() => {
         current.handleBarcodeScanned({ type: 'ean13', data: '123' });
       });
+
+      expect(ScannerService.actualizarBuffer).not.toHaveBeenCalled();
+      expect(onScan).not.toHaveBeenCalled();
+      expect(navigation.goBack).not.toHaveBeenCalled();
+    });
+
+    test('avisa si una ubicación no sigue el formato seccion-area-subzona', () => {
+      const onScan = jest.fn();
+      montar({ tipo: 'ubicacion', onScan });
+
+      ScannerService.esCodigoValido.mockReturnValue(true);
+
+      const UbicacionValidator =
+        jest.requireMock('../../src/validators/UbicacionValidator').default;
+      UbicacionValidator.validarFormato.mockReturnValue(false);
+
+      act(() => {
+        current.handleBarcodeScanned({ type: 'ean13', data: '50100' });
+      });
+
+      const { Alert } = jest.requireMock('react-native');
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'Ubicación inválida',
+        'El código 50100 no sigue el formato seccion-area-subzona (ej. 50100-111-Z101)'
+      );
 
       expect(ScannerService.actualizarBuffer).not.toHaveBeenCalled();
       expect(onScan).not.toHaveBeenCalled();

@@ -91,9 +91,7 @@ export default function HomeView({
                 alignItems: 'center',
               },
             ]}
-            onPress={() =>
-              actions.setMostrarManual(true)
-            }
+            onPress={actions.abrirModalManual}
           >
 
             <Text style={styles.buttonText}>

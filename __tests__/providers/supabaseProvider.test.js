@@ -132,4 +132,90 @@ describe('SupabaseProvider', () => {
 
   });
 
+  // =====================================================
+  // obtenerUbicacion
+  // =====================================================
+
+  describe('obtenerUbicacion', () => {
+
+    test('debe devolver la ubicación si existe en el maestro', async () => {
+
+      const ubicacionMaestro = {
+        seccion: '50100',
+        area: '111',
+        subzona: 'Z101',
+        stat: 'Inicio',
+      };
+
+      const query = {
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        maybeSingle: jest.fn().mockResolvedValue({
+          data: ubicacionMaestro,
+          error: null,
+        }),
+      };
+
+      supabase.from.mockReturnValue(query);
+
+      const resultado =
+        await SupabaseProvider.obtenerUbicacion('50100-111-Z101');
+
+      expect(supabase.from).toHaveBeenCalledWith('maestroUbicacion');
+
+      expect(query.eq).toHaveBeenCalledWith('seccion', '50100');
+      expect(query.eq).toHaveBeenCalledWith('area', '111');
+      expect(query.eq).toHaveBeenCalledWith('subzona', 'Z101');
+
+      expect(resultado).toEqual(ubicacionMaestro);
+    });
+
+    test('debe devolver null si la ubicación no existe en el maestro', async () => {
+
+      const query = {
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        maybeSingle: jest.fn().mockResolvedValue({
+          data: null,
+          error: null,
+        }),
+      };
+
+      supabase.from.mockReturnValue(query);
+
+      const resultado =
+        await SupabaseProvider.obtenerUbicacion('99999-999-Z999');
+
+      expect(resultado).toBeNull();
+    });
+
+    test('debe devolver null si el código no tiene formato seccion-area-subzona', async () => {
+
+      const resultado =
+        await SupabaseProvider.obtenerUbicacion('50100');
+
+      expect(resultado).toBeNull();
+      expect(supabase.from).not.toHaveBeenCalled();
+    });
+
+    test('debe lanzar error si falla la consulta', async () => {
+
+      const query = {
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        maybeSingle: jest.fn().mockResolvedValue({
+          data: null,
+          error: new Error('Error consultando ubicación'),
+        }),
+      };
+
+      supabase.from.mockReturnValue(query);
+
+      await expect(
+        SupabaseProvider.obtenerUbicacion('50100-111-Z101')
+      ).rejects.toThrow('Error consultando ubicación');
+    });
+
+  });
+
 });

@@ -1,16 +1,20 @@
 import { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
-import Constants from 'expo-constants';
 
 import RootNavigator from './src/navigation/RootNavigator';
 import UpdateModal from './src/components/UpdateModal';
 import { comprobarActualizacion } from './src/services/updateService';
+
+const ES_DESPLIEGUE = process.env.EXPO_PUBLIC_APP_ENV === 'production';
 
 export default function Main() {
 
   const [updateInfo, setUpdateInfo] = useState(null);
 
   useEffect(() => {
+    if (!ES_DESPLIEGUE) {
+      return;
+    }
 
     (async () => {
       const result = await comprobarActualizacion();

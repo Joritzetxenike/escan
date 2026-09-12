@@ -111,6 +111,10 @@ const CsvProvider = {
     throw new Error('No implementado');
   },
 
+  async obtenerUbicacion() {
+    throw new Error('No implementado');
+  },
+
   async actualizarMovimiento() {
     throw new Error('No implementado');
   },

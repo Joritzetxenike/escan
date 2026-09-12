@@ -43,7 +43,22 @@ export function useHomeLogic(navigation) {
   };
 
 
+  const avisoSinUbicacion = () => {
+
+    Alert.alert(
+      'Error',
+      'Primero escanea una ubicación'
+    );
+
+  };
+
+
   const abrirScannerArticulo = () => {
+
+    if (!ubicacion) {
+      avisoSinUbicacion();
+      return;
+    }
 
     navigation.navigate('Scanner', {
 
@@ -58,6 +73,18 @@ export function useHomeLogic(navigation) {
   };
 
 
+  const abrirModalManual = () => {
+
+    if (!ubicacion) {
+      avisoSinUbicacion();
+      return;
+    }
+
+    setMostrarManual(true);
+
+  };
+
+
   /* =====================================================
    * UBICACIÓN
    * ===================================================== */
@@ -65,6 +92,19 @@ export function useHomeLogic(navigation) {
   const cargarUbicacion = async (codigo) => {
 
     try {
+
+      const resultado =
+        await InventoryService.validarUbicacion(codigo);
+
+      if (!resultado.ok) {
+
+        Alert.alert(
+          resultado.titulo,
+          resultado.mensaje
+        );
+
+        return null;
+      }
 
       setUbicacion(codigo);
 
@@ -327,6 +367,8 @@ export function useHomeLogic(navigation) {
     /* ---------- MODAL MANUAL ---------- */
 
     mostrarManual,
+
+    abrirModalManual,
 
     setMostrarManual,
 

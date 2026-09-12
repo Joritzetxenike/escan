@@ -1,7 +1,9 @@
 import { useRef, useEffect } from 'react';
+import { Alert } from 'react-native';
 import { useCameraPermissions } from 'expo-camera';
 
 import ScannerService from '../services/ScannerService';
+import UbicacionValidator from '../validators/UbicacionValidator';
 
 export function useScannerLogic(navigation, route) {
 
@@ -65,6 +67,22 @@ export function useScannerLogic(navigation, route) {
     /* ---------- VALIDACIÓN BÁSICA ---------- */
 
     if (!ScannerService.esCodigoValido(data)) {
+      return;
+    }
+
+
+    /* ---------- VALIDACIÓN DE FORMATO (UBICACIÓN) ---------- */
+
+    if (
+      tipo === 'ubicacion' &&
+      !UbicacionValidator.validarFormato(data)
+    ) {
+
+      Alert.alert(
+        'Ubicación inválida',
+        `El código ${data} no sigue el formato seccion-area-subzona (ej. 50100-111-Z101)`
+      );
+
       return;
     }
 

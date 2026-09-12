@@ -1,5 +1,7 @@
 import DataProvider from '../providers/DataProvider';
 import CsvProvider from '../providers/csv/csvProvider';
+import ArticuloValidator from '../validators/ArticuloValidator';
+import UbicacionValidator from '../validators/UbicacionValidator';
 import * as FileSystem from 'expo-file-system/legacy';
 
 const DIR = FileSystem.documentDirectory;
@@ -50,37 +52,16 @@ const InventoryService = {
 
   async validarArticulo(codigoArticulo, ubicacion, articulosEscaneados) {
 
-    if (!ubicacion) {
-      return {
-        ok: false,
-        titulo: 'Error',
-        mensaje: 'Primero escanea una ubicación',
-      };
-    }
+    return await ArticuloValidator.validar(
+      codigoArticulo,
+      ubicacion,
+      articulosEscaneados
+    );
+  },
 
-    if (articulosEscaneados.includes(codigoArticulo)) {
-      return {
-        ok: false,
-        titulo: 'Artículo duplicado',
-        mensaje: `El artículo ${codigoArticulo} ya ha sido escaneado en la ubicación ${ubicacion}`,
-      };
-    }
+  async validarUbicacion(codigoUbicacion) {
 
-    const articulo = await DataProvider.obtenerArticulo(codigoArticulo);
-
-    if (!articulo) {
-      return {
-        ok: false,
-        titulo: 'Artículo no encontrado',
-        mensaje: `El código ${codigoArticulo} no existe en el maestro`,
-      };
-    }
-
-    return {
-      ok: true,
-      articulo,
-      esSIC: articulo.tipo === 'SIC',
-    };
+    return await UbicacionValidator.validar(codigoUbicacion);
   },
 
   crearMovimiento(ubicacion, articulo, cantidad) {

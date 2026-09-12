@@ -7,6 +7,7 @@ jest.mock('../../src/providers/DataProvider', () => ({
   obtenerArticulosUbicacion: jest.fn(),
   guardarMovimiento: jest.fn(),
   obtenerArticulo: jest.fn(),
+  obtenerUbicacion: jest.fn(),
 }));
 
 describe('InventoryService', () => {
@@ -170,6 +171,68 @@ describe('InventoryService', () => {
 
       expect(resultado.ok).toBe(true);
       expect(resultado.esSIC).toBe(true);
+    });
+
+  });
+
+
+  // =====================================================
+  // validarUbicacion
+  // =====================================================
+
+  describe('validarUbicacion', () => {
+
+    test('debe rechazar un código de ubicación vacío', async () => {
+      const resultado =
+        await InventoryService.validarUbicacion('');
+
+      expect(resultado.ok).toBe(false);
+      expect(resultado.titulo).toBe('Error');
+      expect(resultado.mensaje).toBe(
+        'El código de ubicación es inválido'
+      );
+
+      expect(DataProvider.obtenerUbicacion).not.toHaveBeenCalled();
+    });
+
+    test('debe rechazar una ubicación que no existe en el maestro', async () => {
+      DataProvider.obtenerUbicacion.mockResolvedValue(null);
+
+      const resultado =
+        await InventoryService.validarUbicacion('99999-999-Z999');
+
+      expect(resultado.ok).toBe(false);
+      expect(resultado.titulo).toBe('Ubicación no encontrada');
+      expect(resultado.mensaje).toBe(
+        'El código 99999-999-Z999 no existe en el maestro'
+      );
+    });
+
+    test('debe aceptar una ubicación válida', async () => {
+      const ubicacionMaestro = {
+        seccion: '50100',
+        area: '111',
+        subzona: 'Z101',
+        stat: 'Inicio',
+      };
+
+      DataProvider.obtenerUbicacion.mockResolvedValue(ubicacionMaestro);
+
+      const resultado =
+        await InventoryService.validarUbicacion('50100-111-Z101');
+
+      expect(resultado.ok).toBe(true);
+      expect(resultado.ubicacion).toEqual(ubicacionMaestro);
+    });
+
+    test('debe propagar el error si falla la consulta al maestro', async () => {
+      DataProvider.obtenerUbicacion.mockRejectedValue(
+        new Error('Error de red')
+      );
+
+      await expect(
+        InventoryService.validarUbicacion('50100-111-Z101')
+      ).rejects.toThrow('Error de red');
     });
 
   });

@@ -100,6 +100,26 @@ const SupabaseProvider = {
   return data;
 },
 
+  async obtenerUbicacion(codigoUbicacion) {
+    const { seccion, area, subzona } =
+      parseUbicacionId(codigoUbicacion);
+
+    if (!seccion || !area || !subzona) {
+      return null;
+    }
+
+    const { data, error } = await supabase
+      .from('maestroUbicacion')
+      .select('seccion, area, subzona, stat')
+      .eq('seccion', seccion)
+      .eq('area', area)
+      .eq('subzona', subzona)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data;
+  },
+
   async obtenerArticulosUbicacion(ubicacion) {
     const { data, error } = await supabase
       .from('conteo')
