@@ -11,10 +11,24 @@ const InventoryDataProvider = {
    * ======================================================= */
 
   /**
-   * Devuelve todas las ubicaciones.
+   * Devuelve las secciones (nivel 1 del árbol de ubicaciones).
    */
-  async obtenerUbicaciones() {
-    throw new Error('obtenerUbicaciones() no implementado');
+  async obtenerSecciones() {
+    throw new Error('obtenerSecciones() no implementado');
+  },
+
+  /**
+   * Devuelve las áreas de una sección (nivel 2 del árbol de ubicaciones).
+   */
+  async obtenerAreas(seccion) {
+    throw new Error('obtenerAreas() no implementado');
+  },
+
+  /**
+   * Devuelve las ubicaciones de un área (nivel 3 del árbol de ubicaciones).
+   */
+  async obtenerUbicacionesArea(seccion, area) {
+    throw new Error('obtenerUbicacionesArea() no implementado');
   },
 
   /**

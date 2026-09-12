@@ -13,6 +13,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { styles, colors } from '../styles/styles';
 import ArticulosModal from '../components/ArticulosModal';
+import InventoryService from '../services/InventoryService';
 
 export default function ListaScreen() {
   const [csvs, setCsvs] = useState([]);
@@ -91,22 +92,33 @@ export default function ListaScreen() {
 
   /* ---------- BORRAR REGISTRO INDIVIDUAL ---------- */
   const borrarRegistro = (index) => {
-    Alert.alert('Borrar registro', '¿Eliminar este registro?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Borrar',
-        style: 'destructive',
-        onPress: async () => {
-          const nuevos = [...registros];
-          nuevos.splice(index, 1);
-          setRegistros(nuevos);
+    const reg = registros[index];
 
-          // Guardar cambios en el CSV
-          const csvString = nuevos.map(r => `${r.ubicacion},${r.articulo},${r.cantidad}`).join('\n');
-          await FileSystem.writeAsStringAsync(FileSystem.documentDirectory + csvSeleccionado, csvString);
+    Alert.alert(
+      'Borrar registro',
+      `¿Eliminar ${reg.articulo} de ${reg.ubicacion}?\nEsta acción también lo borrará de la base de datos.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Borrar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await InventoryService.eliminarMovimiento(
+                reg.ubicacion,
+                reg.articulo
+              );
+              setRegistros((actual) =>
+                actual.filter((_, i) => i !== index)
+              );
+            } catch (e) {
+              console.error(e);
+              Alert.alert('Error', 'No se pudo eliminar el registro');
+            }
+          },
         },
-      },
-    ]);
+      ]
+    );
   };
 
   /* ---------- RENDER ITEM CSV ---------- */

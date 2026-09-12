@@ -28,7 +28,9 @@ export default function ArticulosModal({
                 <Text style={[styles.headerCell, { flex: 2 }]}>Artículo</Text>
                 <Text style={[styles.headerCell, { flex: 1, textAlign: 'center' }]}>Descripción</Text>
                 <Text style={[styles.headerCell, { flex: 0.8, textAlign: 'center' }]}>Cantidad</Text>
-                <Text style={[styles.headerCell, { flex: 0.6, textAlign: 'center' }]}>Eliminar</Text>
+                {onEliminar && (
+                  <Text style={[styles.headerCell, { flex: 0.6, textAlign: 'center' }]}>Eliminar</Text>
+                )}
               </View>
 
               <ScrollView style={styles.list}>
@@ -65,12 +67,14 @@ export default function ArticulosModal({
                       </TouchableOpacity>
                     )}
 
-                    <TouchableOpacity
-                      onPress={() => onEliminar?.(index)}
-                      style={[styles.cell, { flex: 0.6, alignItems: 'center' }]}
-                    >
-                      <MaterialIcons name="delete-outline" size={26} color={colors.danger} />
-                    </TouchableOpacity>
+                    {onEliminar && (
+                      <TouchableOpacity
+                        onPress={() => onEliminar(index)}
+                        style={[styles.cell, { flex: 0.6, alignItems: 'center' }]}
+                      >
+                        <MaterialIcons name="delete-outline" size={26} color={colors.danger} />
+                      </TouchableOpacity>
+                    )}
                   </View>
                 ))}
               </ScrollView>

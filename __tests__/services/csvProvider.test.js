@@ -196,6 +196,58 @@ describe('CsvProvider', () => {
 
 
   // =====================================================
+  // eliminarMovimiento
+  // =====================================================
+
+  describe('eliminarMovimiento', () => {
+
+    test('debe quitar la fila solicitada del CSV', async () => {
+
+      FileSystem.getInfoAsync.mockResolvedValue({
+        exists: true,
+      });
+
+      FileSystem.readAsStringAsync.mockResolvedValue(
+        'A1,123456,5\nA1,999999,10'
+      );
+
+      FileSystem.writeAsStringAsync.mockResolvedValue();
+
+      const resultado =
+        await CsvProvider.eliminarMovimiento('A1', '123456');
+
+      expect(resultado).toBe(true);
+
+      expect(
+        FileSystem.writeAsStringAsync
+      ).toHaveBeenCalledWith(
+        'file:///test/A1.csv',
+        'A1,999999,10'
+      );
+
+    });
+
+    test('debe no escribir nada si el archivo no existe', async () => {
+
+      FileSystem.getInfoAsync.mockResolvedValue({
+        exists: false,
+      });
+
+      const resultado =
+        await CsvProvider.eliminarMovimiento('A1', '123456');
+
+      expect(resultado).toBe(true);
+
+      expect(
+        FileSystem.writeAsStringAsync
+      ).not.toHaveBeenCalled();
+
+    });
+
+  });
+
+
+  // =====================================================
   // estaDisponible
   // =====================================================
 

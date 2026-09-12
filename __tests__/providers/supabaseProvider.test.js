@@ -51,6 +51,202 @@ describe('SupabaseProvider', () => {
 
 
   // =====================================================
+  // obtenerSecciones
+  // =====================================================
+
+  describe('obtenerSecciones', () => {
+
+    test('debe devolver las secciones con su estado', async () => {
+
+      const datos = [
+        { seccion: '50100', stat: 'Inicio' },
+        { seccion: '50200', stat: 'Fin' },
+      ];
+
+      const query = {
+        select: jest.fn().mockReturnThis(),
+        order: jest.fn().mockResolvedValue({
+          data: datos,
+          error: null,
+        }),
+      };
+
+      supabase.from.mockReturnValue(query);
+
+      const resultado =
+        await SupabaseProvider.obtenerSecciones();
+
+      expect(supabase.from).toHaveBeenCalledWith(
+        'maestroSeccion'
+      );
+
+      expect(query.select).toHaveBeenCalledWith(
+        'seccion, stat'
+      );
+
+      expect(query.order).toHaveBeenCalledWith(
+        'seccion',
+        { ascending: true }
+      );
+
+      expect(resultado).toEqual(datos);
+    });
+
+    test('debe lanzar error si falla la consulta', async () => {
+
+      const query = {
+        select: jest.fn().mockReturnThis(),
+        order: jest.fn().mockResolvedValue({
+          data: null,
+          error: new Error('Error consultando secciones'),
+        }),
+      };
+
+      supabase.from.mockReturnValue(query);
+
+      await expect(
+        SupabaseProvider.obtenerSecciones()
+      ).rejects.toThrow('Error consultando secciones');
+    });
+
+  });
+
+  // =====================================================
+  // obtenerAreas
+  // =====================================================
+
+  describe('obtenerAreas', () => {
+
+    test('debe devolver las áreas de una sección', async () => {
+
+      const datos = [
+        { area: '111', stat: 'Inicio' },
+        { area: '112', stat: 'Proceso' },
+      ];
+
+      const query = {
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        order: jest.fn().mockResolvedValue({
+          data: datos,
+          error: null,
+        }),
+      };
+
+      supabase.from.mockReturnValue(query);
+
+      const resultado =
+        await SupabaseProvider.obtenerAreas('50100');
+
+      expect(supabase.from).toHaveBeenCalledWith(
+        'maestroArea'
+      );
+
+      expect(query.select).toHaveBeenCalledWith(
+        'area, stat'
+      );
+
+      expect(query.eq).toHaveBeenCalledWith('seccion', '50100');
+      expect(query.order).toHaveBeenCalledWith(
+        'area',
+        { ascending: true }
+      );
+
+      expect(resultado).toEqual(datos);
+    });
+
+    test('debe lanzar error si falla la consulta', async () => {
+
+      const query = {
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        order: jest.fn().mockResolvedValue({
+          data: null,
+          error: new Error('Error consultando áreas'),
+        }),
+      };
+
+      supabase.from.mockReturnValue(query);
+
+      await expect(
+        SupabaseProvider.obtenerAreas('50100')
+      ).rejects.toThrow('Error consultando áreas');
+    });
+
+  });
+
+  // =====================================================
+  // obtenerUbicacionesArea
+  // =====================================================
+
+  describe('obtenerUbicacionesArea', () => {
+
+    test('debe devolver las ubicaciones con id completo', async () => {
+
+      const datos = [
+        { subzona: 'Z101', stat: 'Inicio' },
+        { subzona: 'Z102', stat: 'Fin' },
+      ];
+
+      const query = {
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        order: jest.fn().mockResolvedValue({
+          data: datos,
+          error: null,
+        }),
+      };
+
+      supabase.from.mockReturnValue(query);
+
+      const resultado =
+        await SupabaseProvider.obtenerUbicacionesArea(
+          '50100',
+          '111'
+        );
+
+      expect(supabase.from).toHaveBeenCalledWith(
+        'maestroUbicacion'
+      );
+
+      expect(query.select).toHaveBeenCalledWith(
+        'subzona, stat'
+      );
+
+      expect(query.eq).toHaveBeenCalledWith('seccion', '50100');
+      expect(query.eq).toHaveBeenCalledWith('area', '111');
+      expect(query.order).toHaveBeenCalledWith(
+        'subzona',
+        { ascending: true }
+      );
+
+      expect(resultado).toEqual([
+        { subzona: 'Z101', stat: 'Inicio', ubicacion: '50100-111-Z101' },
+        { subzona: 'Z102', stat: 'Fin', ubicacion: '50100-111-Z102' },
+      ]);
+    });
+
+    test('debe lanzar error si falla la consulta', async () => {
+
+      const query = {
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        order: jest.fn().mockResolvedValue({
+          data: null,
+          error: new Error('Error consultando ubicaciones'),
+        }),
+      };
+
+      supabase.from.mockReturnValue(query);
+
+      await expect(
+        SupabaseProvider.obtenerUbicacionesArea('50100', '111')
+      ).rejects.toThrow('Error consultando ubicaciones');
+    });
+
+  });
+
+  // =====================================================
   // obtenerEstadoUbicaciones
   // =====================================================
 

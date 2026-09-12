@@ -40,45 +40,50 @@ const SupabaseProvider = {
    * UBICACIONES
    * ======================================================= */
 
-  async obtenerUbicaciones() {
-  const { data, error } = await supabase
-    .from('maestroSeccion')
-    .select(`
-      seccion,
-      stat,
-      maestroArea (
-        area,
-        stat,
-        maestroUbicacion (
-          subzona,
-          stat
-        )
-      )
-    `);
+  async obtenerSecciones() {
+    const { data, error } = await supabase
+      .from('maestroSeccion')
+      .select('seccion, stat')
+      .order('seccion', { ascending: true });
 
-  if (error) {
-    console.error('Error obteniendo estructura de ubicaciones:', error);
-    throw error;
-  }
+    if (error) {
+      console.error('Error obteniendo secciones:', error);
+      throw error;
+    }
 
-  return (data || []).map((seccion) => ({
-    seccion: seccion.seccion,
-    stat: seccion.stat,
+    return data || [];
+  },
 
-    areas: (seccion.maestroArea || []).map((area) => ({
-      area: area.area,
-      stat: area.stat,
+  async obtenerAreas(seccion) {
+    const { data, error } = await supabase
+      .from('maestroArea')
+      .select('area, stat')
+      .eq('seccion', seccion)
+      .order('area', { ascending: true });
 
-      ubicaciones: (area.maestroUbicacion || []).map((ubicacion) => ({
-        subzona: ubicacion.subzona,
-        stat: ubicacion.stat,
+    if (error) throw error;
 
-        ubicacion:
-          `${seccion.seccion}-${area.area}-${ubicacion.subzona}`,
-      })),
-    })),
-  }));
-},
+    return data || [];
+  },
+
+  async obtenerUbicacionesArea(seccion, area) {
+    const { data, error } = await supabase
+      .from('maestroUbicacion')
+      .select('subzona, stat')
+      .eq('seccion', seccion)
+      .eq('area', area)
+      .order('subzona', { ascending: true });
+
+    if (error) throw error;
+
+    return (data || []).map((ubicacion) => ({
+      subzona: ubicacion.subzona,
+      stat: ubicacion.stat,
+      ubicacion:
+        `${seccion}-${area}-${ubicacion.subzona}`,
+    }));
+  },
+
   async obtenerEstadoUbicaciones() {
   const { data, error } = await supabase
     .from('maestroSeccion')

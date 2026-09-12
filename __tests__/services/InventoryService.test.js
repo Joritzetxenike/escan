@@ -1,5 +1,6 @@
 import InventoryService from '../../src/services/InventoryService';
 import DataProvider from '../../src/providers/DataProvider';
+import * as FileSystem from 'expo-file-system/legacy';
 
 // Mockeamos el proveedor para NO tocar archivos CSV
 // ni ninguna base de datos durante los tests.
@@ -8,6 +9,14 @@ jest.mock('../../src/providers/DataProvider', () => ({
   guardarMovimiento: jest.fn(),
   obtenerArticulo: jest.fn(),
   obtenerUbicacion: jest.fn(),
+  eliminarMovimiento: jest.fn(),
+}));
+
+jest.mock('expo-file-system/legacy', () => ({
+  documentDirectory: 'file:///test/',
+  getInfoAsync: jest.fn(),
+  readAsStringAsync: jest.fn(),
+  writeAsStringAsync: jest.fn(),
 }));
 
 describe('InventoryService', () => {
@@ -233,6 +242,49 @@ describe('InventoryService', () => {
       await expect(
         InventoryService.validarUbicacion('50100-111-Z101')
       ).rejects.toThrow('Error de red');
+    });
+
+  });
+
+
+  // =====================================================
+  // eliminarMovimiento
+  // =====================================================
+
+  describe('eliminarMovimiento', () => {
+
+    test('debe eliminar en la BD y en el CSV', async () => {
+
+      DataProvider.eliminarMovimiento.mockResolvedValue(true);
+
+      FileSystem.getInfoAsync.mockResolvedValue({
+        exists: true,
+      });
+
+      FileSystem.readAsStringAsync.mockResolvedValue(
+        'A1,123456,5\nA1,999999,10'
+      );
+
+      FileSystem.writeAsStringAsync.mockResolvedValue();
+
+      const resultado =
+        await InventoryService.eliminarMovimiento(
+          'A1',
+          '123456'
+        );
+
+      expect(
+        DataProvider.eliminarMovimiento
+      ).toHaveBeenCalledWith('A1', '123456');
+
+      expect(
+        FileSystem.writeAsStringAsync
+      ).toHaveBeenCalledWith(
+        'file:///test/A1.csv',
+        'A1,999999,10'
+      );
+
+      expect(resultado).toBe(true);
     });
 
   });

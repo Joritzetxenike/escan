@@ -110,17 +110,23 @@ El escáner requiere que un mismo código se lea **10 veces consecutivas en 1200
 | Ruta      | Pantalla       | Descripción                                                                 |
 | --------- | -------------- | --------------------------------------------------------------------------- |
 | `Home`    | HomeScreen     | Escáner de ubicación, escaneo de artículos, últimos artículos de la sesión  |
-| `Lista`   | ListaScreen    | Archivos CSV guardados en el dispositivo (abrir, exportar, borrar)          |
-| `Estado`  | EstadoScreen   | Árbol sección → área → ubicación con estado y artículos por ubicación      |
+| `Lista`   | ListaScreen    | Archivos CSV guardados en el dispositivo (abrir, exportar, borrar con aviso y sync a BD) |
+| `Estado`  | EstadoScreen   | Árbol sección → área → ubicación cargado por niveles y con artículos por ubicación |
 | `Scanner` | ScannerScreen  | Cámara con overlay para escanear códigos                                    |
 
-### EstadoScreen (carga bajo demanda)
+### EstadoScreen (carga por niveles)
 
 - **No hace peticiones al abrir** la pantalla.
-- Botón **"Cargar ubicaciones"** → trae la estructura completa (1 petición).
-- Botón de **recarga independiente** (icono ↻ en la cabecera) → vuelve a pedir los datos.
+- Botón **"Cargar ubicaciones"** → trae solo las **secciones** (1 petición).
+- Al **expandir una sección** se cargan sus áreas; al **expandir un área** se cargan sus ubicaciones (1 petición por nivel).
 - Los artículos de una ubicación se cargan **solo al tocar** la ubicación (1 petición por ubicación).
+- Botón de **recarga** (icono ↻ en la cabecera) → vuelve a pedir las secciones y limpia los niveles cacheados.
 - Si la carga falla muestra un `Alert` y permite reintentar.
+
+### Borrado de movimientos
+
+- El borrado **solo** se realiza desde la pestaña Lista (CSV): al eliminar una fila se muestra un aviso de que **también se borrará de la base de datos** y se elimina en ambos sitios.
+- En el modal de artículos de Estado ya no aparece la columna **Eliminar**.
 
 ---
 
@@ -308,14 +314,14 @@ npx jest __tests__/screens    # Solo pantallas
 npx jest --coverage           # Cobertura
 ```
 
-Cobertura actual: `ScannerService`, `InventoryService` (incl. `validarArticulo`), `updateService`, `supabaseClient`, `SupabaseProvider`, `CsvProvider`, `useHomeLogic`, `useScannerLogic` y el comportamiento de `EstadoScreen` (carga bajo demanda, botón de recarga, artículos lazy).
+Cobertura actual: `ScannerService`, `InventoryService` (incl. `validarArticulo` y `eliminarMovimiento`), `updateService`, `supabaseClient`, `SupabaseProvider` (incl. árbol por niveles), `CsvProvider` (incl. `eliminarMovimiento`), `useHomeLogic`, `useScannerLogic` y el comportamiento de `EstadoScreen` (carga por niveles, botón de recarga, artículos lazy).
 
 ---
 
 ## Notas técnicas
 
 - `useScanner.js` (hooks/) es una versión alternativa del escáner a medio refactor; la activa es `ScannerLogic.js`. `useScanner.js` referencia métodos de `ScannerService` (`crearBuffer`, `procesarLectura`, `limpiarBufferCaducado`) que hoy no existen.
-- `CsvProvider` solo implementa lectura/escritura de movimientos; el resto de métodos lanzan `No implementado`.
+- `CsvProvider` implementa lectura/escritura/borrado de movimientos; los métodos del árbol de ubicaciones lanzan `No implementado`.
 - `ApiProvider` es un stub.
 - `ubicacionesMock.js` no se usa activamente.
 - `domain/models/` y `domain/validators/` están vacíos (planificados).

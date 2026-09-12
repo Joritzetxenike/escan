@@ -35,7 +35,7 @@ class UbicacionValidator {
         ok: false,
         titulo: 'Ubicación inválida',
         mensaje:
-          `El código ${codigoUbicacion} no sigue el formato seccion-area-subzona (ej. 50100-111-Z101)`,
+          `El código ${codigoUbicacion} no existe como ubicación` //no sigue el formato seccion-area-subzona (ej. 50100-111-Z101)`,
       };
     }
 

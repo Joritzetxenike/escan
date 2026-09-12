@@ -112,7 +112,7 @@ describe('UbicacionValidator', () => {
       expect(resultado.ok).toBe(false);
       expect(resultado.titulo).toBe('Ubicación inválida');
       expect(resultado.mensaje).toBe(
-        'El código 50100 no sigue el formato seccion-area-subzona (ej. 50100-111-Z101)'
+        'El código 50100 no existe como ubicación'
       );
 
       expect(DataProvider.obtenerUbicacion).not.toHaveBeenCalled();

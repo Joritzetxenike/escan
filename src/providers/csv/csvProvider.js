@@ -95,10 +95,6 @@ const CsvProvider = {
 
   /* ===== Pendientes ===== */
 
-  async obtenerUbicaciones() {
-    throw new Error('No implementado');
-  },
-
   async obtenerEstadoUbicaciones() {
     throw new Error('No implementado');
   },
@@ -119,8 +115,27 @@ const CsvProvider = {
     throw new Error('No implementado');
   },
 
-  async eliminarMovimiento() {
-    throw new Error('No implementado');
+  async eliminarMovimiento(ubicacion, articulo) {
+    const path = getUbicacionPath(ubicacion);
+
+    const exists = await FileSystem.getInfoAsync(path);
+
+    if (!exists.exists) {
+      return true;
+    }
+
+    const registros = await this.obtenerArticulosUbicacion(ubicacion);
+
+    const filtrados = registros.filter(
+      (r) => !(r.ubicacion === ubicacion && r.articulo === articulo)
+    );
+
+    await FileSystem.writeAsStringAsync(
+      path,
+      serializeRegistros(filtrados)
+    );
+
+    return true;
   },
 
   async obtenerUltimosMovimientos() {
