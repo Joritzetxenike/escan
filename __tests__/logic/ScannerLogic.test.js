@@ -123,18 +123,16 @@ describe('useScannerLogic', () => {
       expect(navigation.goBack).not.toHaveBeenCalled();
     });
 
-    test('avisa si una ubicación no sigue el formato seccion-area-subzona', () => {
+    test('avisa si una ubicación no sigue el formato, incluso si el código es corto', () => {
       const onScan = jest.fn();
       montar({ tipo: 'ubicacion', onScan });
-
-      ScannerService.esCodigoValido.mockReturnValue(true);
 
       const UbicacionValidator =
         jest.requireMock('../../src/validators/UbicacionValidator').default;
       UbicacionValidator.validarFormato.mockReturnValue(false);
 
       act(() => {
-        current.handleBarcodeScanned({ type: 'ean13', data: '50100' });
+        current.handleBarcodeScanned({ type: 'qr', data: '50100' });
       });
 
       const { Alert } = jest.requireMock('react-native');
@@ -143,9 +141,31 @@ describe('useScannerLogic', () => {
         'El código 50100 no sigue el formato seccion-area-subzona (ej. 50100-111-Z101)'
       );
 
+      expect(ScannerService.esCodigoValido).not.toHaveBeenCalled();
       expect(ScannerService.actualizarBuffer).not.toHaveBeenCalled();
       expect(onScan).not.toHaveBeenCalled();
       expect(navigation.goBack).not.toHaveBeenCalled();
+    });
+
+    test('no repite el aviso con lecturas seguidas del mismo código inválido', () => {
+      const onScan = jest.fn();
+      montar({ tipo: 'ubicacion', onScan });
+
+      const UbicacionValidator =
+        jest.requireMock('../../src/validators/UbicacionValidator').default;
+      UbicacionValidator.validarFormato.mockReturnValue(false);
+
+      const { Alert } = jest.requireMock('react-native');
+
+      act(() => {
+        current.handleBarcodeScanned({ type: 'qr', data: '50100' });
+      });
+
+      act(() => {
+        current.handleBarcodeScanned({ type: 'qr', data: '50100' });
+      });
+
+      expect(Alert.alert).toHaveBeenCalledTimes(1);
     });
 
     test('no valida el código hasta acumular lecturas', () => {

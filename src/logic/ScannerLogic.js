@@ -15,6 +15,11 @@ export function useScannerLogic(navigation, route) {
     lastTime: 0,
   });
 
+  const ultimoInvalido = useRef({
+    code: '',
+    time: 0,
+  });
+
   /* =====================================================
    * CONFIGURACIÓN
    * ===================================================== */
@@ -64,26 +69,42 @@ export function useScannerLogic(navigation, route) {
 
     console.log('SCAN:', type, data);
 
-    /* ---------- VALIDACIÓN BÁSICA ---------- */
+    /* ---------- VALIDACIÓN (UBICACIÓN): FORMATO ---------- */
 
-    if (!ScannerService.esCodigoValido(data)) {
-      return;
-    }
+    if (tipo === 'ubicacion') {
 
+      if (!UbicacionValidator.validarFormato(data)) {
 
-    /* ---------- VALIDACIÓN DE FORMATO (UBICACIÓN) ---------- */
+        const ahora = Date.now();
 
-    if (
-      tipo === 'ubicacion' &&
-      !UbicacionValidator.validarFormato(data)
-    ) {
+        if (
+          ultimoInvalido.current.code === data &&
+          ahora - ultimoInvalido.current.time < 3000
+        ) {
+          return;
+        }
 
-      Alert.alert(
-        'Ubicación inválida',
-        `El código ${data} no sigue el formato seccion-area-subzona (ej. 50100-111-Z101)`
-      );
+        ultimoInvalido.current = {
+          code: data,
+          time: ahora,
+        };
 
-      return;
+        Alert.alert(
+          'Ubicación inválida',
+          `El código ${data} no sigue el formato seccion-area-subzona (ej. 50100-111-Z101)`
+        );
+
+        return;
+      }
+
+      /* Si el formato es válido, continúa al buffer. */
+    } else {
+
+      /* ---------- VALIDACIÓN BÁSICA (ARTÍCULO) ---------- */
+
+      if (!ScannerService.esCodigoValido(data)) {
+        return;
+      }
     }
 
 
