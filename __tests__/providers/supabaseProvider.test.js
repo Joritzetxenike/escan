@@ -247,6 +247,173 @@ describe('SupabaseProvider', () => {
   });
 
   // =====================================================
+  // finalizarUbicacion
+  // =====================================================
+
+  describe('finalizarUbicacion', () => {
+
+    beforeEach(() => {
+      supabase.from.mockReset();
+    });
+
+    // Cadena de actualización: update -> eq -> eq -> eq -> select
+    const cadenaActualizacion = ({ error = null } = {}) => ({
+      update: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      select: jest
+        .fn()
+        .mockResolvedValue({ data: null, error }),
+    });
+
+    // Cadena de selección de ubicaciones: select -> eq -> eq
+    const cadenaUbicaciones = (data) => {
+      const cadena = {
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn(),
+      };
+      cadena.eq
+        .mockReturnValueOnce(cadena)
+        .mockReturnValueOnce(
+          Promise.resolve({ data, error: null })
+        );
+      return cadena;
+    };
+
+    // Cadena de selección de áreas: select -> eq
+    const cadenaAreas = (data) => ({
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockResolvedValue({
+        data,
+        error: null,
+      }),
+    });
+
+    test('marca la ubicación y propaga a área y sección si todo está en Fin', async () => {
+
+      const qUbiUpdate = cadenaActualizacion();
+      const qUbiSelect = cadenaUbicaciones([
+        { subzona: 'Z101', stat: 'Fin' },
+      ]);
+      const qAreaUpdate = cadenaActualizacion();
+      const qAreaSelect = cadenaAreas([
+        { area: '111', stat: 'Fin' },
+      ]);
+      const qSeccionUpdate = cadenaActualizacion();
+
+      supabase.from
+        .mockReturnValueOnce(qUbiUpdate)
+        .mockReturnValueOnce(qUbiSelect)
+        .mockReturnValueOnce(qAreaUpdate)
+        .mockReturnValueOnce(qAreaSelect)
+        .mockReturnValueOnce(qSeccionUpdate);
+
+      const resultado =
+        await SupabaseProvider.finalizarUbicacion(
+          '50100-111-Z101'
+        );
+
+      expect(resultado).toBe(true);
+
+      expect(supabase.from)
+        .toHaveBeenNthCalledWith(1, 'maestroUbicacion');
+      expect(supabase.from)
+        .toHaveBeenNthCalledWith(2, 'maestroUbicacion');
+      expect(supabase.from)
+        .toHaveBeenNthCalledWith(3, 'maestroArea');
+      expect(supabase.from)
+        .toHaveBeenNthCalledWith(4, 'maestroArea');
+      expect(supabase.from)
+        .toHaveBeenNthCalledWith(5, 'maestroSeccion');
+
+      expect(qUbiUpdate.update)
+        .toHaveBeenCalledWith({ stat: 'Fin' });
+      expect(qUbiUpdate.eq)
+        .toHaveBeenCalledWith('subzona', 'Z101');
+
+      expect(qAreaUpdate.update)
+        .toHaveBeenCalledWith({ stat: 'Fin' });
+
+      expect(qSeccionUpdate.update)
+        .toHaveBeenCalledWith({ stat: 'Fin' });
+    });
+
+    test('no propaga al área si queda una ubicación sin terminar', async () => {
+
+      const qUbiUpdate = cadenaActualizacion();
+      const qUbiSelect = cadenaUbicaciones([
+        { subzona: 'Z101', stat: 'Fin' },
+        { subzona: 'Z102', stat: 'Inicio' },
+      ]);
+
+      supabase.from
+        .mockReturnValueOnce(qUbiUpdate)
+        .mockReturnValueOnce(qUbiSelect);
+
+      const resultado =
+        await SupabaseProvider.finalizarUbicacion(
+          '50100-111-Z101'
+        );
+
+      expect(resultado).toBe(true);
+      expect(supabase.from).toHaveBeenCalledTimes(2);
+      expect(supabase.from).not.toHaveBeenCalledWith('maestroArea');
+    });
+
+    test('no marca la sección si queda un área sin terminar', async () => {
+
+      const qUbiUpdate = cadenaActualizacion();
+      const qUbiSelect = cadenaUbicaciones([
+        { subzona: 'Z101', stat: 'Fin' },
+      ]);
+      const qAreaUpdate = cadenaActualizacion();
+      const qAreaSelect = cadenaAreas([
+        { area: '111', stat: 'Fin' },
+        { area: '112', stat: 'Inicio' },
+      ]);
+
+      supabase.from
+        .mockReturnValueOnce(qUbiUpdate)
+        .mockReturnValueOnce(qUbiSelect)
+        .mockReturnValueOnce(qAreaUpdate)
+        .mockReturnValueOnce(qAreaSelect);
+
+      const resultado =
+        await SupabaseProvider.finalizarUbicacion(
+          '50100-111-Z101'
+        );
+
+      expect(resultado).toBe(true);
+      expect(supabase.from).toHaveBeenCalledTimes(4);
+      expect(supabase.from).not.toHaveBeenCalledWith('maestroSeccion');
+    });
+
+    test('lanza error si falla al marcar la ubicación', async () => {
+
+      const qUbiUpdate = cadenaActualizacion({
+        error: new Error('Error actualizando ubicación'),
+      });
+
+      supabase.from.mockReturnValue(qUbiUpdate);
+
+      await expect(
+        SupabaseProvider.finalizarUbicacion('50100-111-Z101')
+      ).rejects.toThrow('Error actualizando ubicación');
+
+      expect(supabase.from).toHaveBeenCalledTimes(1);
+    });
+
+    test('lanza error si el código no es seccion-area-subzona', async () => {
+
+      await expect(
+        SupabaseProvider.finalizarUbicacion('50100')
+      ).rejects.toThrow('Código de ubicación inválido');
+
+      expect(supabase.from).not.toHaveBeenCalled();
+    });
+
+  });
+
+  // =====================================================
   // obtenerEstadoUbicaciones
   // =====================================================
 

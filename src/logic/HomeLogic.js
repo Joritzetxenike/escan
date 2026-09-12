@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Alert } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 
 import InventoryService from '../services/InventoryService';
 
@@ -10,6 +11,9 @@ export function useHomeLogic(navigation) {
    * ===================================================== */
 
   const [ubicacion, setUbicacion] = useState(null);
+
+  const [ubicacionFinalizada, setUbicacionFinalizada] =
+    useState(false);
 
   const [articuloTemp, setArticuloTemp] = useState(null);
 
@@ -108,6 +112,10 @@ export function useHomeLogic(navigation) {
 
       setUbicacion(codigo);
 
+      setUbicacionFinalizada(
+        resultado.ubicacion?.stat === 'Fin'
+      );
+
       const articulos =
         await InventoryService.cargarUbicacion(codigo);
 
@@ -135,6 +143,18 @@ export function useHomeLogic(navigation) {
    * ===================================================== */
 
   const procesarArticulo = async (codigo) => {
+
+    /* ---------- UBICACIÓN TERMINADA ---------- */
+
+    if (ubicacionFinalizada) {
+
+      Alert.alert(
+        'Ubicación terminada',
+        `La ubicación ${ubicacion} está terminada y no admite más artículos`
+      );
+
+      return;
+    }
 
     const resultado =
       await InventoryService.validarArticulo(
@@ -245,6 +265,43 @@ export function useHomeLogic(navigation) {
 
 
   /* =====================================================
+   * REVALIDAR UBICACIÓN AL VOLVER A HOME
+   * ===================================================== */
+
+  useFocusEffect(
+    useCallback(() => {
+
+      if (!ubicacion) return;
+
+      let activo = true;
+
+      (async () => {
+        try {
+          const finalizada =
+            await InventoryService.estaUbicacionFinalizada(
+              ubicacion
+            );
+
+          if (activo) {
+            setUbicacionFinalizada(finalizada);
+          }
+        } catch (e) {
+          console.error(
+            'Error revalidando ubicación:',
+            e
+          );
+        }
+      })();
+
+      return () => {
+        activo = false;
+      };
+
+    }, [ubicacion])
+  );
+
+
+  /* =====================================================
    * CÓDIGO MANUAL
    * ===================================================== */
 
@@ -286,7 +343,7 @@ export function useHomeLogic(navigation) {
     try {
 
       const movimiento =
-        InventoryService.crearMovimiento(
+InventoryService.crearMovimiento(
           ubicacion,
           articuloTemp,
           cantidad
@@ -335,6 +392,8 @@ export function useHomeLogic(navigation) {
     /* ---------- ESTADO ---------- */
 
     ubicacion,
+
+    ubicacionFinalizada,
 
     articuloTemp,
 

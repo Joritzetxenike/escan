@@ -558,6 +558,7 @@ export default function EstadoScreen({ navigation }) {
         titulo={modalUbicacion}
         articulos={articulosUbicacion}
         onCerrar={() => setModalVisible(false)}
+        codigoUbicacion={modalUbicacion}
         editandoIndex={editandoCantidad}
         editandoValor={nuevaCantidad}
         onIniciarEdicion={(index) => {

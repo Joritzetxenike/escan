@@ -138,6 +138,21 @@ El escáner requiere que un mismo código se lea **10 veces consecutivas en 1200
 
 ---
 
+## Terminar una ubicación desde Lista
+
+Al pulsar el botón de **compartir** de un CSV en la pestaña Lista:
+
+1. La ubicación correspondiente al archivo se marca como **`Fin`** en la base de datos (`maestroUbicacion.stat = 'Fin'`).
+2. Si **todas** las ubicaciones de su área están en `'Fin'`, el área pasa a `'Fin'`; si **todas** las áreas de su sección están en `'Fin'`, la sección pasa a `'Fin'` (mismo patrón que el cambio a `'Proceso'` al guardar movimientos).
+3. Después se abre el menú de **compartir** del sistema (correo/WhatsApp, etc.) con el CSV.
+
+Una ubicación en `'Fin'` **no admite más operaciones**:
+- Home cachea el estado de la ubicación al escanearla: con `'Fin'` no permite escanear ni introducir artículos (aviso «Ubicación terminada»). Al volver a la pestaña Home desde Lista se reconsulta el estado en el maestro (1 petición) para recoger un `'Fin'` recién marcado.
+- El modal de artículos (usado desde Estado y desde Lista) consulta él mismo `estaUbicacionFinalizada` al abrirse: con `'Fin'` no permite **editar cantidades** ni **eliminar filas**.
+- En la pestaña Lista no se permite **borrar filas** de esa ubicación (sí se puede borrar el CSV completo o exportarlo).
+
+---
+
 ## Modelo de datos (Supabase)
 
 ### Esquema DDL

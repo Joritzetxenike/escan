@@ -1,6 +1,7 @@
 import React from 'react';
 import { create, act } from 'react-test-renderer';
 import { Alert } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 
 import { useHomeLogic } from '../../src/logic/HomeLogic';
 import InventoryService from '../../src/services/InventoryService';
@@ -11,12 +12,17 @@ jest.mock('react-native', () => ({
   },
 }));
 
+jest.mock('@react-navigation/native', () => ({
+  useFocusEffect: jest.fn(),
+}));
+
 jest.mock('../../src/services/InventoryService', () => ({
   cargarUbicacion: jest.fn(),
   validarArticulo: jest.fn(),
   validarUbicacion: jest.fn(),
   crearMovimiento: jest.fn(),
   guardarMovimiento: jest.fn(),
+  estaUbicacionFinalizada: jest.fn(),
 }));
 
 // Harness: ejecuta el hook y expone su resultado en `current`.
@@ -201,6 +207,110 @@ describe('useHomeLogic', () => {
 
       expect(current.ubicacion).toBeNull();
       expect(InventoryService.cargarUbicacion).not.toHaveBeenCalled();
+    });
+
+  });
+
+  // =====================================================
+  // ubicacionFinalizada
+  // =====================================================
+
+  describe('ubicacionFinalizada', () => {
+
+    test('marca la ubicación como no finalizada si está en Inicio', async () => {
+      InventoryService.validarUbicacion.mockResolvedValue({
+        ok: true,
+        ubicacion: { seccion: 'A', area: '1', subzona: '1', stat: 'Inicio' },
+      });
+      InventoryService.cargarUbicacion.mockResolvedValue([]);
+
+      await act(async () => {
+        await current.procesarEscaneo('ubicacion', 'A1');
+      });
+
+      expect(current.ubicacionFinalizada).toBe(false);
+    });
+
+    test('marca la ubicación como finalizada si escanea una en estado Fin', async () => {
+      InventoryService.validarUbicacion.mockResolvedValue({
+        ok: true,
+        ubicacion: { seccion: 'A', area: '1', subzona: '1', stat: 'Fin' },
+      });
+      InventoryService.cargarUbicacion.mockResolvedValue([]);
+
+      await act(async () => {
+        await current.procesarEscaneo('ubicacion', 'A1');
+      });
+
+      expect(current.ubicacionFinalizada).toBe(true);
+    });
+
+    test('bloquea artículos si la ubicación escaneada ya está terminada', async () => {
+      InventoryService.validarUbicacion.mockResolvedValue({
+        ok: true,
+        ubicacion: { seccion: 'A', area: '1', subzona: '1', stat: 'Fin' },
+      });
+      InventoryService.cargarUbicacion.mockResolvedValue([]);
+      InventoryService.validarArticulo.mockResolvedValue({
+        ok: true,
+        esSIC: false,
+        articulo: { item: '123456', tipo: 'Normal' },
+      });
+
+      await act(async () => {
+        await current.procesarEscaneo('ubicacion', 'A1');
+      });
+
+      await act(async () => {
+        await current.onManualCode('123456');
+      });
+
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'Ubicación terminada',
+        expect.stringContaining('A1')
+      );
+
+      expect(InventoryService.validarArticulo).not.toHaveBeenCalled();
+      expect(current.articuloTemp).toBeNull();
+    });
+
+    test('revalida al volver a Home y bloquea si la ubicación pasó a Fin', async () => {
+      InventoryService.validarUbicacion.mockResolvedValue({
+        ok: true,
+        ubicacion: { seccion: 'A', area: '1', subzona: '1', stat: 'Inicio' },
+      });
+      InventoryService.cargarUbicacion.mockResolvedValue([]);
+      InventoryService.validarArticulo.mockResolvedValue({
+        ok: true,
+        esSIC: false,
+        articulo: { item: '123456', tipo: 'Normal' },
+      });
+      InventoryService.estaUbicacionFinalizada.mockResolvedValue(true);
+
+      await act(async () => {
+        await current.procesarEscaneo('ubicacion', 'A1');
+      });
+      expect(current.ubicacionFinalizada).toBe(false);
+
+      const alEnfocar = useFocusEffect.mock.calls.at(-1)[0];
+      await act(async () => {
+        await alEnfocar();
+      });
+
+      expect(InventoryService.estaUbicacionFinalizada)
+        .toHaveBeenCalledWith('A1');
+      expect(current.ubicacionFinalizada).toBe(true);
+
+      await act(async () => {
+        await current.onManualCode('123456');
+      });
+
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'Ubicación terminada',
+        expect.stringContaining('A1')
+      );
+
+      expect(InventoryService.validarArticulo).not.toHaveBeenCalled();
     });
 
   });

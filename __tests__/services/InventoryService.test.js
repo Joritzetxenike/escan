@@ -10,6 +10,7 @@ jest.mock('../../src/providers/DataProvider', () => ({
   obtenerArticulo: jest.fn(),
   obtenerUbicacion: jest.fn(),
   eliminarMovimiento: jest.fn(),
+  finalizarUbicacion: jest.fn(),
 }));
 
 jest.mock('expo-file-system/legacy', () => ({
@@ -285,6 +286,76 @@ describe('InventoryService', () => {
       );
 
       expect(resultado).toBe(true);
+    });
+
+  });
+
+
+  // =====================================================
+  // finalizarUbicacion
+  // =====================================================
+
+  describe('finalizarUbicacion', () => {
+
+    test('debe delegar la finalización al DataProvider', async () => {
+
+      DataProvider.finalizarUbicacion.mockResolvedValue(true);
+
+      const resultado =
+        await InventoryService.finalizarUbicacion(
+          '50100-111-Z101'
+        );
+
+      expect(DataProvider.finalizarUbicacion)
+        .toHaveBeenCalledWith('50100-111-Z101');
+
+      expect(resultado).toBe(true);
+    });
+
+  });
+
+
+  // =====================================================
+  // estaUbicacionFinalizada
+  // =====================================================
+
+  describe('estaUbicacionFinalizada', () => {
+
+    test('debe devolver true si la ubicación está en Fin', async () => {
+
+      DataProvider.obtenerUbicacion.mockResolvedValue({
+        seccion: '50100',
+        area: '111',
+        subzona: 'Z101',
+        stat: 'Fin',
+      });
+
+      const resultado =
+        await InventoryService.estaUbicacionFinalizada(
+          '50100-111-Z101'
+        );
+
+      expect(DataProvider.obtenerUbicacion)
+        .toHaveBeenCalledWith('50100-111-Z101');
+
+      expect(resultado).toBe(true);
+    });
+
+    test('debe devolver false si la ubicación no está en Fin', async () => {
+
+      DataProvider.obtenerUbicacion.mockResolvedValue({
+        seccion: '50100',
+        area: '111',
+        subzona: 'Z101',
+        stat: 'Inicio',
+      });
+
+      const resultado =
+        await InventoryService.estaUbicacionFinalizada(
+          '50100-111-Z101'
+        );
+
+      expect(resultado).toBe(false);
     });
 
   });

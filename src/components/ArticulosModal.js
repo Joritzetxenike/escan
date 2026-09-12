@@ -1,6 +1,9 @@
-import { Modal, View, Text, TouchableOpacity, ScrollView, TextInput, StyleSheet } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Modal, View, Text, TouchableOpacity, ScrollView, TextInput, StyleSheet, Alert } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { colors } from '../styles/styles';
+
+import InventoryService from '../services/InventoryService';
 
 export default function ArticulosModal({
   visible,
@@ -13,7 +16,44 @@ export default function ArticulosModal({
   onChangeValor,
   onGuardarEdicion,
   onEliminar,
+  codigoUbicacion,
 }) {
+  const [finalizada, setFinalizada] = useState(false);
+
+  const codigo = codigoUbicacion ?? titulo;
+
+  useEffect(() => {
+    if (!visible) {
+      setFinalizada(false);
+      return;
+    }
+
+    let activo = true;
+
+    (async () => {
+      try {
+        const terminada =
+          await InventoryService.estaUbicacionFinalizada(codigo);
+        if (activo) {
+          setFinalizada(terminada);
+        }
+      } catch (e) {
+        console.error('Error comprobando el estado de la ubicación:', e);
+      }
+    })();
+
+    return () => {
+      activo = false;
+    };
+  }, [visible, codigo]);
+
+  const avisoFinalizada = () => {
+    Alert.alert(
+      'Ubicación terminada',
+      `La ubicación ${codigo} está terminada y no admite cambios`
+    );
+  };
+
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onCerrar}>
       <View style={styles.overlay}>
@@ -52,13 +92,24 @@ export default function ArticulosModal({
                           onChangeText={onChangeValor}
                           autoFocus
                         />
-                        <TouchableOpacity onPress={() => onGuardarEdicion(index)} style={{ marginLeft: 4 }}>
+                        <TouchableOpacity
+                          onPress={() =>
+                            finalizada
+                              ? avisoFinalizada()
+                              : onGuardarEdicion(index)
+                          }
+                          style={{ marginLeft: 4 }}
+                        >
                           <Text style={{ color: colors.primary, fontWeight: 'bold', fontSize: 16 }}>✓</Text>
                         </TouchableOpacity>
                       </View>
                     ) : (
                       <TouchableOpacity
-                        onPress={() => onIniciarEdicion?.(index)}
+                        onPress={() =>
+                          finalizada
+                            ? avisoFinalizada()
+                            : onIniciarEdicion?.(index)
+                        }
                         style={[styles.cell, { flex: 0.8, alignItems: 'center' }]}
                       >
                         <Text style={{ fontSize: 14, fontWeight: '600', color: onIniciarEdicion ? colors.primary : colors.text }}>
@@ -69,7 +120,11 @@ export default function ArticulosModal({
 
                     {onEliminar && (
                       <TouchableOpacity
-                        onPress={() => onEliminar(index)}
+                        onPress={() =>
+                          finalizada
+                            ? avisoFinalizada()
+                            : onEliminar(index)
+                        }
                         style={[styles.cell, { flex: 0.6, alignItems: 'center' }]}
                       >
                         <MaterialIcons name="delete-outline" size={26} color={colors.danger} />

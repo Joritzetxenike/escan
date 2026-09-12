@@ -40,6 +40,22 @@ export default function ListaScreen() {
   /* ---------- EXPORTAR CSV ---------- */
   const exportarCsv = async (nombre) => {
     const uri = FileSystem.documentDirectory + nombre;
+    const ubicacion = nombre.replace(/\.csv$/i, '');
+
+    try {
+      await InventoryService.finalizarUbicacion(ubicacion);
+      Alert.alert(
+        'Ubicación terminada',
+        `La ubicación ${ubicacion} se ha marcado como terminada`
+      );
+    } catch (e) {
+      console.error('Error finalizando ubicación:', e);
+      Alert.alert(
+        'Aviso',
+        `No se pudo marcar la ubicación ${ubicacion} como terminada`
+      );
+    }
+
     try {
       await Sharing.shareAsync(uri, {
         mimeType: 'text/csv',
@@ -91,8 +107,23 @@ export default function ListaScreen() {
   };
 
   /* ---------- BORRAR REGISTRO INDIVIDUAL ---------- */
-  const borrarRegistro = (index) => {
+  const borrarRegistro = async (index) => {
     const reg = registros[index];
+
+    try {
+      const finalizada =
+        await InventoryService.estaUbicacionFinalizada(reg.ubicacion);
+
+      if (finalizada) {
+        Alert.alert(
+          'Ubicación terminada',
+          `La ubicación ${reg.ubicacion} está terminada y no admite borrados`
+        );
+        return;
+      }
+    } catch (e) {
+      console.error('No se pudo comprobar el estado de la ubicación:', e);
+    }
 
     Alert.alert(
       'Borrar registro',
@@ -155,6 +186,7 @@ export default function ListaScreen() {
         titulo={csvSeleccionado}
         articulos={registros}
         onCerrar={() => setModalVisible(false)}
+        codigoUbicacion={csvSeleccionado?.replace(/\.csv$/i, '')}
         onEliminar={borrarRegistro}
       />
     </View>

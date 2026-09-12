@@ -32,6 +32,14 @@ const InventoryDataProvider = {
   },
 
   /**
+   * Marca una ubicación como terminada ('Fin') y propaga el estado
+   * a su área/sección si todas sus hijas también están en 'Fin'.
+   */
+  async finalizarUbicacion(ubicacion) {
+    throw new Error('finalizarUbicacion() no implementado');
+  },
+
+  /**
    * Devuelve el estado de todas las ubicaciones.
    */
   async obtenerEstadoUbicaciones() {

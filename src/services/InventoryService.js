@@ -32,6 +32,15 @@ const InventoryService = {
     return await DataProvider.obtenerArticulosUbicacion(codigoUbicacion);
   },
 
+  async finalizarUbicacion(codigoUbicacion) {
+    return await DataProvider.finalizarUbicacion(codigoUbicacion);
+  },
+
+  async estaUbicacionFinalizada(codigoUbicacion) {
+    const ubicacion = await DataProvider.obtenerUbicacion(codigoUbicacion);
+    return ubicacion?.stat === 'Fin';
+  },
+
   async guardarMovimiento(movimiento) {
     const resultado = await DataProvider.guardarMovimiento(movimiento);
     await CsvProvider.guardarMovimiento(movimiento).catch(e => console.error('Error guardando en CSV:', e));

@@ -84,6 +84,92 @@ const SupabaseProvider = {
     }));
   },
 
+  async finalizarUbicacion(ubicacion) {
+    const [seccion, area, subzona] = ubicacion.split('-');
+
+    if (!seccion || !area || !subzona) {
+      throw new Error('Código de ubicación inválido');
+    }
+
+    // ==========================================
+    // 1. UBICACIÓN => Fin
+    // ==========================================
+
+    const { error: errorUbicacion } = await supabase
+      .from('maestroUbicacion')
+      .update({ stat: 'Fin' })
+      .eq('seccion', seccion)
+      .eq('area', area)
+      .eq('subzona', subzona)
+      .select();
+
+    if (errorUbicacion) throw errorUbicacion;
+
+    // ==========================================
+    // 2. Comprobar si todas las ubicaciones
+    //    del área están en 'Fin'
+    // ==========================================
+
+    const { data: ubicaciones, error: errorUbicaciones } = await supabase
+      .from('maestroUbicacion')
+      .select('subzona, stat')
+      .eq('seccion', seccion)
+      .eq('area', area);
+
+    if (errorUbicaciones) throw errorUbicaciones;
+
+    const todasUbicacionesEnFin =
+      ubicaciones.length > 0 &&
+      ubicaciones.every((u) => u.stat === 'Fin');
+
+    if (!todasUbicacionesEnFin) return true;
+
+    // ==========================================
+    // 3. ÁREA => Fin
+    // ==========================================
+
+    const { error: errorArea } = await supabase
+      .from('maestroArea')
+      .update({ stat: 'Fin' })
+      .eq('seccion', seccion)
+      .eq('area', area)
+      .select();
+
+    if (errorArea) throw errorArea;
+
+    // ==========================================
+    // 4. Comprobar si todas las áreas
+    //    de la sección están en 'Fin'
+    // ==========================================
+
+    const { data: areas, error: errorAreas } = await supabase
+      .from('maestroArea')
+      .select('area, stat')
+      .eq('seccion', seccion);
+
+    if (errorAreas) throw errorAreas;
+
+    const todasAreasEnFin =
+      areas.length > 0 &&
+      areas.every((a) => a.stat === 'Fin');
+
+    if (!todasAreasEnFin) return true;
+
+    // ==========================================
+    // 5. SECCIÓN => Fin
+    // ==========================================
+
+    const { error: errorSeccion } = await supabase
+      .from('maestroSeccion')
+      .update({ stat: 'Fin' })
+      .eq('seccion', seccion)
+      .select();
+
+    if (errorSeccion) throw errorSeccion;
+
+    return true;
+  },
+
   async obtenerEstadoUbicaciones() {
   const { data, error } = await supabase
     .from('maestroSeccion')
