@@ -111,7 +111,12 @@ export default function ScannerView({
 
         {/* ---------- MARCO ---------- */}
 
-        <View style={styles.scanFrame} />
+        <View
+          style={[
+            styles.scanFrame,
+            state.tipo === 'ubicacion' && styles.scanFrameSquare,
+          ]}
+        />
 
 
         {/* ---------- TEXTO ---------- */}

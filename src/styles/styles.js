@@ -90,6 +90,13 @@ homeContent: {
     borderColor: '#FFFFFF',
     borderRadius: 10,
   },
+  scanFrameSquare: {
+    width: 300,
+    height: 300,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    borderRadius: 10,
+  },
   backButton: {
     position: 'absolute',
     top: 40,

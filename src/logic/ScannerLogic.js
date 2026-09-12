@@ -161,6 +161,7 @@ export function useScannerLogic(navigation, route) {
     permission,
     requestPermission,
 
+    tipo,
     hintText,
 
     volver,
