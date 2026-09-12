@@ -112,6 +112,7 @@ El escáner requiere que un mismo código se lea **10 veces consecutivas en 1200
 | `Home`    | HomeScreen     | Escáner de ubicación, escaneo de artículos, últimos artículos de la sesión  |
 | `Lista`   | ListaScreen    | Archivos CSV guardados en el dispositivo (abrir, exportar, borrar con aviso y sync a BD) |
 | `Estado`  | EstadoScreen   | Árbol sección → área → ubicación cargado por niveles y con artículos por ubicación |
+| `EstadosResumen` | EstadosResumenScreen | Porcentaje de secciones, áreas y ubicaciones en cada estado (Fin/Proceso/Inicio); se abre desde el botón «Resumen de estados» de EstadoScreen |
 | `Scanner` | ScannerScreen  | Cámara con overlay para escanear códigos                                    |
 
 ### EstadoScreen (carga por niveles)
@@ -127,6 +128,12 @@ El escáner requiere que un mismo código se lea **10 veces consecutivas en 1200
 
 - El borrado **solo** se realiza desde la pestaña Lista (CSV): al eliminar una fila se muestra un aviso de que **también se borrará de la base de datos** y se elimina en ambos sitios.
 - En el modal de artículos de Estado ya no aparece la columna **Eliminar**.
+
+### EstadosResumen (porcentajes por estado)
+
+- Se abre con el botón **«Resumen de estados»** al inicio de `EstadoScreen` (pestaña Estado).
+- Hace **una sola petición** (`obtenerEstadoUbicaciones`, árbol anidado) y muestra para secciones, áreas y ubicaciones el total y el **porcentaje** en cada estado (`Fin`, `Proceso`, `Inicio`) con su barra de progreso.
+- El cálculo vive en `src/helpers/estadosResumenHelper.js` (función pura `resumirEstados`).
 
 ---
 

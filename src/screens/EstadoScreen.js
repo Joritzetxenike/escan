@@ -238,6 +238,38 @@ export default function EstadoScreen({ navigation }) {
         }}
       >
 
+        <TouchableOpacity
+          onPress={() =>
+            navigation.navigate('EstadosResumen')
+          }
+          activeOpacity={0.7}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: colors.primary,
+            paddingVertical: 12,
+            borderRadius: 8,
+            marginBottom: 14,
+          }}
+        >
+          <MaterialIcons
+            name="assessment"
+            size={22}
+            color="#FFFFFF"
+          />
+          <Text
+            style={{
+              color: "#fff",
+              fontWeight: "bold",
+              fontSize: 15,
+              marginLeft: 8,
+            }}
+          >
+            Resumen de estados
+          </Text>
+        </TouchableOpacity>
+
         {secciones.map((seccion) => {
 
           const seccionAbierta =

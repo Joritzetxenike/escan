@@ -29,3 +29,13 @@ export async function obtenerUbicacionesDeArea(seccion, area) {
     throw error;
   }
 }
+
+export async function obtenerEstadoUbicaciones() {
+  try {
+    const datos = await DataProvider.obtenerEstadoUbicaciones();
+    return datos;
+  } catch (error) {
+    console.error('❌ obtenerEstadoUbicaciones:', error);
+    throw error;
+  }
+}
