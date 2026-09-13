@@ -7,7 +7,23 @@
 - [ ] **Renombrar app (opción 1)**: cambiar `expo.name` en `app.json` al nuevo nombre, sin tocar `android.package` (`conteo.koxka`), `extra.eas.projectId`, `updates.url` ni `GITHUB_REPO` de `updateService.js`. Requiere un `eas build` nuevo (el nombre se incrusta en el APK en build time; un OTA no lo cambia en el launcher). Preparar tag `v1.0.5` para el build.
   - Prioridad: baja.
 
-- [ ] **Import masivo de `maestroArticulo`**: preparar la hoja `Articulos` (`ITEM | DSCA | TIPO`) en el Excel y ejecutar `node scripts/importExcel.js` para importar el catálogo.
+- [x] **Import masivo de `maestroArticulo`** (HECHO): 211.578 artículos importados (0→211.578) desde `maestro_articulos.xlsx` con la hoja `articulos_escan` (item=col1, filtrar `Fantasma==2`, `tipo` solo MRP/SIC, `dsca='-'`). 67.438 filas descartadas por filtro. `maestro_articulos.xlsx` añadido a `.gitignore`.
+
+- [ ] **Descripción de artículos (`dsca`)**: decidir qué hacer con la descripción más adelante. Hoy se importa con `'-'` como placeholder (luego quizás se borre/rellene).
+  - Prioridad: baja.
+
+- [ ] **Filtrar más los artículos** (NOTA para el usuario al crear el Excel): refinar los filtros del maestro de artículos antes del import (fantasma, método, posibles exclusores de ítems, etc.).
+  - Prioridad: media.
+
+## Optimización de peticiones (NO por ahora)
+
+> Reducir round-trips a Supabase para agilizar operaciones y evitar rate-limit.
+
+- [ ] **Agrupar operaciones en RPC de Postgres**: `guardarMovimiento` hoy hace 4 peticiones (upsert en `conteo` + update `maestroUbicacion`/`maestroArea`/`maestroSeccion`) y `finalizarUbicacion` hasta 5. Se podrían implementar funciones SQL (`guardar_movimiento`, `finalizar_ubicacion`) y llamarlas con `.rpc()` en una única transacción.
+  - Prioridad: media.
+
+- [ ] **Optimizar/quitar selects redundantes**: revisar selects anidados y paginación de `obtenerUltimosMovimientos`; valorar caché local + cola offline (AsyncStorage con batcheo) para no disparar 1 request por escaneo.
+  - Impacto principal en `SupabaseProvider.js` y sus tests.
   - Prioridad: media.
 
 ## Optimización de BD (NO hacer por ahora)

@@ -37,6 +37,7 @@ yarn-error.*
 # import
 /plantilla_import.xlsx
 /excelQR.xlsx
+/maestro_articulos.xlsx
 
 # typescript
 *.tsbuildinfo

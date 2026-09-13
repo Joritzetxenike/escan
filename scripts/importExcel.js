@@ -5,8 +5,11 @@ const XLSX = require('xlsx');
 
 const DEFAULT_FILE = path.resolve(__dirname, '..', 'excelQR.xlsx');
 const TEMPLATE_FILE = path.resolve(__dirname, '..', 'plantilla_import.xlsx');
-const BATCH_SIZE = 500;
+const BATCH_SIZE = 2000;
 const STAT_INICIO = 'Inicio';
+const DSCA_DEFECTO = '-';
+
+const TIPOS_VALIDOS = ['MRP', 'SIC'];
 
 function normalizarTexto(t) {
   return String(t == null ? '' : t)
@@ -24,9 +27,14 @@ function construirMapa(headers) {
   const mapa = {};
   headers.forEach((original, i) => {
     const n = normalizarTexto(original);
-    if (n) mapa[n] = i;
+    if (n && mapa[n] === undefined) mapa[n] = i;
   });
   return mapa;
+}
+
+function indiceDe(headers, nombre) {
+  const h = normalizarHeaders(headers);
+  return h.indexOf(nombre);
 }
 
 function tipoDeHoja(headers) {
@@ -34,6 +42,7 @@ function tipoDeHoja(headers) {
   const tiene = (...keys) => keys.every((k) => h.includes(k));
   if (tiene('SECCION', 'AREA', 'SUBZONA')) return 'ubicaciones';
   if (tiene('ITEM', 'DSCA')) return 'articulos';
+  if (tiene('ARTICULO', 'FANTASMA')) return 'articulos_escan';
   return null;
 }
 
@@ -110,8 +119,46 @@ function leerArticulos(sheet) {
   return { articulos, problemas };
 }
 
+function leerArticulosEscan(sheet) {
+  const filas = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+  const headers = (filas[0] || []).map((h) => String(h == null ? '' : h));
+  const idxArticulo = indiceDe(headers, 'ARTICULO');
+  const idxFantasma = indiceDe(headers, 'FANTASMA');
+  const hNorm = normalizarHeaders(headers);
+  const idxMetodo = hNorm.findIndex((h) => h.includes('PLANIFICACI'));
+  const idxTipo = idxMetodo >= 0 ? idxMetodo + 1 : -1;
+  const articulos = [];
+  const problemas = [];
+  let filtradas = 0;
+
+  filas.slice(1).forEach((fila, i) => {
+    const item = idxArticulo >= 0 ? normalizar(fila[idxArticulo]) : '';
+    const fantasma = idxFantasma >= 0 ? String(fila[idxFantasma]).trim() : '';
+    const tipo = idxTipo >= 0 ? String(fila[idxTipo]).trim().toUpperCase() : '';
+
+    if (!item) {
+      problemas.push(`Fila ${i + 2}: falta ARTICULO`);
+      return;
+    }
+
+    if (fantasma !== '2') {
+      filtradas++;
+      return;
+    }
+
+    if (!TIPOS_VALIDOS.includes(tipo)) {
+      filtradas++;
+      return;
+    }
+
+    articulos.push({ item, dsca: DSCA_DEFECTO, tipo });
+  });
+
+  return { articulos, problemas, filtradas };
+}
+
 function identificarHojas(wb) {
-  const resultado = { ubicaciones: [], articulos: [] };
+  const resultado = { ubicaciones: [], articulos: [], articulosEscan: [] };
   for (const nombre of wb.SheetNames) {
     const filas = XLSX.utils.sheet_to_json(wb.Sheets[nombre], {
       header: 1,
@@ -121,6 +168,8 @@ function identificarHojas(wb) {
     const tipo = tipoDeHoja(headers);
     if (tipo === 'ubicaciones') resultado.ubicaciones.push(wb.Sheets[nombre]);
     if (tipo === 'articulos') resultado.articulos.push(wb.Sheets[nombre]);
+    if (tipo === 'articulos_escan')
+      resultado.articulosEscan.push(wb.Sheets[nombre]);
   }
   return resultado;
 }
@@ -234,7 +283,7 @@ async function main() {
   const wb = XLSX.readFile(filePath);
   const hojas = identificarHojas(wb);
 
-  if (!hojas.ubicaciones.length && !hojas.articulos.length) {
+  if (!hojas.ubicaciones.length && !hojas.articulos.length && !hojas.articulosEscan.length) {
     console.error('No se encontró ninguna hoja reconocible.');
     process.exit(1);
   }
@@ -242,6 +291,7 @@ async function main() {
   let ubicaciones = [];
   let articulos = [];
   const problemas = [];
+  let filtradas = 0;
 
   for (const sheet of hojas.ubicaciones) {
     const r = leerUbicaciones(sheet);
@@ -252,6 +302,12 @@ async function main() {
     const r = leerArticulos(sheet);
     articulos = articulos.concat(r.articulos);
     problemas.push(...r.problemas);
+  }
+  for (const sheet of hojas.articulosEscan) {
+    const r = leerArticulosEscan(sheet);
+    articulos = articulos.concat(r.articulos);
+    problemas.push(...r.problemas);
+    filtradas += r.filtradas;
   }
 
   const secciones = unicos(ubicaciones, ['seccion']);
@@ -266,6 +322,9 @@ async function main() {
 
   if (dryRun) {
     console.log(`\n=== DRY RUN: ${path.basename(filePath)} ===`);
+    if (filtradas) {
+      console.log(`Filas descartadas por filtro (Fantasma≠2 o tipo no MRP/SIC): ${filtradas}`);
+    }
     if (ubicaciones.length) imprimirPreview('UBICACIONES', ubicaciones, { secciones, areas, ubicaciones });
     if (articulos.length) {
       console.log(`\n--- ARTICULOS (${articulos.length} filas) ---`);
