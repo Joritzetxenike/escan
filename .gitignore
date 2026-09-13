@@ -34,6 +34,10 @@ yarn-error.*
 .env*.local
 .env
 
+# import
+/plantilla_import.xlsx
+/excelQR.xlsx
+
 # typescript
 *.tsbuildinfo
 

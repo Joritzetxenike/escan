@@ -290,6 +290,7 @@ En cada push/PR a `master`: `npm ci` + `npm test` con las env vars de Supabase i
 EXPO_PUBLIC_SUPABASE_URL=https://<proyecto>.supabase.co
 EXPO_PUBLIC_SUPABASE_KEY=<anon_key>
 EXPO_PUBLIC_APP_ENV=development
+SUPABASE_SERVICE_ROLE_KEY=<service_role_key>   # solo para el script de import
 ```
 
 - `.env` está en `.gitignore`; **no se sube al repo**.
@@ -311,7 +312,23 @@ npm run ios      # Iniciar en iOS
 npm run android  # Iniciar en Android
 npm run web      # Iniciar en web
 npm test         # Ejecutar tests con Jest
+npm run import             # Import masivo desde excelQR.xlsx (o pasar ruta: npm run import -- ruta.xlsx)
+npm run import -- --dry-run # Validar el Excel y ver resumen sin escribir
+npm run import:template     # Generar plantilla_import.xlsx (hojas Datos QR y Articulos)
 ```
+
+### Import masivo (Excel → Supabase)
+
+`scripts/importExcel.js` importa **ubicaciones** y (opcionalmente) **catálogo de artículos** desde un `.xlsx`:
+
+- **Detección por columnas** (no depende del nombre de hoja):
+  - Ubicaciones: hoja con `SECCIÓN`, `ÁREA`, `SUBZONA` (+ `CÓDIGO` opcional que se valida con `seccion-area-subzona`).
+  - Artículos: hoja con `ITEM`, `DSCA`, `TIPO` (`TIPO` opcional, p. ej. `SIC`).
+- Inserta en **orden de FKs**: `maestroSeccion` → `maestroArea` → `maestroUbicacion` (con `stat: 'Inicio'`) y `maestroArticulo`.
+- **Idempotente**: `upsert` con `ignoreDuplicates` — las filas ya existentes NO se tocan ni se resetea su `stat`.
+- Usa `SUPABASE_SERVICE_ROLE_KEY` (omite RLS). Sin ella usa el anon key y puede fallar por políticas de RLS. La consigues en Supabase → Project Settings → API → `service_role` (es secreta, no compartir).
+- La columna `tipo` es un enum Postgres: valores fuera del enum fallarán (habría que extenderlo vía SQL).
+- `conteo` no se modifica.
 
 ### Publicar un update OTA de prueba
 
