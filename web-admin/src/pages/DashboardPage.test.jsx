@@ -2,19 +2,22 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import DashboardPage from './DashboardPage';
 import { useAuth } from '../auth/AuthContext';
-import { listarUbicaciones, obtenerResumen } from '../services/inventoryApi';
+import { obtenerResumen } from '../services/inventoryApi';
 
 vi.mock('../auth/AuthContext', () => ({
   useAuth: vi.fn(),
 }));
 
 vi.mock('../services/inventoryApi', () => ({
-  listarUbicaciones: vi.fn(),
   obtenerResumen: vi.fn(),
 }));
 
 vi.mock('../components/LocationDetail', () => ({
   default: () => <div>Detalle de ubicación</div>,
+}));
+
+vi.mock('../components/LocationTree', () => ({
+  default: () => <div>Árbol de ubicaciones</div>,
 }));
 
 const emptyStatusSummary = {
@@ -39,18 +42,6 @@ describe('DashboardPage', () => {
       signOut: vi.fn(),
     });
     obtenerResumen.mockResolvedValue(resumen);
-    listarUbicaciones.mockResolvedValue({
-      items: [
-        {
-          seccion: '01',
-          area: 'A',
-          subzona: 'Z1',
-          stat: 'Inicio',
-          ubicacion: '01-A-Z1',
-        },
-      ],
-      total: 1,
-    });
   });
 
   test('inicia en consulta y permite activar edición', async () => {

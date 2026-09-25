@@ -90,13 +90,18 @@ export default function LocationDetail({ location, editMode, onUpdated }) {
     setError(null);
 
     try {
-      await actualizarEstadoUbicacion({
+      const data = await actualizarEstadoUbicacion({
         seccion: location.seccion,
         area: location.area,
         subzona: location.subzona,
         stat: selectedStatus,
       });
-      onUpdated({ ...location, stat: selectedStatus });
+      onUpdated({
+        ...location,
+        stat: selectedStatus,
+        areaStat: data?.area_stat,
+        seccionStat: data?.seccion_stat,
+      });
     } catch (saveError) {
       setError(saveError.message || 'No se pudo actualizar el estado');
     } finally {

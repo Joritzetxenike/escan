@@ -65,7 +65,12 @@ describe('LocationDetail', () => {
         stat: 'Fin',
       });
     });
-    expect(onUpdated).toHaveBeenCalledWith({ ...location, stat: 'Fin' });
+    expect(onUpdated).toHaveBeenCalledWith({
+      ...location,
+      stat: 'Fin',
+      areaStat: 'Proceso',
+      seccionStat: 'Proceso',
+    });
   });
 
   test('mantiene el modo consulta sin editor', async () => {

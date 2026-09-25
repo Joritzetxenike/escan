@@ -23,6 +23,51 @@ export async function obtenerResumen() {
   return resumirEstados(data || []);
 }
 
+export async function listarSecciones() {
+  const client = getSupabase();
+  const { data, error } = await client
+    .from('maestroSeccion')
+    .select('seccion, stat')
+    .order('seccion', { ascending: true });
+
+  if (error) {
+    throw error;
+  }
+
+  return data || [];
+}
+
+export async function listarAreas(seccion) {
+  const client = getSupabase();
+  const { data, error } = await client
+    .from('maestroArea')
+    .select('area, stat')
+    .eq('seccion', seccion)
+    .order('area', { ascending: true });
+
+  if (error) {
+    throw error;
+  }
+
+  return data || [];
+}
+
+export async function listarUbicacionesDeArea(seccion, area) {
+  const client = getSupabase();
+  const { data, error } = await client
+    .from('maestroUbicacion')
+    .select('subzona, stat')
+    .eq('seccion', seccion)
+    .eq('area', area)
+    .order('subzona', { ascending: true });
+
+  if (error) {
+    throw error;
+  }
+
+  return data || [];
+}
+
 export async function listarUbicaciones({
   seccion = '',
   area = '',

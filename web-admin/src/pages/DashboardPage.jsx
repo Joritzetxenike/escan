@@ -1,27 +1,18 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
-import { obtenerResumen, listarUbicaciones } from '../services/inventoryApi';
-import Filters, { initialFilters } from '../components/Filters';
+import { obtenerResumen } from '../services/inventoryApi';
 import LocationDetail from '../components/LocationDetail';
-import LocationTable from '../components/LocationTable';
-import Pagination from '../components/Pagination';
+import LocationTree from '../components/LocationTree';
 import SummaryCard from '../components/SummaryCard';
-
-const PAGE_SIZE = 25;
 
 export default function DashboardPage() {
   const { user, signOut } = useAuth();
   const [editMode, setEditMode] = useState(false);
   const [summary, setSummary] = useState(null);
-  const [locations, setLocations] = useState([]);
-  const [totalLocations, setTotalLocations] = useState(0);
-  const [filters, setFilters] = useState(initialFilters);
-  const [page, setPage] = useState(1);
   const [selectedLocation, setSelectedLocation] = useState(null);
+  const [updatedLocation, setUpdatedLocation] = useState(null);
   const [loadingSummary, setLoadingSummary] = useState(true);
-  const [loadingLocations, setLoadingLocations] = useState(true);
   const [summaryError, setSummaryError] = useState(null);
-  const [locationsError, setLocationsError] = useState(null);
 
   const loadSummary = useCallback(async () => {
     setLoadingSummary(true);
@@ -37,54 +28,13 @@ export default function DashboardPage() {
     }
   }, []);
 
-  const loadLocations = useCallback(async () => {
-    setLoadingLocations(true);
-
-    try {
-      const result = await listarUbicaciones({
-        ...filters,
-        page,
-        pageSize: PAGE_SIZE,
-      });
-      setLocations(result.items);
-      setTotalLocations(result.total);
-      setLocationsError(null);
-    } catch (loadError) {
-      setLocationsError(
-        loadError.message || 'No se pudieron cargar las ubicaciones',
-      );
-    } finally {
-      setLoadingLocations(false);
-    }
-  }, [filters, page]);
-
   useEffect(() => {
     loadSummary();
   }, [loadSummary]);
 
-  useEffect(() => {
-    loadLocations();
-  }, [loadLocations]);
-
-  const updateFilters = (nextFilters) => {
-    setPage(1);
-    setFilters(nextFilters);
-  };
-
-  const refresh = () => {
-    loadSummary();
-    loadLocations();
-  };
-
-  const handleStatusUpdated = (updatedLocation) => {
-    setSelectedLocation(updatedLocation);
-    setLocations((current) =>
-      current.map((location) =>
-        location.ubicacion === updatedLocation.ubicacion
-          ? updatedLocation
-          : location,
-      ),
-    );
+  const handleStatusUpdated = (nextLocation) => {
+    setSelectedLocation(nextLocation);
+    setUpdatedLocation(nextLocation);
     loadSummary();
   };
 
@@ -116,7 +66,6 @@ export default function DashboardPage() {
 
       <main className="content">
         {summaryError && <div className="banner-error">{summaryError}</div>}
-        {locationsError && <div className="banner-error">{locationsError}</div>}
 
         <section className="mode-banner">
           <div>
@@ -146,38 +95,28 @@ export default function DashboardPage() {
           <div className="section-heading">
             <div>
               <h2>Ubicaciones</h2>
-              <p>Consulta los conteos y abre una ubicación para ver sus artículos.</p>
+              <p>Despliega una sección para ver sus áreas y ubicaciones.</p>
             </div>
           </div>
-          <Filters
-            value={filters}
-            onChange={updateFilters}
-            onClear={refresh}
-          />
-          <LocationTable
-            locations={locations}
-            selectedLocation={selectedLocation}
-            onSelect={setSelectedLocation}
-            loading={loadingLocations}
-            error={locationsError}
-            editMode={editMode}
-          />
-          <Pagination
-            page={page}
-            pageSize={PAGE_SIZE}
-            total={totalLocations}
-            onPage={setPage}
-          />
-        </section>
+          <div className="locations-layout">
+            <div className="locations-list">
+              <LocationTree
+                selectedLocation={selectedLocation}
+                onSelect={setSelectedLocation}
+                updatedLocation={updatedLocation}
+              />
+            </div>
 
-        {selectedLocation && (
-          <LocationDetail
-            key={`${selectedLocation.ubicacion}-${editMode ? 'edit' : 'read'}`}
-            location={selectedLocation}
-            editMode={editMode}
-            onUpdated={handleStatusUpdated}
-          />
-        )}
+            {selectedLocation && (
+              <LocationDetail
+                key={`${selectedLocation.ubicacion}-${editMode ? 'edit' : 'read'}`}
+                location={selectedLocation}
+                editMode={editMode}
+                onUpdated={handleStatusUpdated}
+              />
+            )}
+          </div>
+        </section>
       </main>
     </div>
   );
