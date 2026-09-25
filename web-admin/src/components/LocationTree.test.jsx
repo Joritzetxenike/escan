@@ -18,7 +18,9 @@ describe('LocationTree', () => {
     vi.clearAllMocks();
     listarSecciones.mockResolvedValue([{ seccion: '01', stat: 'Inicio' }]);
     listarAreas.mockResolvedValue([{ area: 'A', stat: 'Proceso' }]);
-    listarUbicacionesDeArea.mockResolvedValue([{ subzona: 'Z1', stat: 'Fin' }]);
+    listarUbicacionesDeArea.mockResolvedValue([
+      { seccion: '01', area: 'A', subzona: 'Z1', stat: 'Fin' },
+    ]);
   });
 
   test('despliega por niveles y carga datos de forma perezosa', async () => {
@@ -37,7 +39,12 @@ describe('LocationTree', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /01-A-Z1/i }));
     expect(onSelect).toHaveBeenCalledWith(
-      expect.objectContaining({ ubicacion: '01-A-Z1' }),
+      expect.objectContaining({
+        seccion: '01',
+        area: 'A',
+        subzona: 'Z1',
+        ubicacion: '01-A-Z1',
+      }),
     );
   });
 

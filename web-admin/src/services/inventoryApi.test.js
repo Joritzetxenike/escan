@@ -3,6 +3,7 @@ import { getSupabase } from '../lib/supabase';
 import {
   actualizarEstadoUbicacion,
   listarUbicaciones,
+  listarUbicacionesDeArea,
   obtenerArticulosUbicacion,
   obtenerResumen,
 } from './inventoryApi';
@@ -74,6 +75,26 @@ describe('inventoryApi', () => {
 
     expect(result.items[0].ubicacion).toBe('01-A-Z1');
     expect(query.range).toHaveBeenCalledWith(10, 19);
+  });
+
+  test('lista ubicaciones de un área con todos los campos', async () => {
+    query = createQuery({
+      data: [{ seccion: '01', area: 'A', subzona: 'Z1', stat: 'Fin' }],
+      error: null,
+    });
+    client.from.mockReturnValue(query);
+
+    const result = await listarUbicacionesDeArea('01', 'A');
+
+    expect(query.select).toHaveBeenCalledWith('seccion, area, subzona, stat');
+    expect(query.eq).toHaveBeenCalledWith('seccion', '01');
+    expect(query.eq).toHaveBeenCalledWith('area', 'A');
+    expect(result[0]).toEqual({
+      seccion: '01',
+      area: 'A',
+      subzona: 'Z1',
+      stat: 'Fin',
+    });
   });
 
   test('mapea artículos de una ubicación', async () => {

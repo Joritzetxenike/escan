@@ -56,7 +56,7 @@ export async function listarUbicacionesDeArea(seccion, area) {
   const client = getSupabase();
   const { data, error } = await client
     .from('maestroUbicacion')
-    .select('subzona, stat')
+    .select('seccion, area, subzona, stat')
     .eq('seccion', seccion)
     .eq('area', area)
     .order('subzona', { ascending: true });
