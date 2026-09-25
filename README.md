@@ -366,3 +366,4 @@ Cobertura actual: `ScannerService`, `InventoryService` (incl. `validarArticulo` 
 - `domain/models/` y `domain/validators/` están vacíos (planificados).
 - La clave de Supabase en `.env` es una **anon key** (pública), diseñada para usarse con Row Level Security.
 - La petición del `UpdateModal` corre en un `useEffect` de `Main.js` solo cuando `EXPO_PUBLIC_APP_ENV === 'production'`, es decir, únicamente en la APK desplegada.
+

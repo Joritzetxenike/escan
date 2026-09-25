@@ -17,7 +17,7 @@
 
 ## Visualización de datos vía web
 
-- [ ] **Crear un panel web administrativo separado**: iniciar una aplicación React + Vite, responsive y sin módulos nativos de la app móvil.
+- [x] **Crear un panel web administrativo separado**: iniciar una aplicación React + Vite, responsive y sin módulos nativos de la app móvil.
   - Reutilizar el cliente Supabase y los mappings existentes.
   - Prioridad: alta.
 
@@ -27,29 +27,30 @@
   - Proteger consultas y cambios con RLS; nunca incluir `service_role` en el panel.
   - Prioridad: alta.
 
-- [ ] **Crear consultas de consulta y resumen**:
+- [x] **Crear consultas de consulta y resumen**:
   - Obtener totales y porcentajes de ubicaciones en `Inicio`, `Proceso` y `Fin`.
   - Permitir buscar y filtrar por sección, área, ubicación y estado.
   - Reutilizar la lógica de `obtenerEstadoUbicaciones()` y `resumirEstados()`.
   - Prioridad: alta.
 
-- [ ] **Permitir consultar los artículos contados**:
+- [x] **Permitir consultar los artículos contados**:
   - Navegar desde el resumen hasta sección → área → ubicación.
   - Mostrar código, descripción, tipo y cantidad de cada artículo contado.
   - Reutilizar `obtenerArticulosUbicacion()` con paginación.
   - Prioridad: alta.
 
-- [ ] **Permitir cambiar el estado de una ubicación**:
+- [x] **Permitir cambiar el estado de una ubicación**:
   - Seleccionar `Inicio`, `Proceso` o `Fin`.
   - Pedir confirmación y actualizar la pantalla después del cambio.
   - Prioridad: alta.
 
-- [ ] **Propagar automáticamente los estados**:
+- [x] **Propagar automáticamente los estados**:
   - Crear una RPC transaccional para actualizar la ubicación, área y sección.
   - Área `Fin` cuando todas sus ubicaciones estén `Fin`.
   - Área `Inicio` cuando todas estén `Inicio`; en cualquier mezcla, `Proceso`.
   - Aplicar la misma regla a las áreas para calcular la sección.
   - Si falla alguna actualización, no debe quedar ninguna modificación parcial.
+  - La RPC y la serialización por sección están implementadas; falta aplicar y verificar contra Supabase.
   - Prioridad: alta.
 
 - [ ] **Gestionar errores y permisos**:
@@ -63,6 +64,7 @@
   - Navegación hasta los artículos contados.
   - Cambio de estado y propagación a área/sección.
   - RLS, autenticación, errores y reversión de la transacción.
+  - Las pruebas unitarias web están creadas; las pruebas de integración Supabase siguen pendientes.
   - Prioridad: media.
 
 - [ ] **Preparar despliegue web**:
