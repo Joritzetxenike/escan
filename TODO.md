@@ -15,6 +15,124 @@
 - [ ] **Filtrar más los artículos** (NOTA para el usuario al crear el Excel): refinar los filtros del maestro de artículos antes del import (fantasma, método, posibles exclusores de ítems, etc.).
   - Prioridad: media.
 
+## Visualización de datos vía web
+
+- [ ] **Crear un panel web administrativo separado**: iniciar una aplicación React + Vite, responsive y sin módulos nativos de la app móvil.
+  - Reutilizar el cliente Supabase y los mappings existentes.
+  - Prioridad: alta.
+
+- [ ] **Configurar autenticación de administradores**:
+  - Inicio de sesión mediante Supabase Auth.
+  - Identificar administradores mediante un rol de backend.
+  - Proteger consultas y cambios con RLS; nunca incluir `service_role` en el panel.
+  - Prioridad: alta.
+
+- [ ] **Crear consultas de consulta y resumen**:
+  - Obtener totales y porcentajes de ubicaciones en `Inicio`, `Proceso` y `Fin`.
+  - Permitir buscar y filtrar por sección, área, ubicación y estado.
+  - Reutilizar la lógica de `obtenerEstadoUbicaciones()` y `resumirEstados()`.
+  - Prioridad: alta.
+
+- [ ] **Permitir consultar los artículos contados**:
+  - Navegar desde el resumen hasta sección → área → ubicación.
+  - Mostrar código, descripción, tipo y cantidad de cada artículo contado.
+  - Reutilizar `obtenerArticulosUbicacion()` con paginación.
+  - Prioridad: alta.
+
+- [ ] **Permitir cambiar el estado de una ubicación**:
+  - Seleccionar `Inicio`, `Proceso` o `Fin`.
+  - Pedir confirmación y actualizar la pantalla después del cambio.
+  - Prioridad: alta.
+
+- [ ] **Propagar automáticamente los estados**:
+  - Crear una RPC transaccional para actualizar la ubicación, área y sección.
+  - Área `Fin` cuando todas sus ubicaciones estén `Fin`.
+  - Área `Inicio` cuando todas estén `Inicio`; en cualquier mezcla, `Proceso`.
+  - Aplicar la misma regla a las áreas para calcular la sección.
+  - Si falla alguna actualización, no debe quedar ninguna modificación parcial.
+  - Prioridad: alta.
+
+- [ ] **Gestionar errores y permisos**:
+  - Mostrar estados de carga, vacío y error.
+  - Impedir modificaciones no autorizadas o sobre ubicaciones inexistentes.
+  - Informar claramente cuando otro administrador ya haya realizado el cambio.
+  - Prioridad: media.
+
+- [ ] **Añadir pruebas**:
+  - Resumen y filtros.
+  - Navegación hasta los artículos contados.
+  - Cambio de estado y propagación a área/sección.
+  - RLS, autenticación, errores y reversión de la transacción.
+  - Prioridad: media.
+
+- [ ] **Preparar despliegue web**:
+  - Build de producción, variables públicas de Supabase y despliegue del panel.
+  - Integrar el build y las pruebas en CI/CD.
+  - Documentar uso, configuración y seguridad en `README.md`.
+  - Prioridad: media.
+
+## Conectividad: CSV local y sincronización diferida
+
+- [ ] **P0. Hacer que el CSV sea la fuente local de movimientos**:
+  - Escribir el CSV antes de intentar cualquier operación con Supabase.
+  - Mantener el formato actual de tres columnas para no romper la exportación.
+  - Actualizar el CSV al guardar, editar o eliminar un artículo.
+  - Permitir escanear sin conexión y conservar los datos tras reiniciar la app.
+  - Prioridad: alta.
+
+- [ ] **P0. Mantener los dos maestros locales**:
+  - Sincronizar `maestroUbicacion` y `maestroArticulo` cuando haya conexión.
+  - Guardarlos en archivos JSON separados del CSV de movimientos.
+  - Usarlos para validar códigos conocidos y obtener descripción/tipo.
+  - Si no existe un código en la copia local, aceptarlo provisionalmente como pendiente de validación.
+  - Prioridad: alta.
+
+- [ ] **P0. Crear la cola de operaciones pendientes**:
+  - Usar `pending-operations.json` para registrar guardados, ediciones, borrados y finalizaciones.
+  - Incluir `operation_id`, tipo, ubicación, artículo, valor, fecha, intentos y último error.
+  - Mantener el CSV actualizado incluso si Supabase no está disponible.
+  - Prioridad: alta.
+
+- [ ] **P0. Sincronizar únicamente lo pendiente**:
+  - Enviar a Supabase solo las operaciones de `pending-operations.json`.
+  - Intentar al iniciar, recuperar conexión, volver al primer plano o pulsar «Sincronizar».
+  - Eliminar una operación de la cola solo después de recibir confirmación del servidor.
+  - Reutilizar el mismo `operation_id` en reintentos para evitar duplicados.
+  - Respetar el orden de las operaciones de cada ubicación.
+  - Prioridad: alta.
+
+- [ ] **P0. Validar códigos provisionales**:
+  - Cuando un código no esté en los maestros locales, permitir escanearlo y marcarlo `PENDIENTE_VALIDAR`.
+  - Validarlo contra Supabase al recuperar conexión.
+  - Si no existe, conservar la operación y mostrar el error; nunca eliminarla silenciosamente.
+  - Prioridad: alta.
+
+- [ ] **P0. Hacer segura la sincronización con Supabase**:
+  - Usar una RPC transaccional para aplicar cada operación pendiente.
+  - Actualizar conteo y estados sin dejar cambios parciales.
+  - Si varios dispositivos escanean ubicaciones distintas, no añadir resolución manual de conflictos.
+  - Prioridad: alta.
+
+- [ ] **P1. Mostrar el estado de sincronización**:
+  - Mostrar `Sincronizado`, `Pendiente` o `Error` por ubicación/operación.
+  - Mostrar fecha de última sincronización y botón de reintento.
+  - Un fallo de red no debe mostrar la operación como guardada en Supabase.
+  - Prioridad: media.
+
+- [ ] **P1. Adaptar exportación y borrado**:
+  - Mantener el CSV como exportación local.
+  - Borrar un CSV no debe borrar operaciones pendientes.
+  - La cola pendiente debe conservarse aunque el usuario elimine o comparta el CSV.
+  - Prioridad: media.
+
+- [ ] **P0. Añadir pruebas de conectividad**:
+  - Escanear y guardar sin conexión.
+  - Reiniciar la app y comprobar que el CSV y la cola persisten.
+  - Recuperar conexión y verificar sincronización sin duplicados.
+  - Probar códigos provisionales válidos e inválidos.
+  - Probar fallos durante sincronización y reintentos.
+  - Prioridad: alta.
+
 ## Optimización de peticiones (NO por ahora)
 
 > Reducir round-trips a Supabase para agilizar operaciones y evitar rate-limit.
