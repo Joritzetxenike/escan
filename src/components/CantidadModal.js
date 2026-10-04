@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Modal, TextInput, TouchableOpacity } from 'react-native';
-import { styles, colors } from '../styles/styles';
+import { Text, TextInput, Alert } from 'react-native';
+
+import ModalFormulario from './ModalFormulario';
+
+import { styles } from '../styles/styles';
 
 export default function CantidadModal({ 
   visible, 
@@ -17,7 +20,12 @@ export default function CantidadModal({
 
   const handleConfirm = () => {
     if (!cantidad || isNaN(cantidad) || Number(cantidad) <= 0) {
-      alert('Introduce una cantidad válida');
+      /* `alert` global no existe en React Native: con una
+         cantidad inválida reventaba la app. */
+      Alert.alert(
+        'Cantidad no válida',
+        'Introduce una cantidad mayor que cero'
+      );
       return;
     }
     onConfirm(Number(cantidad));
@@ -25,42 +33,28 @@ export default function CantidadModal({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-            <View style={styles.modalBox}>
-            <Text style={{ marginBottom: 10, fontSize: 16 }}>
-              Introduce cantidad
-            </Text>
+    <ModalFormulario
+      visible={visible}
+      titulo="Introduce cantidad"
+      onConfirm={handleConfirm}
+      onCancel={onCancel}
+    >
+      <Text style={styles.modalFila}>
+        Ubicación: {ubicacion}
+      </Text>
 
-            <Text style={{ fontWeight: 'bold', marginBottom: 10 }}>
-              Ubicación: {ubicacion}
-            </Text>
+      <Text style={styles.modalFila}>
+        Artículo: {articulo}
+      </Text>
 
-            <Text style={{ fontWeight: 'bold', marginBottom: 10 }}>
-              Artículo: {articulo}
-            </Text>
-
-            <TextInput
-                style={styles.input}
-                keyboardType="numeric"
-                placeholder="Cantidad"
-                value={cantidad}
-                onChangeText={setCantidad}
-                autoFocus
-            />
-
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 15, width: '100%' }}>
-                <TouchableOpacity style={styles.customButton} onPress={handleConfirm}>
-                <Text style={styles.buttonText}>Confirmar</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={[styles.customButton, { backgroundColor: colors.textSecondary }]} onPress={onCancel}>
-                <Text style={styles.buttonText}>Cancelar</Text>
-                </TouchableOpacity>
-            </View>
-            </View>
-        </View>
-    </Modal>
-
+      <TextInput
+        style={styles.input}
+        keyboardType="numeric"
+        placeholder="Cantidad"
+        value={cantidad}
+        onChangeText={setCantidad}
+        autoFocus
+      />
+    </ModalFormulario>
   );
 }

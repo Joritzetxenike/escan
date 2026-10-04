@@ -194,6 +194,20 @@
     queda abierto con un código inválido.
   - Prioridad: alta.
 
+## Distribución de la app
+
+- [ ] **P1. Build de producción**: hoy **no existe ningún build del perfil
+  `production`**; los ocho últimos de Android son `preview` / internal, así que
+  el canal `production` no tiene a nadie detrás y las updates se publican solo en
+  `preview`. Para dar una app instalable fuera del círculo de pruebas hace falta
+  decidir entre Play Store (`build.production`, que ya genera `app-bundle`) o un
+  perfil nuevo con `buildType: apk` para distribución por APK.
+  - Mientras tanto, **publicar siempre en `preview`**: una update en `production`
+    no llega al móvil y no da error, porque EAS no se la ofrece.
+  - Ojo al subir la versión de `app.json`: con `runtimeVersion: appVersion` cada
+    cambio de versión deja stranded las updates viejas para los builds nuevos.
+  - Ver la sección «Canales» del `README.md`.
+
 ## Optimización de peticiones (NO por ahora)
 
 > Reducir round-trips a Supabase para agilizar operaciones y evitar rate-limit.

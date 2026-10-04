@@ -413,6 +413,31 @@ export function useHomeLogic(navigation) {
 
 
   /* =====================================================
+   * DESCARTAR ARTÍCULO
+   * =====================================================
+   *
+   * El código se reserva en `escaneadosSesion` al validarlo,
+   * antes de que exista movimiento guardado, para que un
+   * doble escaneo no abra dos veces el modal. Al cancelar hay
+   * que devolver esa reserva: si no, el artículo queda
+   * marcado como escaneado y al volver a leerlo el validador
+   * lo rechaza por duplicado.
+   */
+
+  const descartarArticulo = () => {
+
+    setEscaneadosSesion(
+      prev => prev.filter(
+        c => c !== articuloTemp
+      )
+    );
+
+    limpiarArticulo();
+
+  };
+
+
+  /* =====================================================
    * CONFIRMAR CANTIDAD
    * ===================================================== */
 
@@ -518,6 +543,8 @@ InventoryService.crearMovimiento(
     /* ---------- CANTIDAD ---------- */
 
     confirmarCantidad,
+
+    descartarArticulo,
 
     setMostrarCantidad,
 

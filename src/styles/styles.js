@@ -1,11 +1,17 @@
 import { StyleSheet } from 'react-native';
 
 /* =====================================================
- * PALETA DE COLORES — tonos grises, limpio y profesional
+ * PALETA DE COLORES — gris y limpio, con el celeste de
+ * marca reservado a acentos y botones de acción
  * ===================================================== */
 
 export const colors = {
-  primary: '#374151',        // gris oscuro (botones, acentos)
+  primary: '#009DE2',        // celeste de marca (bordes, iconos, acentos)
+  /* El blanco sobre `primary` se queda en 3:1, por debajo
+     del mínimo de 4.5:1. Todo relleno que lleve texto
+     blanco encima usa este tono más oscuro del mismo
+     celeste (5.4:1). */
+  primaryStrong: '#00729E',
   primaryDark: '#1F2937',    // casi negro (cabecera, tab bar, scanner)
   onPrimary: '#FFFFFF',
   text: '#111827',           // texto principal (casi negro)
@@ -13,7 +19,7 @@ export const colors = {
   border: '#E5E7EB',
   borderStrong: '#D1D5DB',
   surfaceAlt: '#F3F4F6',
-  danger: '#DC2626',
+  danger: '#DC2626',         // error y acciones destructivas
   warning: '#B45309',       // avisos de conectividad
   warningBg: '#FEF3C7',
   success: '#047857',       // estado sincronizado
@@ -31,7 +37,7 @@ container: {
 
   /* ---------- BOTONES ---------- */
   customButton: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.primaryStrong,
     paddingVertical: 15,
     paddingHorizontal: 25,
     borderRadius: 8,
@@ -176,5 +182,47 @@ ultimosArticulosTitle: {
   marginBottom: 8,
   textAlign: 'center',
 },
+
+  /* ---------- MODALES DE FORMULARIO ----------
+     Los dos botones van en fila y se distinguen por color
+     y por borde: el de confirmar va relleno con el celeste
+     de marca y el de cancelar delineado en rojo. El rojo
+     relleno queda reservado para lo que destruye datos,
+     así que aquí el cancelar va delineado y no compite
+     con "Eliminar". */
+
+  modalTitulo: {
+    marginBottom: 10,
+    fontSize: 16,
+  },
+
+  modalFila: {
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+
+  modalAcciones: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 15,
+    width: '100%',
+  },
+
+  modalBotonPrimario: {
+    borderWidth: 2,
+    borderColor: colors.primary,
+  },
+
+  modalBotonSecundario: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: colors.danger,
+  },
+
+  modalTextoSecundario: {
+    color: colors.danger,
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
 
 },);

@@ -243,9 +243,7 @@ export default function HomeView({
 
         onConfirm={actions.confirmarCantidad}
 
-        onCancel={() =>
-          actions.setMostrarCantidad(false)
-        }
+        onCancel={actions.descartarArticulo}
       />
 
     </View>

@@ -309,7 +309,7 @@ export default function EstadoScreen({ navigation }) {
             onPress={cargar}
             activeOpacity={0.7}
             style={{
-              backgroundColor: colors.primary,
+              backgroundColor: colors.primaryStrong,
               paddingHorizontal: 30,
               paddingVertical: 15,
               borderRadius: 10,
@@ -694,7 +694,7 @@ const conmutadorBoton = {
 };
 
 const conmutadorActivo = {
-  backgroundColor: colors.primary,
+  backgroundColor: colors.primaryStrong,
 };
 
 const conmutadorTexto = {

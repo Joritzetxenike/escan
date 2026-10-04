@@ -338,7 +338,7 @@ export default function EstadoBanner() {
         fondo: colors.surfaceAlt,
         borde: colors.borderStrong,
         color: colors.textSecondary,
-        hijos: actualizarBoton(colors.primary),
+        hijos: actualizarBoton(colors.primaryStrong),
       }
     );
 
@@ -369,7 +369,7 @@ export default function EstadoBanner() {
             } · Maestro al día`}
       </Text>
 
-      {actualizarBoton(colors.primary)}
+      {actualizarBoton(colors.primaryStrong)}
 
     </View>
 

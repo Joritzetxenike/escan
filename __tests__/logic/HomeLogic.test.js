@@ -725,4 +725,113 @@ describe('useHomeLogic', () => {
 
   });
 
+
+  // =====================================================
+  // descartarArticulo
+  // =====================================================
+
+  describe('descartarArticulo', () => {
+
+    const prepararArticulo = async () => {
+
+      InventoryService.validarUbicacion.mockResolvedValue({
+        ok: true,
+        ubicacion: { seccion: 'A', area: '1', subzona: '1' },
+      });
+      InventoryService.cargarUbicacion.mockResolvedValue([]);
+      InventoryService.validarArticulo.mockResolvedValue({
+        ok: true,
+        esSIC: false,
+        articulo: { item: '123456', tipo: 'Normal' },
+      });
+
+      await act(async () => {
+        await current.procesarEscaneo('ubicacion', 'A1');
+      });
+
+      await act(async () => {
+        await current.procesarEscaneo('articulo', '123456');
+      });
+
+    };
+
+    test('cierra el modal y limpia el artículo pendiente', async () => {
+
+      await prepararArticulo();
+
+      expect(current.mostrarCantidad).toBe(true);
+      expect(current.articuloTemp).toBe('123456');
+
+      await act(async () => {
+        current.descartarArticulo();
+      });
+
+      expect(current.mostrarCantidad).toBe(false);
+      expect(current.articuloTemp).toBeNull();
+
+    });
+
+    test('libera la reserva y permite volver a escanear el mismo código', async () => {
+
+      await prepararArticulo();
+
+      await act(async () => {
+        current.descartarArticulo();
+      });
+
+      await act(async () => {
+        await current.onManualCode('123456');
+      });
+
+      expect(current.articuloTemp).toBe('123456');
+      expect(current.mostrarCantidad).toBe(true);
+
+      /* El segundo escaneo ya no arrastra el código como
+         duplicado: `validarDuplicado` no lo encuentra. */
+
+      const escaneos =
+        InventoryService.validarArticulo.mock.calls;
+
+      expect(escaneos[escaneos.length - 1][2])
+        .toEqual([]);
+
+    });
+
+    test('conserva la reserva cuando el movimiento sí se guarda', async () => {
+
+      InventoryService.crearMovimiento
+        .mockImplementation(
+          (ubicacion, articulo, cantidad) => ({
+            ubicacion,
+            articulo,
+            cantidad,
+          })
+        );
+      InventoryService.guardarMovimiento
+        .mockResolvedValue({ pendiente: false });
+
+      await prepararArticulo();
+
+      await act(async () => {
+        await current.confirmarCantidad(5);
+      });
+
+      /* El artículo guardado sigue marcado como contado
+         para que un nuevo escaneo del mismo código avise
+         de duplicado. */
+
+      await act(async () => {
+        await current.onManualCode('123456');
+      });
+
+      const escaneos =
+        InventoryService.validarArticulo.mock.calls;
+
+      expect(escaneos[escaneos.length - 1][2])
+        .toEqual(['123456']);
+
+    });
+
+  });
+
 });

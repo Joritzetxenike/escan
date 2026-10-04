@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Modal, View, Text, TextInput, TouchableOpacity } from 'react-native';
-import { styles, colors } from '../styles/styles';
+import { TextInput } from 'react-native';
+
+import ModalFormulario from './ModalFormulario';
+
+import { styles } from '../styles/styles';
 
 export default function ManualCodeModal({
   visible,
@@ -26,36 +29,21 @@ export default function ManualCodeModal({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade">
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalBox}>
-          <Text style={{ marginBottom: 10 }}>{titulo}</Text>
-
-          <TextInput
-            style={styles.input}
-            placeholder={placeholder}
-            value={codigo}
-            onChangeText={setCodigo}
-            autoFocus
-            autoCapitalize={autoCapitalize}
-            testID={testID}
-          />
-
-          <TouchableOpacity
-            style={styles.customButton}
-            onPress={handleConfirm}
-          >
-            <Text style={styles.buttonText}>Aceptar</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.customButton, { marginTop: 10, backgroundColor: colors.textSecondary }]}
-            onPress={onCancel}
-          >
-            <Text>Cancelar</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </Modal>
+    <ModalFormulario
+      visible={visible}
+      titulo={titulo}
+      onConfirm={handleConfirm}
+      onCancel={onCancel}
+    >
+      <TextInput
+        style={styles.input}
+        placeholder={placeholder}
+        value={codigo}
+        onChangeText={setCodigo}
+        autoFocus
+        autoCapitalize={autoCapitalize}
+        testID={testID}
+      />
+    </ModalFormulario>
   );
 }

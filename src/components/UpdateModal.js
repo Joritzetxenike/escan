@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   newVersion: {
-    color: colors.primary,
+    color: colors.primaryStrong,
     fontWeight: 'bold',
   },
   notasLabel: {
@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
   },
   updateButton: {
     flex: 1,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.primaryStrong,
     paddingVertical: 14,
     borderRadius: 8,
     alignItems: 'center',

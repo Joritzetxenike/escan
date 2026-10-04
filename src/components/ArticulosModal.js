@@ -100,7 +100,7 @@ export default function ArticulosModal({
                           }
                           style={{ marginLeft: 4 }}
                         >
-                          <Text style={{ color: colors.primary, fontWeight: 'bold', fontSize: 16 }}>✓</Text>
+                          <Text style={{ color: colors.primaryStrong, fontWeight: 'bold', fontSize: 16 }}>✓</Text>
                         </TouchableOpacity>
                       </View>
                     ) : (
@@ -112,7 +112,7 @@ export default function ArticulosModal({
                         }
                         style={[styles.cell, { flex: 0.8, alignItems: 'center' }]}
                       >
-                        <Text style={{ fontSize: 14, fontWeight: '600', color: onIniciarEdicion ? colors.primary : colors.text }}>
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: onIniciarEdicion ? colors.primaryStrong : colors.text }}>
                           {item.cantidad ?? 0}
                         </Text>
                       </TouchableOpacity>
@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   closeButton: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.primaryStrong,
     padding: 12,
     borderRadius: 6,
     alignItems: 'center',

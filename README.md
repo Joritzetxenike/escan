@@ -491,7 +491,34 @@ En `app.json`:
 - El workflow `build-android.yml` **sube la versión de `app.json` al tag** antes de compilar (ej. tag `v1.0.4` → `app.json` versión `1.0.4`) y hace commit + push a `master` (`chore: bump version to X [skip ci]`). Por eso `master` avanza solo en cada build.
 - Para que un `eas update` llegue a la app instalada, la versión de `app.json` local debe coincidir con la versión que reporta el APK instalado. En caso contrario el update se sirve para otro runtimeVersion y la app lo ignora.
 - `eas update` requiere **working tree limpio** (`eas.json` → `cli.requireCommit: true`).
-- Existe un update OTA publicado en el canal `preview` con runtimeVersion `1.0.1`.
+### Canales: `preview`, no `production`
+
+**Las updates se publican en el canal `preview`.** El motivo es que el único
+build que existe del proyecto es del perfil `preview` (distribución interna), y
+un build solo recibe updates del canal al que está apuntado.
+
+- Canal `preview` → rama `preview`: es donde está el APK de pruebas (`ecb3bdab`,
+  runtimeVersion `1.0.4`). **Aquí se publican las updates.**
+- Canal `production` → rama `production`: **no tiene ningún build detrás**. Los
+  ocho últimos builds de Android son todos `preview` / internal. Además
+  `build.production` genera `buildType: app-bundle`, que es el formato de Play
+  Store y no se instala a mano.
+
+Un update publicado en `production` **no llega al móvil** y no da ningún error:
+EAS no se lo ofrece porque la rama no es la suya. Comprueba el canal antes de
+publicar.
+
+Comprobar qué se le serviría a un dispositivo concreto, sin depender del móvil:
+
+```bash
+curl -s --compressed "https://u.expo.dev/1f1976cd-945c-4e99-99cd-eebc96418b31"   -H "expo-platform: android"   -H "expo-runtime-version: 1.0.4"   -H "expo-channel-name: preview"   -H "accept: multipart/mixed"
+```
+
+Devuelve un manifiesto `multipart/mixed`; dentro, el campo `"id"` es el
+`updateId` que la app se descargaría. Si ese id no cambia tras publicar, el
+canal o el runtimeVersion no son los del dispositivo. Los `assets[].url` del CDN
+responden `403` a `curl` porque van firmados para el cliente que pide el
+manifiesto: eso es normal y no significa que la subida esté mal.
 
 ---
 
@@ -576,8 +603,10 @@ npm run import:template     # Generar plantilla_import.xlsx (hojas Datos QR y Ar
 ### Publicar un update OTA de prueba
 
 ```bash
-# 1. Asegurar que la versión de app.json coincide con la del APK instalado
-# 2. Working tree limpio (requireCommit)
+# 1. La versión de app.json debe coincidir con la del APK instalado,
+#    porque de ella sale el runtimeVersion (política appVersion)
+# 2. Working tree limpio (eas.json exige requireCommit)
+# 3. Canal preview: es donde está el APK de pruebas
 eas update --channel preview --platform android
 ```
 
