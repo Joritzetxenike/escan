@@ -8,6 +8,11 @@ jest.mock('react-native', () => ({
   Alert: {
     alert: jest.fn(),
   },
+  /* Se muta en el test de web para comprobar que el
+     botón de flash no se ofrece allí. */
+  Platform: {
+    OS: 'android',
+  },
 }));
 
 jest.mock('expo-camera', () => ({
@@ -58,6 +63,18 @@ describe('useScannerLogic', () => {
   });
 
   const montar = (routeParams) => {
+
+    /* Desmonta lo anterior antes de volver a montar: el
+       hook abre un `setInterval` que solo se limpia al
+       desmontar, así que si no, un test que monte dos
+       veces deja un intervalo vivo y jest no termina de
+       salir. */
+    if (renderer) {
+      act(() => {
+        renderer.unmount();
+      });
+    }
+
     const route = { params: routeParams };
     act(() => {
       renderer = create(
@@ -206,6 +223,106 @@ describe('useScannerLogic', () => {
       });
 
       expect(navigation.goBack).toHaveBeenCalled();
+    });
+
+  });
+
+
+  // =====================================================
+  // flash
+  // =====================================================
+
+  describe('flash', () => {
+
+    afterEach(() => {
+      const { Platform } =
+        jest.requireMock('react-native');
+      Platform.OS = 'android';
+    });
+
+    test('empieza apagado', () => {
+      montar({ tipo: 'articulo', onScan: jest.fn() });
+
+      expect(current.flashActivo).toBe(false);
+    });
+
+    test('toggleFlash lo enciende y lo apaga', () => {
+      montar({ tipo: 'articulo', onScan: jest.fn() });
+
+      act(() => {
+        current.toggleFlash();
+      });
+
+      expect(current.flashActivo).toBe(true);
+
+      act(() => {
+        current.toggleFlash();
+      });
+
+      expect(current.flashActivo).toBe(false);
+    });
+
+    test('dos pulsaciones seguidas se anulan entre sí', () => {
+
+      /* Este es el test que distingue las dos formas de
+         invertir el estado. Con `setFlashActivo(!flashActivo)`
+         —que lee el valor capturado en ese render— las dos
+         pulsaciones calcularían `!false` y dejarían el flash
+         encendido. Con el actualizador funcional cada una
+         parte del resultado anterior y el par se anula. */
+
+      montar({ tipo: 'articulo', onScan: jest.fn() });
+
+      act(() => {
+        current.toggleFlash();
+        current.toggleFlash();
+      });
+
+      expect(current.flashActivo).toBe(false);
+    });
+
+    test('encenderlo no interfiere con el escaneo', () => {
+
+      const onScan = jest.fn();
+      montar({ tipo: 'articulo', onScan });
+
+      act(() => {
+        current.toggleFlash();
+      });
+
+      ScannerService.esCodigoValido.mockReturnValue(true);
+      ScannerService.actualizarBuffer.mockReturnValue({
+        validado: true,
+        buffer: { value: '', count: 0, lastTime: 0 },
+      });
+
+      act(() => {
+        current.handleBarcodeScanned({
+          type: 'ean13',
+          data: '123456',
+        });
+      });
+
+      expect(onScan).toHaveBeenCalledWith({
+        codigo: '123456',
+        tipo: 'articulo',
+      });
+      expect(navigation.goBack).toHaveBeenCalled();
+    });
+
+    test('se ofrece en nativo y no en web', () => {
+      montar({ tipo: 'articulo', onScan: jest.fn() });
+
+      expect(current.soportaFlash).toBe(true);
+
+      const { Platform } =
+        jest.requireMock('react-native');
+
+      Platform.OS = 'web';
+
+      montar({ tipo: 'articulo', onScan: jest.fn() });
+
+      expect(current.soportaFlash).toBe(false);
     });
 
   });

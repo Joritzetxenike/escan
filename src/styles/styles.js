@@ -145,6 +145,27 @@ homeContent: {
     fontWeight: 'bold',
     fontSize: 16,
   },
+
+  /* ---------- FLASH DEL ESCÁNER ---------- */
+
+  torchButton: {
+    position: 'absolute',
+    top: 40,
+    right: 20,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    padding: 10,
+    borderRadius: 8,
+  },
+
+  /* Encendido: fondo ámbar de aviso, el mismo tono que
+     usa el banner de conectividad. Apagado y encendido se
+     distinguen de un vistazo, sin depender del icono. */
+
+  torchButtonActivo: {
+    backgroundColor: colors.warningBg,
+    borderWidth: 2,
+    borderColor: colors.warning,
+  },
   hintText: {
     color: '#FFFFFF',
     fontSize: 16,

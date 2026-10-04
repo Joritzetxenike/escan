@@ -6,8 +6,9 @@ import {
 } from 'react-native';
 
 import { CameraView } from 'expo-camera';
+import { MaterialIcons } from '@expo/vector-icons';
 
-import { styles } from '../styles/styles';
+import { styles, colors } from '../styles/styles';
 
 export default function ScannerView({
   state,
@@ -81,6 +82,7 @@ export default function ScannerView({
 
       <CameraView
         style={StyleSheet.absoluteFillObject}
+        enableTorch={state.flashActivo}
         onBarcodeScanned={actions.handleBarcodeScanned}
         barcodeScannerSettings={{
           barcodeTypes: ['qr', 'code128', 'ean13', 'ean8', 'upc_a', 'upc_e', 'code39', 'code93', 'codabar', 'itf14', 'pdf417', 'aztec', 'datamatrix'],
@@ -107,6 +109,46 @@ export default function ScannerView({
           </Text>
 
         </TouchableOpacity>
+
+
+        {/* ---------- FLASH ---------- */}
+
+        {state.soportaFlash && (
+
+          <TouchableOpacity
+            style={[
+              styles.torchButton,
+              state.flashActivo &&
+                styles.torchButtonActivo,
+            ]}
+            onPress={actions.toggleFlash}
+            accessibilityRole="button"
+            accessibilityLabel={
+              state.flashActivo
+                ? 'Apagar el flash'
+                : 'Encender el flash'
+            }
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            testID="btn-flash"
+          >
+
+            <MaterialIcons
+              name={
+                state.flashActivo
+                  ? 'flash-on'
+                  : 'flash-off'
+              }
+              size={26}
+              color={
+                state.flashActivo
+                  ? colors.warning
+                  : colors.text
+              }
+            />
+
+          </TouchableOpacity>
+
+        )}
 
 
         {/* ---------- MARCO ---------- */}

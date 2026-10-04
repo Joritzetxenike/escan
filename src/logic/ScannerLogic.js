@@ -1,5 +1,5 @@
-import { useRef, useEffect } from 'react';
-import { Alert } from 'react-native';
+import { useRef, useState, useEffect } from 'react';
+import { Alert, Platform } from 'react-native';
 import { useCameraPermissions } from 'expo-camera';
 
 import ScannerService from '../services/ScannerService';
@@ -8,6 +8,29 @@ import UbicacionValidator from '../validators/UbicacionValidator';
 export function useScannerLogic(navigation, route) {
 
   const [permission, requestPermission] = useCameraPermissions();
+
+  /* =====================================================
+   * FLASH
+   * =====================================================
+   *
+   * Para contar en almacenes con poca luz. `enableTorch` es
+   * una prop de `CameraView`, así que basta con un estado:
+   * al desmontar la pantalla (al escanear o al volver) el
+   * flash se apaga solo.
+   *
+   * expo-camera no expone ninguna forma de saber si el
+   * dispositivo tiene flash, y en web el navegador lo
+   * ignora, así que allí el botón no se muestra.
+   */
+
+  const [flashActivo, setFlashActivo] =
+    useState(false);
+
+  const toggleFlash = () => {
+    setFlashActivo((previo) => !previo);
+  };
+
+  const soportaFlash = Platform.OS !== 'web';
 
   const scanBuffer = useRef({
     value: '',
@@ -163,6 +186,10 @@ export function useScannerLogic(navigation, route) {
 
     tipo,
     hintText,
+
+    flashActivo,
+    toggleFlash,
+    soportaFlash,
 
     volver,
 
