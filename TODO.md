@@ -4,8 +4,9 @@
 
 ## Pendientes
 
-- [ ] **Renombrar app (opción 1)**: cambiar `expo.name` en `app.json` al nuevo nombre, sin tocar `android.package` (`conteo.koxka`), `extra.eas.projectId`, `updates.url` ni `GITHUB_REPO` de `updateService.js`. Requiere un `eas build` nuevo (el nombre se incrusta en el APK en build time; un OTA no lo cambia en el launcher). Preparar tag `v1.0.5` para el build.
-  - Prioridad: baja.
+- [x] **Renombrar app (opción 1) — HECHO**: la app pasa de `escan` a **`InventoryScanner`**. Solo se cambió `expo.name` en `app.json`, tal y como estaba previsto: sin tocar `android.package` (`conteo.koxka`), `expo.slug` (`escan`, que es la identidad del proyecto en EAS), `extra.eas.projectId`, `updates.url` ni `GITHUB_REPO` de `updateService.js`. El nombre se escribe en el launcher del móvil, así que **no se pudo hacer con un OTA**: hizo falta el build de `v1.0.5`. También se renombraron el APK y el título del release en `.github/workflows/build-android.yml`.
+  - Recordatorio: al haber subido a `1.0.5`, las updates de runtime `1.0.4` quedan *stranded*. A partir de ahora las `eas update` van a `1.0.5`.
+  - Prioridad: cerrada.
 
 - [x] **Import masivo de `maestroArticulo`** (HECHO): 211.578 artículos importados (0→211.578) desde `maestro_articulos.xlsx` con la hoja `articulos_escan` (item=col1, filtrar `Fantasma==2`, `tipo` solo MRP/SIC, `dsca='-'`). 67.438 filas descartadas por filtro. `maestro_articulos.xlsx` añadido a `.gitignore`.
 

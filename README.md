@@ -1,4 +1,4 @@
-# escan — App de Inventario con Escáner de Códigos de Barras
+# InventoryScanner — App de Inventario con Escáner de Códigos de Barras
 
 App móvil desarrollada con **React Native (Expo SDK 54)** para la gestión de inventario mediante escaneo de códigos de barras. Permite registrar movimientos de artículos por ubicación, consultar el estado de las ubicaciones y exportar datos a CSV.
 

@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "escan",
+    "name": "InventoryScanner",
     "slug": "escan",
     "version": "1.0.4",
     "orientation": "default",
