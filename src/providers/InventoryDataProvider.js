@@ -71,6 +71,19 @@ const InventoryDataProvider = {
     throw new Error('obtenerArticulo() no implementado');
   },
 
+  /**
+   * Descarga el maestro de artículos completo para la copia
+   * local offline: `{ codigos: string[], sic: string[] }`.
+   *
+   * Se pide en una sola llamada porque son ~211.000 filas y
+   * PostgREST devuelve 1.000 por petición.
+   */
+  async obtenerMaestroArticulos() {
+    throw new Error(
+      'obtenerMaestroArticulos() no implementado'
+    );
+  },
+
   /* =======================================================
    * MOVIMIENTOS
    * ======================================================= */

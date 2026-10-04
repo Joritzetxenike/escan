@@ -1,4 +1,23 @@
-import DataProvider from '../providers/DataProvider';
+import maestrosService from '../services/maestrosService';
+
+/* =======================================================
+ * VALIDACIÓN DE ARTÍCULOS
+ * =======================================================
+ *
+ * La validación se hace **siempre contra la copia local** del
+ * maestro (`maestroService`), nunca contra Supabase. Así:
+ *
+ *   - hay red      → sigue siendo instantáneo, sin petición
+ *   - no hay red   → funciona igual
+ *
+ * Una petición por cada artículo escaneado era además un
+ * cuello de botella en el almacén.
+ *
+ * Si el código no está en la copia se RECHAZA. El precio de
+ * esta decisión es que un artículo añadido al maestro después
+ * de la última descarga no se puede contar hasta que se
+ * actualiza la copia, de ahí el aviso del `EstadoBanner`.
+ * ======================================================= */
 
 class ArticuloValidator {
 
@@ -13,6 +32,7 @@ class ArticuloValidator {
     }
 
     return null;
+
   }
 
   validarDuplicado(codigoArticulo, articulosEscaneados, ubicacion) {
@@ -27,10 +47,38 @@ class ArticuloValidator {
     }
 
     return null;
+
   }
 
-  async validarExistencia(codigoArticulo) {
-    return await DataProvider.obtenerArticulo(codigoArticulo);
+  /**
+   * Mensaje para cuando no hay copia utilizable. Incluye el
+   * motivo real del fallo (normalmente una descarga
+   * interrumpida) para no dejar al operario sin pistas.
+   */
+  sinCopia() {
+
+    const error =
+      maestrosService.obtenerEstado().error;
+
+    return {
+      ok: false,
+      titulo: 'Sin copia de maestros',
+      mensaje:
+        'No se puede validar el código porque aún no hay copia del maestro en el dispositivo. Conéctate una vez para descargarla.' +
+        (error ? `\n\n(${error})` : ''),
+    };
+
+  }
+
+  noEncontrado(codigoArticulo) {
+
+    return {
+      ok: false,
+      titulo: 'Artículo no encontrado',
+      mensaje:
+        `El código ${codigoArticulo} no está en la copia local del maestro. Si es un artículo nuevo, actualiza la copia del maestro (icono ⟳) antes de contarlo.`,
+    };
+
   }
 
   async validar(codigoArticulo, ubicacion, articulosEscaneados) {
@@ -48,23 +96,22 @@ class ArticuloValidator {
 
     if (duplicado) return duplicado;
 
-    const articulo =
-      await this.validarExistencia(codigoArticulo);
+    /* ---------- Copia local ---------- */
 
-    if (!articulo) {
-      return {
-        ok: false,
-        titulo: 'Artículo no encontrado',
-        mensaje:
-          `El código ${codigoArticulo} no existe en el maestro`,
-      };
+    const listo = await maestrosService.asegurarListo();
+
+    if (!listo) return this.sinCopia();
+
+    if (!maestrosService.existeArticulo(codigoArticulo)) {
+      return this.noEncontrado(codigoArticulo);
     }
 
     return {
       ok: true,
-      articulo,
-      esSIC: articulo.tipo === 'SIC',
+      provisional: false,
+      esSIC: maestrosService.esSIC(codigoArticulo),
     };
+
   }
 }
 

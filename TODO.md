@@ -75,64 +75,123 @@
 
 ## Conectividad: CSV local y sincronización diferida
 
-- [ ] **P0. Hacer que el CSV sea la fuente local de movimientos**:
-  - Escribir el CSV antes de intentar cualquier operación con Supabase.
-  - Mantener el formato actual de tres columnas para no romper la exportación.
-  - Actualizar el CSV al guardar, editar o eliminar un artículo.
-  - Permitir escanear sin conexión y conservar los datos tras reiniciar la app.
+> Entregado en dos fases. La **fase 1** (vertical) está hecha: detección de
+> conexión por sonda a Supabase, cola de pendientes en
+> `pending-operations.json` y sincronización diferida al recuperar la conexión.
+> La copia local de los maestros también está hecha; de la **fase 2** solo queda
+> la RPC transaccional de movimientos.
+>
+> Decisión tomada: la entrada a mano (`+` de Home) **también funciona sin
+> conexión**. Estaba bloqueada porque el código solo se podía validar contra el
+> maestro, que está en la red; con la copia local el bloqueo ya no tenía
+> sentido, así que se levantó tanto para artículos como para ubicaciones.
+
+- [x] **P0. Hacer que el CSV sea la fuente local de movimientos**:
+  - El CSV se escribe antes de cualquier operación con Supabase.
+  - Mantiene el formato actual de tres columnas para no romper la exportación.
+  - Se actualiza al guardar, editar o eliminar un artículo.
+  - Sin conexión, los artículos de una ubicación se leen del CSV.
+  - Pendiente: leer también el CSV en la pestaña Lista cuando la red falla.
   - Prioridad: alta.
 
-- [ ] **P0. Mantener los dos maestros locales**:
-  - Sincronizar `maestroUbicacion` y `maestroArticulo` cuando haya conexión.
-  - Guardarlos en archivos JSON separados del CSV de movimientos.
-  - Usarlos para validar códigos conocidos y obtener descripción/tipo.
-  - Si no existe un código en la copia local, aceptarlo provisionalmente como pendiente de validación.
+- [x] **P0. Mantener los dos maestros locales**:
+  - Copia local en `maestro-articulos.json`, `maestro-ubicaciones.json` y
+    `maestros-meta.json` (`src/services/maestrosService.js`), aparte del CSV.
+  - Solo guarda códigos, no descripciones: 211.578 artículos en ~3 MB.
+  - El maestro de artículos se baja con la RPC `descargar_maestro_articulos()`
+    (en `supabase/migrations/20261004_maestro_snapshot.sql`) porque PostgREST
+    limita a 1.000 filas por respuesta.
+- La validación es local y estricta: un código que no está en la copia se
+    rechaza. Las operaciones `provisional` de versiones anteriores se siguen
+    validando contra Supabase al sincronizar.
+  - Validar ubicaciones **exige** su copia, sin excepción: antes se aceptaba
+    cualquier código con formato correcto cuando el fichero faltaba, lo que con
+    la entrada manual abierta habría dejado pasar ubicaciones inventadas.
+    `descargarUbicaciones()` recupera ese fichero solo (199 filas) si se pierde,
+    sin obligar a bajar los 3 MB del maestro de artículos.
+  - La copia no se refresca sola: a los 24 h avisa y el operario decide; puede
+    aplazarlo 12 h. La franja sale siempre, con la copia al día incluida, para
+    que el botón `Actualizar` esté disponible en cualquier momento.
+  - **Pendiente**: aplicar la migración en Supabase antes de desplegar la app.
+    _Aplicada y verificada: la RPC devuelve 211.578 códigos y 1.669 SIC._
+
+- [x] **P0. Entrada manual de ubicación y artículos sin conexión**:
+  - Botón `+` junto a "Escanear ubicación" y junto a "Escanear artículo", ambos
+    operativos sin red (`src/logic/HomeLogic.js`).
+  - El `+` de artículos sigue exigiendo ubicación previa; el de ubicaciones no,
+    porque lo que se introduce es precisamente la ubicación.
+  - Los códigos de ubicación se normalizan a mayúsculas y sin espacios antes de
+    validar. No se hace en artículos, cuyos códigos distinguen mayúsculas y
+    minúsculas (`-BXC05.4010 -SUB`).
+  - El modal de ubicación se queda abierto si el código no es válido, para no
+    obligar a volver a pulsarlo.
+  - Los códigos reales son `SECCION-AREA-SUBZONA` en mayúsculas (18 secciones,
+    áreas `A00`-`A14`, subzonas de 3 caracteres), p. ej. `LIN2-A01-Z01`.
+
+- [x] **P0. Crear la cola de operaciones pendientes**:
+  - `pending-operations.json` registra guardados, ediciones, borrados y
+    finalizaciones (`src/services/pendientesService.js`).
+  - Incluye `operation_id`, tipo, ubicación, artículo, valor, `created_at`,
+    `intentos` y `ultimo_error`.
+  - El CSV se mantiene actualizado aunque Supabase no esté disponible.
   - Prioridad: alta.
 
-- [ ] **P0. Crear la cola de operaciones pendientes**:
-  - Usar `pending-operations.json` para registrar guardados, ediciones, borrados y finalizaciones.
-  - Incluir `operation_id`, tipo, ubicación, artículo, valor, fecha, intentos y último error.
-  - Mantener el CSV actualizado incluso si Supabase no está disponible.
+- [x] **P0. Sincronizar únicamente lo pendiente**:
+  - `src/services/syncService.js` envía solo lo que hay en la cola.
+  - Se intenta al iniciar, al recuperar conexión, al volver a primer plano
+    (`AppState`) y con el botón ↻ del banner.
+  - Una operación sale de la cola solo tras la confirmación del servidor.
+  - Se reutiliza el mismo `operation_id` en los reintentos; además el `upsert`
+    de `conteo` es idempotente por PK `(ubicacion,item)`, así que no hay
+    duplicados ni hace falta deduplicar en servidor.
+  - Respeta el orden de las operaciones de cada ubicación.
   - Prioridad: alta.
 
-- [ ] **P0. Sincronizar únicamente lo pendiente**:
-  - Enviar a Supabase solo las operaciones de `pending-operations.json`.
-  - Intentar al iniciar, recuperar conexión, volver al primer plano o pulsar «Sincronizar».
-  - Eliminar una operación de la cola solo después de recibir confirmación del servidor.
-  - Reutilizar el mismo `operation_id` en reintentos para evitar duplicados.
-  - Respetar el orden de las operaciones de cada ubicación.
+- [x] **P0. Validar códigos provisionales**:
+  - Sin conexión, un código que no se pudo comprobar se acepta con
+    `provisional: true` (o `ubicacion_provisional`).
+  - Al sincronizar se valida contra `maestroArticulo` / `maestroUbicacion`.
+  - Si no existe, la operación se conserva con su error y se bloquea el resto
+    de esa ubicación; nunca se elimina en silencio.
+  - **Hoy es una red de seguridad heredada**: nada nuevo se marca provisional
+    porque todo se valida contra la copia local. El mecanismo se conserva para
+    las operaciones ya encoladas.
   - Prioridad: alta.
 
-- [ ] **P0. Validar códigos provisionales**:
-  - Cuando un código no esté en los maestros locales, permitir escanearlo y marcarlo `PENDIENTE_VALIDAR`.
-  - Validarlo contra Supabase al recuperar conexión.
-  - Si no existe, conservar la operación y mostrar el error; nunca eliminarla silenciosamente.
-  - Prioridad: alta.
-
-- [ ] **P0. Hacer segura la sincronización con Supabase**:
+- [ ] **P0. Hacer segura la sincronización con Supabase** (fase 2):
   - Usar una RPC transaccional para aplicar cada operación pendiente.
-  - Actualizar conteo y estados sin dejar cambios parciales.
-  - Si varios dispositivos escanean ubicaciones distintas, no añadir resolución manual de conflictos.
+  - Actualizar conteo y estados sin dejar cambios parciales. Hoy
+    `guardarMovimiento` son 4 peticiones: si la red se cae a mitad, el `conteo`
+    puede quedar guardado y los `stat` no. El reintento lo converge.
+  - Si varios dispositivos escanean ubicaciones distintas, no añadir
+    resolución manual de conflictos.
   - Prioridad: alta.
 
-- [ ] **P1. Mostrar el estado de sincronización**:
-  - Mostrar `Sincronizado`, `Pendiente` o `Error` por ubicación/operación.
-  - Mostrar fecha de última sincronización y botón de reintento.
-  - Un fallo de red no debe mostrar la operación como guardada en Supabase.
+- [x] **P1. Mostrar el estado de sincronización**:
+  - `EstadoBanner` (Home y Lista), una sola franja para conexión y maestro:
+    `Sin conexión · N cambios pendientes`,
+    `Sincronizando…`, `Error al sincronizar: …` y `Sincronizado · HH:MM`.
+  - Botones `Reintentar` (cola) y `Actualizar` (maestro), y hora de la última
+    sincronización. Antes eran dos banners apilados; ahora gana el problema más
+    urgente según la prioridad de la tabla del `README.md`.
+  - Un fallo de red nunca muestra la operación como guardada en Supabase: la
+    UI recibe `{ pendiente: true }` y marca el artículo como `(pendiente)`.
   - Prioridad: media.
 
-- [ ] **P1. Adaptar exportación y borrado**:
-  - Mantener el CSV como exportación local.
-  - Borrar un CSV no debe borrar operaciones pendientes.
-  - La cola pendiente debe conservarse aunque el usuario elimine o comparta el CSV.
+- [x] **P1. Adaptar exportación y borrado**:
+  - El CSV sigue siendo la exportación local.
+  - La cola vive en un `.json`, así que borrar o compartir un CSV no la toca.
   - Prioridad: media.
 
 - [ ] **P0. Añadir pruebas de conectividad**:
-  - Escanear y guardar sin conexión.
-  - Reiniciar la app y comprobar que el CSV y la cola persisten.
-  - Recuperar conexión y verificar sincronización sin duplicados.
-  - Probar códigos provisionales válidos e inválidos.
-  - Probar fallos durante sincronización y reintentos.
+  - [x] Unitarias: cola, orden, coalescencia, reintentos, códigos
+    provisionales, validación y entrada manual sin conexión
+    (`__tests__/services/{pendientesService,syncService,conectividadService,InventoryService,maestrosService}.test.js`).
+  - [ ] Manuales en dispositivo: escanear y guardar sin conexión, reiniciar la
+    app y comprobar que el CSV y la cola persisten, recuperar conexión y
+    verificar que no hay duplicados, meter ubicación y artículo a mano sin
+    conexión (incluido teclearla en minúsculas), y comprobar que el modal se
+    queda abierto con un código inválido.
   - Prioridad: alta.
 
 ## Optimización de peticiones (NO por ahora)
@@ -140,6 +199,8 @@
 > Reducir round-trips a Supabase para agilizar operaciones y evitar rate-limit.
 
 - [ ] **Agrupar operaciones en RPC de Postgres**: `guardarMovimiento` hoy hace 4 peticiones (upsert en `conteo` + update `maestroUbicacion`/`maestroArea`/`maestroSeccion`) y `finalizarUbicacion` hasta 5. Se podrían implementar funciones SQL (`guardar_movimiento`, `finalizar_ubicacion`) y llamarlas con `.rpc()` en una única transacción.
+  - **Las cinco tablas tienen nombre sensible a mayúsculas** (`"maestroArticulo"`, `"maestroUbicacion"`, `"conteo`, ...). En SQL hay que escribirlas entrecomilladas y cualificadas, o falla con `relation "maestroarticulo" does not exist`. Ver el aviso en el bloque DDL del `README.md`.
+  - Recordar también que los enums (`tipo`, `stat`) necesitan `::text` para poder compararlos o aplicarles `upper()`.
   - Prioridad: media.
 
 - [ ] **Optimizar/quitar selects redundantes**: revisar selects anidados y paginación de `obtenerUltimosMovimientos`; valorar caché local + cola offline (AsyncStorage con batcheo) para no disparar 1 request por escaneo.

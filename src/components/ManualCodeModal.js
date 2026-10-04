@@ -6,6 +6,12 @@ export default function ManualCodeModal({
   visible,
   onCancel,
   onConfirm,
+  titulo = 'Introduce código de artículo',
+  placeholder = 'Código',
+  /* 'characters' solo para ubicaciones: los códigos de
+     artículo distinguen mayúsculas y minúsculas. */
+  autoCapitalize = 'none',
+  testID,
 }) {
   const [codigo, setCodigo] = useState('');
 
@@ -23,14 +29,16 @@ export default function ManualCodeModal({
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.modalOverlay}>
         <View style={styles.modalBox}>
-          <Text style={{ marginBottom: 10 }}>Introduce código de artículo</Text>
+          <Text style={{ marginBottom: 10 }}>{titulo}</Text>
 
           <TextInput
             style={styles.input}
-            placeholder="Código"
+            placeholder={placeholder}
             value={codigo}
             onChangeText={setCodigo}
             autoFocus
+            autoCapitalize={autoCapitalize}
+            testID={testID}
           />
 
           <TouchableOpacity

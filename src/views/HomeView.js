@@ -2,6 +2,7 @@ import { View, Text, TouchableOpacity } from 'react-native';
 
 import CantidadModal from '../components/CantidadModal';
 import ManualCodeModal from '../components/ManualCodeModal';
+import EstadoBanner from '../components/EstadoBanner';
 
 import { styles } from '../styles/styles';
 
@@ -24,21 +25,59 @@ export default function HomeView({
 
       <View style={styles.homeContent}>
 
-        {/* ---------- ESCANEAR UBICACIÓN ---------- */}
+        {/* ---------- CONEXIÓN, COLA Y COPIA DEL MAESTRO ---------- */}
 
-        <TouchableOpacity
-          style={[
-            styles.customButton,
-            { marginBottom: 15 },
-          ]}
-          onPress={actions.abrirScannerUbicacion}
+        <EstadoBanner />
+
+        {/* ---------- UBICACIÓN ---------- */}
+
+        <View
+          style={{
+            flexDirection: 'row',
+            marginBottom: 15,
+          }}
         >
 
-          <Text style={styles.buttonText}>
-            Escanear ubicación
-          </Text>
+          {/* ---------- ESCANEAR UBICACIÓN ---------- */}
 
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.customButton,
+              styles.botonEscanear,
+            ]}
+            onPress={actions.abrirScannerUbicacion}
+          >
+
+            <Text style={styles.buttonText}>
+              Escanear ubicación
+            </Text>
+
+          </TouchableOpacity>
+
+
+          {/* ---------- INTRODUCCIÓN MANUAL ---------- */}
+          {/* También sin conexión: el código se valida contra la
+              copia local del maestro, igual que al escanear.
+              Mismo estilo que el "+" de artículos: `botonMas` */}
+
+          <TouchableOpacity
+            style={[
+              styles.customButton,
+              styles.botonMas,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Introducir ubicación a mano"
+            testID="btn-manual-ubicacion"
+            onPress={actions.abrirModalManualUbicacion}
+          >
+
+            <Text style={styles.buttonText}>
+              +
+            </Text>
+
+          </TouchableOpacity>
+
+        </View>
 
 
         {/* ---------- UBICACIÓN ACTUAL ---------- */}
@@ -64,10 +103,7 @@ export default function HomeView({
           <TouchableOpacity
             style={[
               styles.customButton,
-              {
-                flex: 1,
-                marginRight: 8,
-              },
+              styles.botonEscanear,
             ]}
             onPress={actions.abrirScannerArticulo}
           >
@@ -80,17 +116,18 @@ export default function HomeView({
 
 
           {/* ---------- INTRODUCCIÓN MANUAL ---------- */}
+          {/* Sin conexión también se admiten códigos a mano: se
+              validan contra la copia local del maestro.
+              Mismo estilo que el "+" de ubicaciones: `botonMas` */}
 
           <TouchableOpacity
             style={[
               styles.customButton,
-              {
-                flex: 1,
-                marginLeft: 8,
-                justifyContent: 'center',
-                alignItems: 'center',
-              },
+              styles.botonMas,
             ]}
+            accessibilityRole="button"
+            accessibilityLabel="Introducir artículo a mano"
+            testID="btn-manual-articulo"
             onPress={actions.abrirModalManual}
           >
 
@@ -122,7 +159,9 @@ export default function HomeView({
                   key={index}
                   style={styles.itemArticulo}
                 >
-                  {item.articulo} — Cantidad: {item.cantidad}
+                  {`${item.articulo} — Cantidad: ${item.cantidad}${
+                    item.pendiente ? ' (pendiente)' : ''
+                  }`}
                 </Text>
 
               )
@@ -152,6 +191,41 @@ export default function HomeView({
 
         onCancel={() =>
           actions.setMostrarManual(false)
+        }
+      />
+
+
+      {/* =====================================================
+          MODAL CÓDIGO MANUAL DE UBICACIÓN
+      ===================================================== */}
+
+      <ManualCodeModal
+        visible={state.mostrarManualUbicacion}
+
+        titulo="Introduce el código de ubicación"
+        placeholder="LIN2-A01-Z01"
+        autoCapitalize="characters"
+        testID="input-ubicacion-manual"
+
+        onConfirm={async (codigo) => {
+
+          const valida =
+            await actions.onManualUbicacion(codigo);
+
+          /* Si el código no existe el modal se queda abierto:
+             con tres partes es fácil equivocarse y obligar a
+             volver a pulsarlo sería un fastidio. */
+
+          if (valida) {
+            actions.setMostrarManualUbicacion(
+              false
+            );
+          }
+
+        }}
+
+        onCancel={() =>
+          actions.setMostrarManualUbicacion(false)
         }
       />
 

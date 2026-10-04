@@ -14,6 +14,10 @@ export const colors = {
   borderStrong: '#D1D5DB',
   surfaceAlt: '#F3F4F6',
   danger: '#DC2626',
+  warning: '#B45309',       // avisos de conectividad
+  warningBg: '#FEF3C7',
+  success: '#047857',       // estado sincronizado
+  successBg: '#D1FAE5',
 };
 
 export const styles = StyleSheet.create({
@@ -36,6 +40,30 @@ container: {
     color: colors.onPrimary,
     fontSize: 16,
     fontWeight: 'bold',
+  },
+
+  /* =====================================================
+   * PARES DE BOTONES DE HOME
+   * =====================================================
+   *
+   * Los dos pares (escaneear ubicación / escanear artículo)
+   * comparten estilo a propósito: si divergen, los botones
+   * dejan de alinearse entre sí y el operario ya no sabe
+   * cuál es cuál. El "+" es fijo y no `flex: 1` para que no
+   * se lea como una acción principal. Por eso se anula el
+   * `paddingHorizontal` de `customButton`.
+   * ===================================================== */
+
+  botonEscanear: {
+    flex: 1,
+    marginRight: 8,
+  },
+
+  botonMas: {
+    width: 48,
+    paddingHorizontal: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
   /* ---------- HOME ---------- */

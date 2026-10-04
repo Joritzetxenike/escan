@@ -7,6 +7,7 @@ import {
   obtenerSecciones,
   obtenerAreas,
   obtenerUbicacionesDeArea,
+  obtenerEstadoUbicaciones,
 } from '../../src/services/ubicacionesService';
 import InventoryService from '../../src/services/InventoryService';
 
@@ -14,6 +15,7 @@ jest.mock('../../src/services/ubicacionesService', () => ({
   obtenerSecciones: jest.fn(),
   obtenerAreas: jest.fn(),
   obtenerUbicacionesDeArea: jest.fn(),
+  obtenerEstadoUbicaciones: jest.fn(),
 }));
 
 jest.mock('../../src/services/InventoryService', () => ({
@@ -54,15 +56,31 @@ describe('EstadoScreen', () => {
     nodo.props.onPress();
   };
 
+  /* La pantalla entra en el resumen, así que todo lo de la
+     lista hay que ir a buscarlo. */
+
+  const irALista = async () => {
+    await act(async () => {
+      renderer.root
+        .findByProps({ testID: 'vista-lista' })
+        .props.onPress();
+    });
+  };
+
   const cargarSecciones = async () => {
+    await irALista();
+
     await act(async () => {
       presionarPorTexto('Cargar ubicaciones');
     });
   };
 
-  beforeEach(() => {
+  beforeEach(async () => {
     jest.clearAllMocks();
-    act(() => {
+
+    obtenerEstadoUbicaciones.mockResolvedValue([]);
+
+    await act(async () => {
       renderer = create(<EstadoScreen navigation={mockNavigation} />);
     });
   });
@@ -74,19 +92,85 @@ describe('EstadoScreen', () => {
   });
 
   // =====================================================
-  // Carga bajo demanda (por niveles)
+  // Vista por defecto: el resumen
   // =====================================================
 
-  test('no hace peticiones al montar la pantalla', () => {
+  test('entra en el resumen y pide solo el resumen', async () => {
+    expect(obtenerEstadoUbicaciones).toHaveBeenCalledTimes(1);
+
     expect(obtenerSecciones).not.toHaveBeenCalled();
     expect(obtenerAreas).not.toHaveBeenCalled();
     expect(obtenerUbicacionesDeArea).not.toHaveBeenCalled();
+
+    expect(
+      renderer.root.findAllByProps({ testID: 'vista-resumen' }).length
+    ).toBeGreaterThan(0);
   });
+
+  test('enseña los totales del resumen', async () => {
+    /* El mock se cambia después del montaje, así que hay que
+       recargar para que el resumen reciba el árbol nuevo. */
+
+    obtenerEstadoUbicaciones.mockResolvedValue([
+      {
+        seccion: 'LIN2',
+        stat: 'Fin',
+        maestroArea: [
+          {
+            area: 'A01',
+            stat: 'Fin',
+            maestroUbicacion: [
+              { subzona: 'Z01', stat: 'Fin' },
+              { subzona: 'Z02', stat: 'Inicio' },
+            ],
+          },
+        ],
+      },
+    ]);
+
+    const ultimoSetOptions =
+      mockNavigation.setOptions.mock.calls.at(-1)[0];
+
+    await act(async () => {
+      ultimoSetOptions.headerRight().props.onPress();
+    });
+
+    const textos = renderer.root
+      .findAllByType(Text)
+      .map((t) => String(textoDe(t)));
+
+    expect(textos).toContain('Secciones');
+    expect(textos).toContain('Ubicaciones');
+    expect(textos).toContain('Total: 2');
+  });
+
+  test('la lista no se pide hasta que se elige esa vista', async () => {
+    await irALista();
+
+    expect(obtenerSecciones).not.toHaveBeenCalled();
+  });
+
+  test('el botón de recarga recarga la vista activa', async () => {
+    const ultimoSetOptions =
+      mockNavigation.setOptions.mock.calls.at(-1)[0];
+
+    await act(async () => {
+      ultimoSetOptions.headerRight().props.onPress();
+    });
+
+    expect(obtenerEstadoUbicaciones).toHaveBeenCalledTimes(2);
+    expect(obtenerSecciones).not.toHaveBeenCalled();
+  });
+
+
+  // =====================================================
+  // Carga bajo demanda (por niveles)
+  // =====================================================
 
   test('carga solo las secciones al pulsar "Cargar ubicaciones"', async () => {
     obtenerSecciones.mockResolvedValue([
       {
-        seccion: '50100',
+        seccion: 'LIN2',
         stat: 'Inicio',
       },
     ]);
@@ -99,14 +183,14 @@ describe('EstadoScreen', () => {
 
     const textos = renderer.root.findAllByType(Text);
     expect(
-      textos.some((t) => textoDe(t) === 'Sección 50100')
+      textos.some((t) => textoDe(t) === 'Sección LIN2')
     ).toBe(true);
   });
 
   test('el botón de recarga de la cabecera vuelve a pedir las secciones', async () => {
     obtenerSecciones.mockResolvedValue([
       {
-        seccion: '50100',
+        seccion: 'LIN2',
         stat: 'Inicio',
       },
     ]);
@@ -154,14 +238,14 @@ describe('EstadoScreen', () => {
   test('carga las áreas solo al expandir una sección', async () => {
     obtenerSecciones.mockResolvedValue([
       {
-        seccion: '50100',
+        seccion: 'LIN2',
         stat: 'Inicio',
       },
     ]);
 
     obtenerAreas.mockResolvedValue([
       {
-        area: '111',
+        area: 'A01',
         stat: 'Inicio',
       },
     ]);
@@ -173,83 +257,83 @@ describe('EstadoScreen', () => {
     expect(obtenerUbicacionesDeArea).not.toHaveBeenCalled();
 
     await act(async () => {
-      presionarPorTexto('Sección 50100');
+      presionarPorTexto('Sección LIN2');
     });
 
-    expect(obtenerAreas).toHaveBeenCalledWith('50100');
+    expect(obtenerAreas).toHaveBeenCalledWith('LIN2');
     expect(obtenerUbicacionesDeArea).not.toHaveBeenCalled();
     expect(InventoryService.cargarUbicacion).not.toHaveBeenCalled();
 
     const textos = renderer.root.findAllByType(Text);
     expect(
-      textos.some((t) => textoDe(t) === 'Área 111')
+      textos.some((t) => textoDe(t) === 'Área A01')
     ).toBe(true);
   });
 
   test('carga las ubicaciones solo al expandir un área, sin artículos', async () => {
     obtenerSecciones.mockResolvedValue([
       {
-        seccion: '50100',
+        seccion: 'LIN2',
         stat: 'Inicio',
       },
     ]);
 
     obtenerAreas.mockResolvedValue([
       {
-        area: '111',
+        area: 'A01',
         stat: 'Inicio',
       },
     ]);
 
     obtenerUbicacionesDeArea.mockResolvedValue([
       {
-        subzona: 'Z101',
+        subzona: 'Z01',
         stat: 'Inicio',
-        ubicacion: '50100-111-Z101',
+        ubicacion: 'LIN2-A01-Z01',
       },
     ]);
 
     await cargarSecciones();
 
     await act(async () => {
-      presionarPorTexto('Sección 50100');
+      presionarPorTexto('Sección LIN2');
     });
     await act(async () => {
-      presionarPorTexto('Área 111');
+      presionarPorTexto('Área A01');
     });
 
     expect(obtenerUbicacionesDeArea)
-      .toHaveBeenCalledWith('50100', '111');
+      .toHaveBeenCalledWith('LIN2', 'A01');
 
     // Aún no se cargan los artículos
     expect(InventoryService.cargarUbicacion).not.toHaveBeenCalled();
 
     const textos = renderer.root.findAllByType(Text);
     expect(
-      textos.some((t) => textoDe(t) === '50100-111-Z101')
+      textos.some((t) => textoDe(t) === 'LIN2-A01-Z01')
     ).toBe(true);
   });
 
   test('carga los artículos solo al tocar una ubicación', async () => {
     obtenerSecciones.mockResolvedValue([
       {
-        seccion: '50100',
+        seccion: 'LIN2',
         stat: 'Inicio',
       },
     ]);
 
     obtenerAreas.mockResolvedValue([
       {
-        area: '111',
+        area: 'A01',
         stat: 'Inicio',
       },
     ]);
 
     obtenerUbicacionesDeArea.mockResolvedValue([
       {
-        subzona: 'Z101',
+        subzona: 'Z01',
         stat: 'Inicio',
-        ubicacion: '50100-111-Z101',
+        ubicacion: 'LIN2-A01-Z01',
       },
     ]);
 
@@ -257,18 +341,18 @@ describe('EstadoScreen', () => {
 
     await cargarSecciones();
     await act(async () => {
-      presionarPorTexto('Sección 50100');
+      presionarPorTexto('Sección LIN2');
     });
     await act(async () => {
-      presionarPorTexto('Área 111');
+      presionarPorTexto('Área A01');
     });
 
     await act(async () => {
-      presionarPorTexto('50100-111-Z101');
+      presionarPorTexto('LIN2-A01-Z01');
     });
 
     expect(InventoryService.cargarUbicacion)
-      .toHaveBeenCalledWith('50100-111-Z101');
+      .toHaveBeenCalledWith('LIN2-A01-Z01');
   });
 
 });

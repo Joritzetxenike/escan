@@ -1,59 +1,70 @@
 import UbicacionValidator from '../../src/validators/UbicacionValidator';
-import DataProvider from '../../src/providers/DataProvider';
+import maestrosService from '../../src/services/maestrosService';
 
-jest.mock('../../src/providers/DataProvider', () => ({
-  obtenerUbicacion: jest.fn(),
+/* =======================================================
+ * VALIDACIÓN DE UBICACIONES CONTRA LA COPIA LOCAL
+ * ======================================================= */
+
+jest.mock('../../src/services/maestrosService', () => ({
+  DIAS_PELIGROSO: 7,
+  SIN_CONEXION: 'Sin conexión',
+  asegurarListo: jest.fn(),
+  existeUbicacion: jest.fn(),
+  obtenerEstado: jest.fn(() => ({ error: null })),
 }));
 
 describe('UbicacionValidator', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+
+    maestrosService.asegurarListo.mockResolvedValue(true);
+    maestrosService.existeUbicacion.mockReturnValue(true);
+    maestrosService.obtenerEstado.mockReturnValue({
+      error: null,
+    });
   });
 
+
   // =====================================================
-  // validarFormato
+  // FORMATO (no necesita la copia)
   // =====================================================
 
   describe('validarFormato', () => {
 
-    test('acepta un código seccion-area-subzona', () => {
+    test('acepta seccion-area-subzona', () => {
       expect(
-        UbicacionValidator.validarFormato('50100-111-Z101')
+        UbicacionValidator.validarFormato(
+          'LIN2-A01-Z01'
+        )
       ).toBe(true);
     });
 
-    test('rechaza un código sin el formato completo', () => {
+    test('rechaza formatos incompletos o sobrantes', () => {
       expect(
-        UbicacionValidator.validarFormato('50100')
+        UbicacionValidator.validarFormato('LIN2')
+      ).toBe(false);
+
+      expect(
+        UbicacionValidator.validarFormato('LIN2-A01')
+      ).toBe(false);
+
+      expect(
+        UbicacionValidator.validarFormato(
+          'LIN2-A01-Z01-X'
+        )
+      ).toBe(false);
+
+      expect(
+        UbicacionValidator.validarFormato('LIN2-A01-')
       ).toBe(false);
     });
 
-    test('rechaza un código con solo seccion-area', () => {
-      expect(
-        UbicacionValidator.validarFormato('50100-111')
-      ).toBe(false);
-    });
-
-    test('rechaza un código con más de tres partes', () => {
-      expect(
-        UbicacionValidator.validarFormato('50100-111-Z101-X')
-      ).toBe(false);
-    });
-
-    test('rechaza un código con alguna parte vacía', () => {
-      expect(
-        UbicacionValidator.validarFormato('50100-111-')
-      ).toBe(false);
-    });
-
-    test('rechaza un código vacío', () => {
+    test('rechaza vacío y null', () => {
       expect(
         UbicacionValidator.validarFormato('')
       ).toBe(false);
-    });
 
-    test('rechaza un código null', () => {
       expect(
         UbicacionValidator.validarFormato(null)
       ).toBe(false);
@@ -61,91 +72,191 @@ describe('UbicacionValidator', () => {
 
   });
 
-  // =====================================================
-  // validarExistencia
-  // =====================================================
-
-  describe('validarExistencia', () => {
-
-    test('devuelve la ubicación del maestro', async () => {
-      const ubicacion = {
-        seccion: '50100',
-        area: '111',
-        subzona: 'Z101',
-        stat: 'Inicio',
-      };
-
-      DataProvider.obtenerUbicacion.mockResolvedValue(ubicacion);
-
-      const resultado =
-        await UbicacionValidator.validarExistencia('50100-111-Z101');
-
-      expect(DataProvider.obtenerUbicacion)
-        .toHaveBeenCalledWith('50100-111-Z101');
-      expect(resultado).toEqual(ubicacion);
-    });
-
-  });
 
   // =====================================================
-  // validar
+  // CONSULTA A LA COPIA LOCAL
   // =====================================================
 
   describe('validar', () => {
 
-    test('debe rechazar un código de ubicación vacío', async () => {
-      const resultado = await UbicacionValidator.validar('');
+    test('rechaza un código vacío', async () => {
+
+      const resultado =
+        await UbicacionValidator.validar('');
 
       expect(resultado.ok).toBe(false);
       expect(resultado.titulo).toBe('Error');
       expect(resultado.mensaje).toBe(
         'El código de ubicación es inválido'
       );
-
-      expect(DataProvider.obtenerUbicacion).not.toHaveBeenCalled();
     });
 
-    test('debe rechazar un código que no sigue el formato', async () => {
+    test('rechaza un formato inválido sin tocar la copia', async () => {
+
       const resultado =
-        await UbicacionValidator.validar('50100');
+        await UbicacionValidator.validar('LIN2');
 
       expect(resultado.ok).toBe(false);
       expect(resultado.titulo).toBe('Ubicación inválida');
-      expect(resultado.mensaje).toBe(
-        'El código 50100 no existe como ubicación'
-      );
 
-      expect(DataProvider.obtenerUbicacion).not.toHaveBeenCalled();
+      expect(
+        maestrosService.asegurarListo
+      ).not.toHaveBeenCalled();
     });
 
-    test('debe rechazar una ubicación que no existe en el maestro', async () => {
-      DataProvider.obtenerUbicacion.mockResolvedValue(null);
+    test('acepta una ubicación que está en la copia', async () => {
 
       const resultado =
-        await UbicacionValidator.validar('99999-999-Z999');
-
-      expect(resultado.ok).toBe(false);
-      expect(resultado.titulo).toBe('Ubicación no encontrada');
-      expect(resultado.mensaje).toBe(
-        'El código 99999-999-Z999 no existe en el maestro'
-      );
-    });
-
-    test('debe aceptar una ubicación válida', async () => {
-      const ubicacionMaestro = {
-        seccion: '50100',
-        area: '111',
-        subzona: 'Z101',
-        stat: 'Inicio',
-      };
-
-      DataProvider.obtenerUbicacion.mockResolvedValue(ubicacionMaestro);
-
-      const resultado =
-        await UbicacionValidator.validar('50100-111-Z101');
+        await UbicacionValidator.validar(
+          'LIN2-A01-Z01'
+        );
 
       expect(resultado.ok).toBe(true);
-      expect(resultado.ubicacion).toEqual(ubicacionMaestro);
+      expect(resultado.ubicacion).toEqual({
+        ubicacion: 'LIN2-A01-Z01',
+        stat: null,
+      });
+      expect(resultado.ubicacionProvisional).toBe(false);
+    });
+
+    test('rechaza una ubicación que NO está en la copia', async () => {
+      maestrosService.existeUbicacion.mockReturnValue(false);
+
+      const resultado =
+        await UbicacionValidator.validar(
+          'LIN2-A99-Z99'
+        );
+
+      expect(resultado.ok).toBe(false);
+      expect(resultado.titulo).toBe(
+        'Ubicación no encontrada'
+      );
+      expect(resultado.mensaje).toContain(
+        'no está en la copia local del maestro'
+      );
+    });
+
+    test('si falta la copia de ubicaciones, rechaza', async () => {
+      /* Sin copia de ubicaciones no hay forma de saber si el
+         código existe: se rechaza, igual que sin copia de
+         artículos. Antes se aceptaba por formato, lo que
+         dejaba pasar ubicaciones inventadas al teclear. */
+      maestrosService.existeUbicacion.mockReturnValue(null);
+
+      const resultado =
+        await UbicacionValidator.validar(
+          'LIN2-A01-Z01'
+        );
+
+      expect(resultado.ok).toBe(false);
+      expect(resultado.titulo).toBe(
+        'Sin copia de ubicaciones'
+      );
+      expect(resultado.mensaje).toContain(
+        'falta la copia de ubicaciones'
+      );
+      expect(resultado.ubicacionProvisional)
+        .toBeUndefined();
+    });
+
+    test('indica el motivo si la copia de ubicaciones falla', async () => {
+
+      maestrosService.existeUbicacion.mockReturnValue(null);
+
+      maestrosService.obtenerEstado.mockReturnValue({
+        error: 'Network request failed',
+      });
+
+      const resultado =
+        await UbicacionValidator.validar(
+          'LIN2-A01-Z01'
+        );
+
+      expect(resultado.ok).toBe(false);
+      expect(resultado.mensaje).toContain(
+        'Network request failed'
+      );
+    });
+
+    test('rechaza si no hay copia, e indica el motivo', async () => {
+      maestrosService.asegurarListo.mockResolvedValue(false);
+
+      maestrosService.obtenerEstado.mockReturnValue({
+        error: 'Network request failed',
+      });
+
+      const resultado =
+        await UbicacionValidator.validar(
+          'LIN2-A01-Z01'
+        );
+
+      expect(resultado.ok).toBe(false);
+      expect(resultado.titulo).toBe('Sin copia de maestros');
+      expect(resultado.mensaje).toContain(
+        'Network request failed'
+      );
+    });
+
+
+  });
+
+
+  // =====================================================
+  // NORMALIZACIÓN
+  // =====================================================
+  //
+  // Al teclear el código es fácil equivocarse de
+  // capitalización o dejar espacios. Los códigos del maestro
+  // son siempre `SECCION-AREA-SUBZONA` en mayúsculas.
+
+  describe('normalización', () => {
+
+    test('pasa a mayúsculas y quita espacios', async () => {
+
+      const resultado =
+        await UbicacionValidator.validar(
+          '  lin2-a01-z01  '
+        );
+
+      expect(resultado.ok).toBe(true);
+
+      /* La copia contiene el código en mayúsculas */
+      expect(
+        maestrosService.existeUbicacion
+      ).toHaveBeenCalledWith('LIN2-A01-Z01');
+
+      expect(resultado.ubicacion.ubicacion).toBe(
+        'LIN2-A01-Z01'
+      );
+    });
+
+    test('un código en minúsculas se busca en mayúsculas', async () => {
+
+      await UbicacionValidator.validar(
+        'lin2-a01-z01'
+      );
+
+      expect(
+        maestrosService.existeUbicacion
+      ).toHaveBeenCalledWith('LIN2-A01-Z01');
+    });
+
+    test('el error de formato enseña el formato esperado', async () => {
+
+      const resultado =
+        await UbicacionValidator.validar('lin2');
+
+      expect(resultado.ok).toBe(false);
+      expect(resultado.mensaje).toContain('LIN2-A01-Z01');
+    });
+
+    test('normaliza también un código vacío con espacios', async () => {
+
+      const resultado =
+        await UbicacionValidator.validar('   ');
+
+      expect(resultado.ok).toBe(false);
+      expect(resultado.titulo).toBe('Error');
     });
 
   });

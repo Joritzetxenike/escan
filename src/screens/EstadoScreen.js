@@ -1,4 +1,9 @@
-import { useLayoutEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useState,
+} from "react";
 import {
   ScrollView,
   View,
@@ -13,13 +18,36 @@ import {
   obtenerSecciones,
   obtenerAreas,
   obtenerUbicacionesDeArea,
+  obtenerEstadoUbicaciones,
 } from "../services/ubicacionesService";
+import { resumirEstados } from "../helpers/estadosResumenHelper";
 import InventoryService from "../services/InventoryService";
 import ArticulosModal from "../components/ArticulosModal";
+import EstadoResumen, {
+  COLORES_ESTADO,
+} from "../components/EstadoResumen";
 import { colors } from "../styles/styles";
+
+/* La pantalla ofrece las dos vistas y entra por el resumen:
+   es lo que se quiere ver al llegar. La lista queda a un
+   toque y se sigue cargando bajo demanda, porque son
+   peticiones por niveles sobre 18 secciones. */
+
+const VISTAS = [
+  { clave: "resumen", etiqueta: "Resumen" },
+  { clave: "lista", etiqueta: "Lista" },
+];
 
 export default function EstadoScreen({ navigation }) {
 
+  const [vista, setVista] = useState("resumen");
+
+  // Resumen
+  const [resumen, setResumen] = useState(null);
+  const [cargandoResumen, setCargandoResumen] = useState(false);
+  const [errorResumen, setErrorResumen] = useState(false);
+
+  // Lista
   const [secciones, setSecciones] = useState([]);
   const [cargando, setCargando] = useState(false);
   const [cargado, setCargado] = useState(false);
@@ -43,17 +71,10 @@ export default function EstadoScreen({ navigation }) {
   const [editandoCantidad, setEditandoCantidad] = useState(null);
   const [nuevaCantidad, setNuevaCantidad] = useState("");
 
-  const coloresEstado = {
-    Inicio: "#7F8C8D",
-    Proceso: "#F39C12",
-    Fin: "#2ECC71",
-  };
+  const obtenerColor = (estado) =>
+    COLORES_ESTADO[estado] || COLORES_ESTADO.Inicio;
 
-  const obtenerColor = (estado) => {
-    return coloresEstado[estado] || "#7F8C8D";
-  };
-
-  const cargar = async () => {
+  const cargar = useCallback(async () => {
     try {
       setCargando(true);
 
@@ -72,14 +93,52 @@ export default function EstadoScreen({ navigation }) {
     } finally {
       setCargando(false);
     }
-  };
+  }, []);
+
+  const cargarResumen = useCallback(async () => {
+    try {
+      setCargandoResumen(true);
+      setErrorResumen(false);
+
+      const arbol = await obtenerEstadoUbicaciones();
+
+      setResumen(resumirEstados(arbol));
+
+    } catch (e) {
+      console.error("Error cargando resumen:", e);
+      setErrorResumen(true);
+    } finally {
+      setCargandoResumen(false);
+    }
+  }, []);
+
+  /* El resumen entra solo: es una consulta y es la vista por
+     defecto. La lista no, para no pedir las 18 secciones sin
+     que nadie las haya pedido. */
+
+  useEffect(() => {
+    cargarResumen();
+  }, [cargarResumen]);
+
+  /* El ⟳ de la cabecera recarga lo que se está viendo. */
+
+  const recargar = useCallback(() => {
+    if (vista === "resumen") {
+      cargarResumen();
+    } else {
+      cargar();
+    }
+  }, [vista, cargarResumen, cargar]);
 
   useLayoutEffect(() => {
     navigation?.setOptions?.({
       headerRight: () => (
         <TouchableOpacity
-          onPress={cargar}
+          onPress={recargar}
           activeOpacity={0.7}
+          testID="recargar-estado"
+          accessibilityRole="button"
+          accessibilityLabel="Recargar"
           style={{
             padding: 8,
             marginRight: 5,
@@ -93,7 +152,7 @@ export default function EstadoScreen({ navigation }) {
         </TouchableOpacity>
       ),
     });
-  }, [navigation, cargar]);
+  }, [navigation, recargar]);
 
   const alternarSeccion = async (seccion) => {
     const abrir = !seccionesAbiertas[seccion];
@@ -190,6 +249,43 @@ export default function EstadoScreen({ navigation }) {
   return (
     <View style={{ flex: 1 }}>
 
+      {/* ---------- CONMUTADOR DE VISTA ---------- */}
+
+      <View style={conmutadorEstilo}>
+        {VISTAS.map(({ clave, etiqueta }) => (
+          <TouchableOpacity
+            key={clave}
+            onPress={() => setVista(clave)}
+            activeOpacity={0.7}
+            testID={`vista-${clave}`}
+            accessibilityRole="button"
+            accessibilityState={{ selected: vista === clave }}
+            style={[
+              conmutadorBoton,
+              vista === clave && conmutadorActivo,
+            ]}
+          >
+            <Text
+              style={[
+                conmutadorTexto,
+                vista === clave && conmutadorTextoActivo,
+              ]}
+            >
+              {etiqueta}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {vista === "resumen" ? (
+        <EstadoResumen
+          resumen={resumen}
+          cargando={cargandoResumen}
+          error={errorResumen}
+          onReintentar={cargarResumen}
+        />
+      ) : (
+      <>
       {cargando && !cargado ? (
         <View
           style={{
@@ -237,38 +333,6 @@ export default function EstadoScreen({ navigation }) {
           paddingBottom: 30,
         }}
       >
-
-        <TouchableOpacity
-          onPress={() =>
-            navigation.navigate('EstadosResumen')
-          }
-          activeOpacity={0.7}
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: colors.primary,
-            paddingVertical: 12,
-            borderRadius: 8,
-            marginBottom: 14,
-          }}
-        >
-          <MaterialIcons
-            name="assessment"
-            size={22}
-            color="#FFFFFF"
-          />
-          <Text
-            style={{
-              color: "#fff",
-              fontWeight: "bold",
-              fontSize: 15,
-              marginLeft: 8,
-            }}
-          >
-            Resumen de estados
-          </Text>
-        </TouchableOpacity>
 
         {secciones.map((seccion) => {
 
@@ -584,6 +648,9 @@ export default function EstadoScreen({ navigation }) {
 
       </ScrollView>
       )}
+      </>
+
+      )}
 
       <ArticulosModal
         visible={modalVisible}
@@ -605,3 +672,37 @@ export default function EstadoScreen({ navigation }) {
 
 
 }
+
+const conmutadorEstilo = {
+  flexDirection: "row",
+  backgroundColor: colors.surfaceAlt,
+  borderRadius: 8,
+  borderWidth: 1,
+  borderColor: colors.border,
+  padding: 3,
+  margin: 12,
+  marginBottom: 4,
+  gap: 3,
+};
+
+const conmutadorBoton = {
+  flex: 1,
+  paddingVertical: 9,
+  borderRadius: 6,
+  alignItems: "center",
+  justifyContent: "center",
+};
+
+const conmutadorActivo = {
+  backgroundColor: colors.primary,
+};
+
+const conmutadorTexto = {
+  fontSize: 14,
+  fontWeight: "700",
+  color: colors.textSecondary,
+};
+
+const conmutadorTextoActivo = {
+  color: "#FFFFFF",
+};

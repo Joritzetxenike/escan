@@ -265,6 +265,39 @@ const SupabaseProvider = {
   },
 
   /* =======================================================
+   * MAESTRO COMPLETO (copia local offline)
+   * ======================================================= */
+
+  /**
+   * Descarga TODO el maestro de artículos de una sola vez.
+   *
+   * Son ~211.000 filas, así que pedirlas por REST serían ~212
+   * peticiones (PostgREST devuelve 1.000 por petición) y unos
+   * 40 segundos. La RPC `descargar_maestro_articulos()` lo
+   * resuelve en una.
+   *
+   * Devuelve `{ codigos: string[], sic: string[] }`: solo lo
+   * necesario para validar y para avisar de los SIC. No se
+   * copia `dsca` porque ocupa la mitad del tamaño y el CSV
+   * local tampoco la guarda.
+   *
+   * Ver `supabase/migrations/20261004_maestro_snapshot.sql`.
+   */
+  async obtenerMaestroArticulos() {
+
+    const { data, error } = await supabase.rpc(
+      'descargar_maestro_articulos'
+    );
+
+    if (error) throw error;
+
+    return {
+      codigos: data?.codigos ?? [],
+      sic: data?.sic ?? [],
+    };
+  },
+
+  /* =======================================================
    * MOVIMIENTOS (tabla `conteo`)
    * ======================================================= */
 

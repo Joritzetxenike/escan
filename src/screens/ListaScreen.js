@@ -13,6 +13,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { styles, colors } from '../styles/styles';
 import ArticulosModal from '../components/ArticulosModal';
+import EstadoBanner from '../components/EstadoBanner';
 import InventoryService from '../services/InventoryService';
 
 export default function ListaScreen() {
@@ -43,11 +44,20 @@ export default function ListaScreen() {
     const ubicacion = nombre.replace(/\.csv$/i, '');
 
     try {
-      await InventoryService.finalizarUbicacion(ubicacion);
-      Alert.alert(
-        'Ubicación terminada',
-        `La ubicación ${ubicacion} se ha marcado como terminada`
-      );
+      const resultado =
+        await InventoryService.finalizarUbicacion(ubicacion);
+
+      if (resultado?.pendiente) {
+        Alert.alert(
+          'Sin conexión',
+          `La ubicación ${ubicacion} se marcará como terminada al sincronizar`
+        );
+      } else {
+        Alert.alert(
+          'Ubicación terminada',
+          `La ubicación ${ubicacion} se ha marcado como terminada`
+        );
+      }
     } catch (e) {
       console.error('Error finalizando ubicación:', e);
       Alert.alert(
@@ -171,6 +181,8 @@ export default function ListaScreen() {
 
   return (
     <View style={[styles.container, { flex: 1, padding: 10 }]}>
+      <EstadoBanner />
+
       {csvs.length === 0 ? (
         <Text style={{ fontSize: 16, color: colors.textSecondary }}>No hay archivos CSV</Text>
       ) : (

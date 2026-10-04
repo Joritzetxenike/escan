@@ -1,164 +1,220 @@
 import ArticuloValidator from '../../src/validators/ArticuloValidator';
-import DataProvider from '../../src/providers/DataProvider';
+import maestrosService from '../../src/services/maestrosService';
 
-jest.mock('../../src/providers/DataProvider', () => ({
-  obtenerArticulo: jest.fn(),
+/* =======================================================
+ * VALIDACIÓN DE ARTÍCULOS CONTRA LA COPIA LOCAL
+ *
+ * Ya no se consulta Supabase: todo sale del maestro local.
+ * ======================================================= */
+
+jest.mock('../../src/services/maestrosService', () => ({
+  DIAS_PELIGROSO: 7,
+  SIN_CONEXION: 'Sin conexión',
+  asegurarListo: jest.fn(),
+  existeArticulo: jest.fn(),
+  esSIC: jest.fn(),
+  obtenerEstado: jest.fn(() => ({ error: null })),
 }));
 
 describe('ArticuloValidator', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+
+    maestrosService.asegurarListo.mockResolvedValue(true);
+    maestrosService.existeArticulo.mockReturnValue(true);
+    maestrosService.esSIC.mockReturnValue(false);
+    maestrosService.obtenerEstado.mockReturnValue({
+      error: null,
+    });
   });
 
+
   // =====================================================
-  // validarUbicacionPrevia
+  // REGLAS BÁSICAS (sin tocar la copia)
   // =====================================================
 
   describe('validarUbicacionPrevia', () => {
 
-    test('pasa si hay una ubicación', () => {
+    test('exige una ubicación antes que nada', () => {
       expect(
         ArticuloValidator.validarUbicacionPrevia('A1')
       ).toBeNull();
-    });
 
-    test('rechaza si no hay ubicación', () => {
       expect(
         ArticuloValidator.validarUbicacionPrevia(null)
-      ).toEqual({
-        ok: false,
-        titulo: 'Error',
-        mensaje: 'Primero escanea una ubicación',
-      });
+          .mensaje
+      ).toBe('Primero escanea una ubicación');
     });
 
   });
-
-  // =====================================================
-  // validarDuplicado
-  // =====================================================
 
   describe('validarDuplicado', () => {
 
-    test('pasa si el artículo no está escaneado en la sesión', () => {
+    test('acepta un artículo que no está en la sesión', () => {
       expect(
-        ArticuloValidator.validarDuplicado('123456', ['999999'], 'A1')
+        ArticuloValidator.validarDuplicado(
+          '123456',
+          ['999999'],
+          'A1'
+        )
       ).toBeNull();
     });
 
-    test('rechaza un artículo duplicado', () => {
-      expect(
-        ArticuloValidator.validarDuplicado('123456', ['123456'], 'A1')
-      ).toEqual({
-        ok: false,
-        titulo: 'Artículo duplicado',
-        mensaje:
-          'El artículo 123456 ya ha sido escaneado en la ubicación A1',
-      });
-    });
-
-  });
-
-  // =====================================================
-  // validarExistencia
-  // =====================================================
-
-  describe('validarExistencia', () => {
-
-    test('devuelve el artículo del maestro', async () => {
-      const articulo = {
-        item: '123456',
-        dsca: 'Producto de prueba',
-        tipo: 'Normal',
-      };
-
-      DataProvider.obtenerArticulo.mockResolvedValue(articulo);
-
+    test('rechaza un artículo ya escaneado', () => {
       const resultado =
-        await ArticuloValidator.validarExistencia('123456');
+        ArticuloValidator.validarDuplicado(
+          '123456',
+          ['123456'],
+          'A1'
+        );
 
-      expect(DataProvider.obtenerArticulo)
-        .toHaveBeenCalledWith('123456');
-      expect(resultado).toEqual(articulo);
-    });
-
-  });
-
-  // =====================================================
-  // validar
-  // =====================================================
-
-  describe('validar', () => {
-
-    test('debe rechazar un artículo si no hay ubicación', async () => {
-      const resultado =
-        await ArticuloValidator.validar('123456', null, []);
-
-      expect(resultado.ok).toBe(false);
-      expect(resultado.titulo).toBe('Error');
-      expect(resultado.mensaje).toBe(
-        'Primero escanea una ubicación'
-      );
-
-      expect(DataProvider.obtenerArticulo).not.toHaveBeenCalled();
-    });
-
-    test('debe rechazar un artículo duplicado', async () => {
-      const resultado =
-        await ArticuloValidator.validar('123456', 'A1', ['123456']);
-
-      expect(resultado.ok).toBe(false);
       expect(resultado.titulo).toBe('Artículo duplicado');
       expect(resultado.mensaje).toBe(
         'El artículo 123456 ya ha sido escaneado en la ubicación A1'
       );
-
-      expect(DataProvider.obtenerArticulo).not.toHaveBeenCalled();
     });
 
-    test('debe rechazar un artículo que no existe en el maestro', async () => {
-      DataProvider.obtenerArticulo.mockResolvedValue(null);
+  });
+
+
+  // =====================================================
+  // CONSULTA A LA COPIA LOCAL
+  // =====================================================
+
+  describe('validar', () => {
+
+    test('rechaza si no hay ubicación, sin tocar la copia', async () => {
 
       const resultado =
-        await ArticuloValidator.validar('999999', 'A1', []);
+        await ArticuloValidator.validar(
+          '123456',
+          null,
+          []
+        );
 
       expect(resultado.ok).toBe(false);
-      expect(resultado.titulo).toBe('Artículo no encontrado');
-      expect(resultado.mensaje).toBe(
-        'El código 999999 no existe en el maestro'
-      );
+      expect(resultado.titulo).toBe('Error');
+
+      expect(
+        maestrosService.asegurarListo
+      ).not.toHaveBeenCalled();
     });
 
-    test('debe aceptar un artículo válido', async () => {
-      const articuloMaestro = {
-        item: '123456',
-        dsca: 'Producto de prueba',
-        tipo: 'Normal',
-      };
-
-      DataProvider.obtenerArticulo.mockResolvedValue(articuloMaestro);
+    test('rechaza un duplicado, sin tocar la copia', async () => {
 
       const resultado =
-        await ArticuloValidator.validar('123456', 'A1', []);
+        await ArticuloValidator.validar(
+          '123456',
+          'A1',
+          ['123456']
+        );
+
+      expect(resultado.ok).toBe(false);
+      expect(resultado.titulo).toBe('Artículo duplicado');
+
+      expect(
+        maestrosService.asegurarListo
+      ).not.toHaveBeenCalled();
+    });
+
+    test('acepta un artículo que está en la copia', async () => {
+
+      const resultado =
+        await ArticuloValidator.validar(
+          '123456',
+          'A1',
+          []
+        );
 
       expect(resultado.ok).toBe(true);
+      expect(resultado.provisional).toBe(false);
       expect(resultado.esSIC).toBe(false);
-      expect(resultado.articulo).toEqual(articuloMaestro);
+
+      expect(
+        maestrosService.existeArticulo
+      ).toHaveBeenCalledWith('123456');
     });
 
-    test('debe marcar esSIC si el artículo es SIC', async () => {
-      DataProvider.obtenerArticulo.mockResolvedValue({
-        item: '123456',
-        dsca: 'Producto SIC',
-        tipo: 'SIC',
-      });
+    test('marca esSIC si el artículo lo es', async () => {
+      maestrosService.esSIC.mockReturnValue(true);
 
       const resultado =
-        await ArticuloValidator.validar('123456', 'A1', []);
+        await ArticuloValidator.validar(
+          '123456',
+          'A1',
+          []
+        );
 
       expect(resultado.ok).toBe(true);
       expect(resultado.esSIC).toBe(true);
+    });
+
+    test('rechaza un artículo que NO está en la copia', async () => {
+      maestrosService.existeArticulo.mockReturnValue(false);
+
+      const resultado =
+        await ArticuloValidator.validar(
+          '999999',
+          'A1',
+          []
+        );
+
+      expect(resultado.ok).toBe(false);
+      expect(resultado.titulo).toBe('Artículo no encontrado');
+      expect(resultado.mensaje).toContain(
+        'no está en la copia local del maestro'
+      );
+    });
+
+    test('el rechazo sugiere actualizar la copia', async () => {
+      maestrosService.existeArticulo.mockReturnValue(false);
+
+      const resultado =
+        await ArticuloValidator.validar(
+          '999999',
+          'A1',
+          []
+        );
+
+      expect(resultado.mensaje).toContain(
+        'actualiza la copia del maestro'
+      );
+    });
+
+    test('rechaza si no hay copia, e indica el motivo', async () => {
+      maestrosService.asegurarListo.mockResolvedValue(false);
+
+      maestrosService.obtenerEstado.mockReturnValue({
+        error: 'No se pudo leer el JSON',
+      });
+
+      const resultado =
+        await ArticuloValidator.validar(
+          '123456',
+          'A1',
+          []
+        );
+
+      expect(resultado.ok).toBe(false);
+      expect(resultado.titulo).toBe('Sin copia de maestros');
+      expect(resultado.mensaje).toContain(
+        'Conéctate una vez para descargarla'
+      );
+      expect(resultado.mensaje).toContain(
+        'No se pudo leer el JSON'
+      );
+    });
+
+    test('no acepta artículos provisionales', async () => {
+      const resultado =
+        await ArticuloValidator.validar(
+          '123456',
+          'A1',
+          []
+        );
+
+      expect(resultado.provisional).toBe(false);
     });
 
   });

@@ -13,7 +13,7 @@ App móvil desarrollada con **React Native (Expo SDK 54)** para la gestión de i
 | Navegación | React Navigation 7 (native-stack + bottom-tabs) |
 | Cámara     | expo-camera 17 (escáner de códigos)             |
 | Backend    | Supabase (PostgreSQL)                           |
-| Offline    | CSV local via expo-file-system                  |
+| Offline    | CSV local + cola `pending-operations.json`      |
 | OTA        | expo-updates 29 + EAS Update                    |
 | Tests      | Jest + jest-expo + react-test-renderer          |
 
@@ -24,7 +24,7 @@ App móvil desarrollada con **React Native (Expo SDK 54)** para la gestión de i
 ```
 escan/
 ├── App.js                     # Entrada: SafeAreaProvider + Main
-├── Main.js                    # NavigationContainer + RootNavigator + UpdateModal
+├── Main.js                    # NavigationContainer + RootNavigator + UpdateModal + arranque de sync
 ├── index.js                   # registerRootComponent
 ├── app.json                   # Configuración Expo (versión, runtimeVersion, updates)
 ├── eas.json                   # Perfiles de build EAS (development/preview/production)
@@ -39,11 +39,11 @@ escan/
 └── src/
     ├── screens/               # HomeScreen, ListaScreen, EstadoScreen, ScannerScreen
     ├── views/                 # HomeView, ScannerView (presentacional, recibe state+actions)
-    ├── logic/                 # Hooks de negocio: useHomeLogic, useScannerLogic
+    ├── logic/                 # Hooks de negocio: useHomeLogic, useScannerLogic, useConectividad
     ├── hooks/                 # useScanner.js (alternativa al refactor de ScannerLogic)
-    ├── components/            # ArticulosModal, CantidadModal, ManualCodeModal, EstadoCard, UpdateModal
+    ├── components/            # ArticulosModal, CantidadModal, ManualCodeModal, EstadoCard, UpdateModal, EstadoBanner, EstadoResumen
     ├── navigation/            # RootNavigator (stack), MainTabs (bottom-tabs)
-    ├── services/              # InventoryService, ScannerService, ubicacionesService, updateService
+    ├── services/              # InventoryService, ScannerService, ubicacionesService, updateService, conectividadService, pendientesService, syncService
     ├── providers/             # Provider Pattern (estrategia de datos intercambiable)
     │   ├── DataSource.js      # Backend activo: 'supabase' (csv/api comentados)
     │   ├── DataProvider.js    # Router → SupabaseProvider | CsvProvider
@@ -51,8 +51,9 @@ escan/
     │   ├── supabase/          # SupabaseProvider + supabaseClient (activo)
     │   ├── csv/               # csvProvider (parcial, offline)
     │   └── api/               # apiProvider (stub, no implementado)
+    ├── validators/            # ArticuloValidator, UbicacionValidator
     ├── constants/             # scannerConstants.js
-    ├── helpers/               # csvHelper.js
+    ├── helpers/               # csvHelper.js, estadosResumenHelper.js, redHelper.js
     ├── styles/                # styles.js (estilos globales)
     ├── data/                  # ubicacionesMock.js (mock, no usado)
     ├── domain/models/         # (vacío — planificado)
@@ -84,7 +85,7 @@ DataSource ('supabase')
 
 Para cambiar de backend solo hay que modificar la constante en `DataSource.js`.
 
-> Nota: `InventoryService` siempre escribe además en CSV local como respaldo (`CsvProvider.guardarMovimiento`), aunque el backend activo sea Supabase.
+> Nota: `InventoryService` escribe además en el CSV local como respaldo (`CsvProvider.guardarMovimiento`), aunque el backend activo sea Supabase. Ese CSV se escribe **siempre primero**, antes de cualquier operación con Supabase (ver «Conectividad y sincronización diferida»).
 
 ### Escáner — Multi-lectura
 
@@ -111,17 +112,18 @@ El escáner requiere que un mismo código se lea **10 veces consecutivas en 1200
 | --------- | -------------- | --------------------------------------------------------------------------- |
 | `Home`    | HomeScreen     | Escáner de ubicación, escaneo de artículos, últimos artículos de la sesión  |
 | `Lista`   | ListaScreen    | Archivos CSV guardados en el dispositivo (abrir, exportar, borrar con aviso y sync a BD) |
-| `Estado`  | EstadoScreen   | Árbol sección → área → ubicación cargado por niveles y con artículos por ubicación |
-| `EstadosResumen` | EstadosResumenScreen | Porcentaje de secciones, áreas y ubicaciones en cada estado (Fin/Proceso/Inicio); se abre desde el botón «Resumen de estados» de EstadoScreen |
+| `Estado`  | EstadoScreen   | Resumen de estados por defecto y, tras el conmutador, el árbol sección → área → ubicación con artículos por ubicación |
 | `Scanner` | ScannerScreen  | Cámara con overlay para escanear códigos                                    |
 
-### EstadoScreen (carga por niveles)
+### EstadoScreen (resumen + lista)
 
-- **No hace peticiones al abrir** la pantalla.
-- Botón **"Cargar ubicaciones"** → trae solo las **secciones** (1 petición).
+- Abre en el **resumen**, que se pide solo al entrar (1 petición). El conmutador
+  de arriba cambia a la **lista**, que sigue siendo la de carga por niveles.
+- La lista **no hace peticiones** al cambiar a ella: botón **"Cargar
+  ubicaciones"** → trae solo las **secciones** (1 petición).
 - Al **expandir una sección** se cargan sus áreas; al **expandir un área** se cargan sus ubicaciones (1 petición por nivel).
 - Los artículos de una ubicación se cargan **solo al tocar** la ubicación (1 petición por ubicación).
-- Botón de **recarga** (icono ↻ en la cabecera) → vuelve a pedir las secciones y limpia los niveles cacheados.
+- Botón de **recarga** (icono ↻ en la cabecera) → recarga la vista que se esté viendo: el resumen o las secciones, limpiando los niveles cacheados.
 - Si la carga falla muestra un `Alert` y permite reintentar.
 
 ### Borrado de movimientos
@@ -129,9 +131,13 @@ El escáner requiere que un mismo código se lea **10 veces consecutivas en 1200
 - El borrado **solo** se realiza desde la pestaña Lista (CSV): al eliminar una fila se muestra un aviso de que **también se borrará de la base de datos** y se elimina en ambos sitios.
 - En el modal de artículos de Estado ya no aparece la columna **Eliminar**.
 
-### EstadosResumen (porcentajes por estado)
+### Resumen de estados (porcentajes)
 
-- Se abre con el botón **«Resumen de estados»** al inicio de `EstadoScreen` (pestaña Estado).
+- Es la **vista por defecto** de la pestaña Estado. Antes era una pantalla
+  aparte a la que había que entrar desde un botón; ahora es un conmutador
+  Resumen / Lista dentro de la misma pantalla.
+- El pintado vive en `src/components/EstadoResumen.js` y solo recibe datos:
+  `EstadoScreen` es quien los pide y quien decide cuándo recargar.
 - Hace **una sola petición** (`obtenerEstadoUbicaciones`, árbol anidado) y muestra para secciones, áreas y ubicaciones el total y el **porcentaje** en cada estado (`Fin`, `Proceso`, `Inicio`) con su barra de progreso.
 - El cálculo vive en `src/helpers/estadosResumenHelper.js` (función pura `resumirEstados`).
 
@@ -160,35 +166,272 @@ Una ubicación en `'Fin'` **no admite más operaciones**:
 
 ---
 
+## Conectividad y sincronización diferida
+
+La app **funciona sin conexión**: todo lo que se escanea se guarda en el
+dispositivo y se envía a Supabase en cuanto vuelve la red. Sin dependencias
+nativas adicionales (nada de NetInfo), por lo que se despliega por **OTA**.
+
+### Detección de conexión
+
+El estado se deduce de una sonda ligera a Supabase
+(`SupabaseProvider.estaDisponible()`), no del estado del sistema:
+
+- `src/services/conectividadService.js` es un singleton con el estado
+  (`online`, `comprobando`, `sincronizando`, `pendientes`, `ultimoIntento`,
+  `ultimoError`) y una lista de suscriptores.
+- Se comprueba **al iniciar la app** (`Main.js` → `conectividadService.iniciar()`),
+  **al volver a primer plano** (`AppState`) y **cada 30 s mientras no hay
+  conexión**.
+- Cualquier petición que falla por red marca el estado (`marcarSinConexion`) y
+  cualquier petición que sale bien lo restablece (`marcarConexion`).
+- `esErrorDeRed()` (`src/helpers/redHelper.js`) distingue un fallo de red de un
+  rechazo del maestro: lo primero se encola y se reintenta; lo segundo es un
+  error real y se muestra al usuario.
+
+### Orden de escritura
+
+`InventoryService` aplica siempre el mismo orden en guardar, editar, eliminar y
+finalizar:
+
+```
+1. CSV local            → fuente local de verdad (una fila: ubicacion,articulo,cantidad)
+2. Cola de pendientes  → solo si no hay conexión, o si la petición falla por red
+3. Supabase             → solo si hay conexión
+4. Confirmación         → la operación sale de la cola
+```
+
+- Si hay conexión, la operación va directa a Supabase (no se escribe en la cola
+  para no gastar escrituras: el CSV sí queda actualizado como espejo local).
+- Si no hay conexión, o la petición se cae, la operación **se encola** y la UI
+  recibe `{ pendiente: true }`: nunca se muestra como guardada en Supabase.
+- Un error que no es de red (FK, RLS, código inexistente) se propaga a la UI.
+
+### Cola de pendientes: `pending-operations.json`
+
+Vive en `documentDirectory`, junto a los CSV. Es un `.json`, así que **no
+aparece en la pestaña Lista** (que solo lista `.csv`) y borrar o compartir un
+CSV no la afecta.
+
+```json
+{
+  "version": 1,
+  "operaciones": [
+    {
+      "operation_id": "op-1730000000000-1-a1b2c3",
+      "tipo": "guardar",
+      "ubicacion": "50100-111-Z101",
+      "articulo": "123456",
+      "cantidad": 5,
+      "created_at": "2026-10-04T10:00:00.000Z",
+      "intentos": 0,
+      "ultimo_error": null,
+      "provisional": false,
+      "ubicacion_provisional": false
+    }
+  ]
+}
+```
+
+- `tipo` ∈ `guardar` | `actualizar` | `eliminar` | `finalizar`.
+- **Coalescencia conservadora**: dos guardados/actualizaciones *consecutivos*
+  del mismo artículo se fusionan en una sola operación (se queda el último
+  valor y el `operation_id` original). En cambio `guardar` → `eliminar` **se
+  conservan ambos**, porque el artículo puede existir ya en `conteo` y el
+  borrado tiene que llegar al servidor.
+- Una finalización pendiente marca esa ubicación como **terminada localmente**:
+  no admite más operaciones, igual que en Supabase.
+
+### Sincronización
+
+`src/services/syncService.js` envía las operaciones **en orden y de una en una**:
+
+- Se valida lo marcado como `provisional` contra `maestroArticulo` /
+  `maestroUbicacion` antes de aplicarlo.
+- Ese marcado es **herencia de las primeras versiones del offline**: hoy nada se
+  encola como provisional, porque tanto artículos como ubicaciones se validan
+  contra la copia local. Los dos campos siguen en el formato de la cola para
+  poder revalidar las operaciones que ya estaban ahí.
+- Si un código no existe en el maestro, la operación **se conserva** con su
+  error y se bloquea el resto de esa ubicación; las demás ubicaciones siguen.
+- Si se cae la red, se para todo (reintentar en desorden dejaría el estado
+  inconsistente) y se incrementa `intentos`.
+- Una operación solo se borra de la cola tras la confirmación del servidor.
+
+Los reintentos **no pueden duplicar**: `guardarMovimiento` hace `upsert` sobre
+la PK `(ubicacion,item)` y los borrados son idempotentes, así que no hace falta
+ninguna tabla de deduplicación en servidor (el `operation_id` se reutiliza tal
+cual en cada reintento).
+
+Disparadores: arranque de la app, recuperación de conexión, vuelta a primer
+plano y el botón **Reintentar** de `EstadoBanner`.
+
+### Copia local del maestro
+
+`src/services/maestrosService.js` mantiene una copia local de los maestros para
+poder validar artículos y ubicaciones **sin red**. En memoria son dos `Set`
+(códigos y SIC) más uno de ubicaciones, cargados desde dos ficheros:
+
+| Fichero                | Contenido                                             |
+| ---------------------- | ----------------------------------------------------- |
+| `maestro-articulos.json` | `version`, `actualizado_at`, `total`, `codigos`, `sic` |
+| `maestro-ubicaciones.json` | `version`, `actualizado_at`, `ubicaciones` (`seccion-area-subzona`) |
+| `maestros-meta.json`   | Fechas de descarga y `rechazada_hasta` (aplazamiento) |
+
+Solo se guardan los **códigos**, no las descripciones: 211.578 filas en unos 3 MB
+en lugar de los ~9 MB que ocuparía el catálogo completo. La descripción no se usa
+en la app.
+
+El maestro de artículos se baja con una única llamada a la RPC
+`descargar_maestro_articulos()` (PostgREST limita a 1.000 filas por respuesta, así
+que hacerlo con REST exigía unas 212 peticiones). Las ubicaciones se leen con la
+consulta anidada de siempre: son 199 filas.
+
+```
+supabase/migrations/20261004_maestro_snapshot.sql
+```
+
+Esa migración ya está aplicada: la RPC devuelve 211.578 códigos y 1.669 SIC. Sin
+ella la validación de artículos es estricta y no hay forma de escanear.
+
+La copia **no se actualiza sola**. La descarga de 3 MB en mitad de un conteo es
+molesta y deja al operario sin conexión, así que la decisión es suya:
+
+| Situación                        | Qué pasa                                       |
+| -------------------------------- | ---------------------------------------------- |
+| Sin copia (primer uso)           | Descarga obligatoria al abrir la app           |
+| Copia al día (< 24 h)            | Franja gris con la fecha y el botón           |
+| Copia vieja (> 24 h)             | Aviso con `Actualizar` / `Ahora no`            |
+| Tras `Ahora no`                  | No se vuelve a preguntar en 12 h               |
+| Copia de más de 7 días           | El aviso avisa de que puede rechazar artículos nuevos |
+
+La franja sale siempre en Home y en Lista, también con la copia al día: sin ella,
+si el operario acaba de meter un artículo que el maestro todavía no conoce, se
+quedaba sin forma de forzar la descarga hasta que la copia cumplía 24 h. El botón
+`Actualizar` está en todos los estados salvo mientras baja.
+
+### EstadoBanner: una sola franja
+
+La conexión y el maestro se anuncian en **la misma** franja
+(`src/components/EstadoBanner.js`). Antes eran dos banners apilados y el que
+importaba se quedaba debajo del otro; además, justo después de descargar el
+maestro —cuando más falta hace ver la conexión— se veían los dos a la vez.
+
+Gana el problema más urgente:
+
+| Prioridad | Estado                                        | Fondo |
+| --------- | --------------------------------------------- | ----- |
+| 1 | Descargando el maestro                        | gris  |
+| 2 | Sin copia del maestro (bloquea la validación) | rojo  |
+| 3 | Error al bajar el maestro                     | rojo  |
+| 4 | Sin conexión · N cambios pendientes           | ámbar |
+| 5 | Error al sincronizar                          | rojo  |
+| 6 | Sincronizando                                 | gris  |
+| 7 | Maestro viejo: `Actualizar` / `Ahora no`      | ámbar |
+| 8 | Todo bien: `Sincronizado · HH:MM`             | verde |
+
+El botón cambia con el estado: **Reintentar** para la cola, **Actualizar** para
+el maestro. El 8º estado no lleva recuadro porque es el normal y el `Actualizar`
+sigue ahí para poder forzar la descarga.
+
+Si la descarga falla se conserva la copia anterior intacta y el aviso muestra el
+error: nunca se descarta un maestro que ya funcionaba. Si la RPC devolviera un
+maestro vacío, la descarga se aborta antes de tocar los ficheros.
+
+Las operaciones que ya estaban en la cola como `provisional` (creadas por
+versiones anteriores del offline) siguen validándose contra Supabase al
+sincronizar, para no perderlas.
+
+Las dos copias son independientes: la de artículos son 211.578 códigos y la de
+ubicaciones 199. Si la de ubicaciones se pierde o se corrompe, la app la
+recupera por su cuenta al cargar la copia de artículos, sin obligar a bajarse
+los 3 MB del maestro entero. Si aun así no puede, la validación de ubicaciones
+se rechaza con un aviso explícito en vez de aceptar códigos sin comprobar.
+
+### Sin conexión, qué se puede y qué no
+
+| Acción                              | Sin conexión                                   |
+| ----------------------------------- | ---------------------------------------------- |
+| Escanear ubicación                  | Sí (formato + contra la copia local) |
+| Escanear artículo                   | Sí, validado contra la copia local    |
+| Meter ubicación a mano (`+`)        | Sí, validada contra la copia local            |
+| Meter el artículo a mano (`+`)      | Sí, validado contra la copia local            |
+| Guardar / editar cantidad           | Sí (CSV + cola)                                 |
+| Borrar fila                         | Sí (CSV + cola)                                 |
+| Marcar ubicación como `Fin`         | Sí, se encola y se aplica al sincronizar        |
+| Pestañas Estado / Resumen           | No (necesitan los datos de conteo, no el maestro) |
+
+La entrada a mano (`+`) se desbloqueó en cuanto existió la copia local del
+maestro: antes se rechazaba sin conexión porque el código solo se podía validar
+contra el maestro, que está en la red. Ahora se valida contra la copia, igual que
+al escanear, y si no hay copia sale el aviso de "Sin copia de maestros".
+
+Ambas entradas siguen siendo históricas: el `+` de artículos **exige** una
+ubicación previa (no se puede contar sin saber dónde), mientras que el de
+ubicaciones no la necesita, porque lo que se está introduciendo es precisamente
+la ubicación.
+
+Los códigos de ubicación se normalizan a mayúsculas y sin espacios antes de
+validarlos, porque al teclearlos es fácil equivocarse de capitalización y los
+códigos del maestro son `SECCION-AREA-SUBZONA` en mayúsculas (p. ej.
+`LIN2-A01-Z01`). Esta normalización no afecta a los artículos, cuyos códigos
+sí distinguen mayúsculas y minúsculas (`-BXC05.4010 -SUB`).
+
+### Limitaciones conocidas
+
+1. `guardarMovimiento` en Supabase son 4 peticiones: si la red se cae a mitad,
+   el `conteo` puede quedar guardado y los `stat` no. El reintento lo converge,
+   pero la solución definitiva es la RPC transaccional (ver `TODO.md`).
+2. La copia local del maestro solo guarda los **códigos**, no las descripciones.
+   Sin conexión, un artículo se acepta o se rechaza por el código y no se muestra
+   su descripción (la app no la usa). El riesgo real es que un código nuevo se
+   rechace porque la copia tiene más de 24 h: de ahí el aviso de refresco.
+3. Validar una ubicación **exige** la copia de ubicaciones, sin excepción. Antes,
+   si ese fichero faltaba, se aceptaba cualquier código con formato correcto
+   como provisional; con la entrada manual abierta eso habría dejado pasar
+   ubicaciones inventadas tipo `LIN2-A99-Z99`. Si el fichero se pierde, la app
+   lo recupera sola (son 199 filas, no los 3 MB del maestro de artículos).
+4. La propagación `Fin` → área → sección no se simula en local: se aplica al
+   sincronizar.
+5. La cola se drena secuencialmente (una ubicación detrás de otra).
+
+---
+
 ## Modelo de datos (Supabase)
 
 ### Esquema DDL
 
+Las tablas están creadas **con comillas**, así que su nombre real conserva las
+mayúsculas: `public."maestroArticulo"`. Sin las comillas, Postgres pliega el
+nombre a minúsculas y responde `relation "maestroarticulo" does not exist`, así
+que cualquier función SQL nueva tiene que respetar las comillas. Por la API de
+PostgREST sí funciona escribirlas sin comillas, porque las rutas no se pliegan.
+
 ```sql
-CREATE TABLE public.maestroSeccion (
+CREATE TABLE public."maestroSeccion" (
   seccion character varying NOT NULL,
   stat USER-DEFINED,
   CONSTRAINT maestroSeccion_pkey PRIMARY KEY (seccion)
 );
 
-CREATE TABLE public.maestroArea (
+CREATE TABLE public."maestroArea" (
   seccion character varying NOT NULL,
   area character varying NOT NULL,
   stat USER-DEFINED,
   CONSTRAINT maestroArea_pkey PRIMARY KEY (seccion, area),
-  CONSTRAINT maestro_area_seccion_fkey FOREIGN KEY (seccion) REFERENCES public.maestroSeccion(seccion)
+  CONSTRAINT maestro_area_seccion_fkey FOREIGN KEY (seccion) REFERENCES public."maestroSeccion"(seccion)
 );
 
-CREATE TABLE public.maestroUbicacion (
+CREATE TABLE public."maestroUbicacion" (
   seccion character varying NOT NULL,
   area character varying NOT NULL,
   subzona character varying NOT NULL,
   stat USER-DEFINED,
   CONSTRAINT maestroUbicacion_pkey PRIMARY KEY (seccion, area, subzona),
-  CONSTRAINT maestro_ubicacion_seccion_area_fkey FOREIGN KEY (seccion, area) REFERENCES public.maestroArea(seccion, area)
+  CONSTRAINT maestro_ubicacion_seccion_area_fkey FOREIGN KEY (seccion, area) REFERENCES public."maestroArea"(seccion, area)
 );
 
-CREATE TABLE public.maestroArticulo (
+CREATE TABLE public."maestroArticulo" (
   item character varying NOT NULL,
   dsca character varying NOT NULL,
   tipo USER-DEFINED,
@@ -200,7 +443,7 @@ CREATE TABLE public.conteo (
   item character varying NOT NULL,
   cant smallint,
   CONSTRAINT conteo_pkey PRIMARY KEY (ubicacion, item),
-  CONSTRAINT conteo_item_fkey FOREIGN KEY (item) REFERENCES public.maestroArticulo(item)
+  CONSTRAINT conteo_item_fkey FOREIGN KEY (item) REFERENCES public."maestroArticulo"(item)
 );
 ```
 
@@ -353,7 +596,7 @@ npx jest __tests__/screens    # Solo pantallas
 npx jest --coverage           # Cobertura
 ```
 
-Cobertura actual: `ScannerService`, `InventoryService` (incl. `validarArticulo` y `eliminarMovimiento`), `updateService`, `supabaseClient`, `SupabaseProvider` (incl. árbol por niveles), `CsvProvider` (incl. `eliminarMovimiento`), `useHomeLogic`, `useScannerLogic` y el comportamiento de `EstadoScreen` (carga por niveles, botón de recarga, artículos lazy).
+Cobertura actual: `ScannerService`, `InventoryService` (incl. `validarArticulo`, `eliminarMovimiento` y el comportamiento offline), `pendientesService`, `syncService`, `conectividadService`, `updateService`, `supabaseClient`, `SupabaseProvider` (incl. árbol por niveles), `CsvProvider` (incl. `eliminarMovimiento`), `ArticuloValidator`, `UbicacionValidator`, `useHomeLogic`, `useScannerLogic` y el comportamiento de `EstadoScreen` (carga por niveles, botón de recarga, artículos lazy).
 
 ---
 
@@ -366,4 +609,7 @@ Cobertura actual: `ScannerService`, `InventoryService` (incl. `validarArticulo` 
 - `domain/models/` y `domain/validators/` están vacíos (planificados).
 - La clave de Supabase en `.env` es una **anon key** (pública), diseñada para usarse con Row Level Security.
 - La petición del `UpdateModal` corre en un `useEffect` de `Main.js` solo cuando `EXPO_PUBLIC_APP_ENV === 'production'`, es decir, únicamente en la APK desplegada.
+- Los servicios de conectividad son singletons a propósito (`conectividadService`, `pendientesService`, `syncService`): comparten estado entre Home, Lista y los `useEffect` de arranque, sin necesidad de un Context.
+- `syncService` no llama a `conectividadService` (y viceversa el servicio de conectividad sí lo invoca): quien decide si la app pasa a "sin conexión" tras un drenado es `conectividadService`, en función del campo `redCaida` del resumen.
+- Ojo con JavaScript al escribir servicios: `async nombreDeFuncion() {}` **no es válido** a nivel de sentencia (sí dentro de un objeto o una clase); hay que escribir `async function nombreDeFuncion() {}`.
 

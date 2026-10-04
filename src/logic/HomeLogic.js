@@ -3,6 +3,7 @@ import { Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 
 import InventoryService from '../services/InventoryService';
+import useConectividad from './useConectividad';
 
 export function useHomeLogic(navigation) {
 
@@ -13,6 +14,20 @@ export function useHomeLogic(navigation) {
   const [ubicacion, setUbicacion] = useState(null);
 
   const [ubicacionFinalizada, setUbicacionFinalizada] =
+    useState(false);
+
+/* ---------- Sin conexión ---------- */
+
+  /* La ubicación se escaneó sin poder validarla contra el
+     maestro: se comprueba al sincronizar */
+
+  const [ubicacionSinValidar, setUbicacionSinValidar] =
+    useState(false);
+
+  /* El artículo se aceptó sin poder validarlo contra
+     el maestro: se comprueba al sincronizar */
+
+  const [articuloSinValidar, setArticuloSinValidar] =
     useState(false);
 
   const [articuloTemp, setArticuloTemp] = useState(null);
@@ -26,6 +41,11 @@ export function useHomeLogic(navigation) {
   const [mostrarManual, setMostrarManual] = useState(false);
 
   const [codigoManual, setCodigoManual] = useState('');
+
+  const [mostrarManualUbicacion, setMostrarManualUbicacion] =
+    useState(false);
+
+  const conectividad = useConectividad();
 
 
   /* =====================================================
@@ -77,6 +97,18 @@ export function useHomeLogic(navigation) {
   };
 
 
+  /* =====================================================
+ * ENTRADA MANUAL
+ * =====================================================
+ *
+ * Antes esto estaba bloqueado sin conexión porque el código se
+ * validaba contra el maestro, que solo era accesible en red.
+ * Con la copia local del maestro ya no hace falta: la
+ * validación es local y si no hay copia sale el aviso de
+ * "Sin copia de maestros", que es lo mismo que ve el operario
+ * al escanear.
+ * ===================================================== */
+
   const abrirModalManual = () => {
 
     if (!ubicacion) {
@@ -89,16 +121,41 @@ export function useHomeLogic(navigation) {
   };
 
 
+  const abrirModalManualUbicacion = () => {
+
+    /* No se exige ubicación previa: la ubicación es
+       precisamente lo que se está introduciendo. */
+
+    setMostrarManualUbicacion(true);
+
+  };
+
+
   /* =====================================================
    * UBICACIÓN
-   * ===================================================== */
+   * =====================================================
+   *
+   * La normalización vive aquí y no en el modal porque este es
+   * el único punto por el que pasan tanto el escáner como la
+   * entrada manual: así no puede quedar en el estado una
+   * ubicación en minúsculas y otra en mayúsculas. Sobre el
+   * escaneo es un no-op, las etiquetas ya vienen en mayúsculas.
+   */
+
+  const normalizarUbicacion = (codigo) =>
+    String(codigo ?? '').trim().toUpperCase();
 
   const cargarUbicacion = async (codigo) => {
+
+    const codigoNormalizado =
+      normalizarUbicacion(codigo);
 
     try {
 
       const resultado =
-        await InventoryService.validarUbicacion(codigo);
+        await InventoryService.validarUbicacion(
+          codigoNormalizado
+        );
 
       if (!resultado.ok) {
 
@@ -107,23 +164,28 @@ export function useHomeLogic(navigation) {
           resultado.mensaje
         );
 
-        return null;
+        return false;
       }
 
-      setUbicacion(codigo);
+      setUbicacion(codigoNormalizado);
 
       setUbicacionFinalizada(
         resultado.ubicacion?.stat === 'Fin'
       );
 
-      const articulos =
-        await InventoryService.cargarUbicacion(codigo);
+      setUbicacionSinValidar(
+        resultado.ubicacionProvisional === true
+      );
+
+      await InventoryService.cargarUbicacion(
+        codigoNormalizado
+      );
 
       // Reiniciamos los artículos escaneados
       // para la nueva ubicación
       setEscaneadosSesion([]);
 
-      return articulos;
+      return true;
 
     } catch (e) {
 
@@ -191,6 +253,10 @@ export function useHomeLogic(navigation) {
 
     /* ---------- ARTÍCULO VÁLIDO ---------- */
 
+    setArticuloSinValidar(
+      resultado.provisional === true
+    );
+
     setArticuloTemp(codigo);
 
     setEscaneadosSesion(
@@ -221,15 +287,12 @@ export function useHomeLogic(navigation) {
         tipo,
         codigo
       );
-
-
-      /* ---------- UBICACIÓN ---------- */
+/* ---------- UBICACIÓN ---------- */
 
       if (tipo === 'ubicacion') {
 
-        await cargarUbicacion(codigo);
+        return await cargarUbicacion(codigo);
 
-        return;
       }
 
 
@@ -239,7 +302,8 @@ export function useHomeLogic(navigation) {
 
         await procesarArticulo(codigo);
 
-        return;
+        return true;
+
       }
 
 
@@ -250,6 +314,8 @@ export function useHomeLogic(navigation) {
         tipo
       );
 
+      return false;
+
     } catch (e) {
 
       console.error(e);
@@ -258,6 +324,8 @@ export function useHomeLogic(navigation) {
         'Error',
         'Error procesando el código'
       );
+
+      return false;
 
     }
 
@@ -315,6 +383,16 @@ export function useHomeLogic(navigation) {
   };
 
 
+  /**
+   * Devuelve `true` si la ubicación es válida, para que el
+   * modal pueda seguir abierto cuando el código tecleado no
+   * existe: con tres partes es fácil equivocarse y obligar a
+   * volver a pulsarlo sería un fastidio.
+   */
+  const onManualUbicacion = (codigo) =>
+    procesarEscaneo('ubicacion', codigo);
+
+
   /* =====================================================
    * LIMPIAR ARTÍCULO
    * ===================================================== */
@@ -322,6 +400,8 @@ export function useHomeLogic(navigation) {
   const limpiarArticulo = () => {
 
     setArticuloTemp(null);
+
+    setArticuloSinValidar(false);
 
     setCodigoManual('');
 
@@ -350,16 +430,24 @@ InventoryService.crearMovimiento(
         );
 
 
-      await InventoryService.guardarMovimiento(
-        movimiento
-      );
+      const resultado =
+        await InventoryService.guardarMovimiento(
+          movimiento,
+          {
+            provisionalArticulo: articuloSinValidar,
+            ubicacionProvisional: ubicacionSinValidar,
+          }
+        );
 
 
       /* ---------- ACTUALIZAR ÚLTIMOS ---------- */
 
       setUltimosArticulos(
         prev => [
-          movimiento,
+          {
+            ...movimiento,
+            pendiente: resultado?.pendiente === true,
+          },
           ...prev,
         ].slice(0, 5)
       );
@@ -395,11 +483,20 @@ InventoryService.crearMovimiento(
 
     ubicacionFinalizada,
 
+    ubicacionSinValidar,
+
     articuloTemp,
+
+    articuloSinValidar,
 
     mostrarCantidad,
 
     ultimosArticulos,
+
+
+    /* ---------- CONECTIVIDAD ---------- */
+
+    conectividad,
 
 
     /* ---------- SCANNER ---------- */
@@ -414,6 +511,8 @@ InventoryService.crearMovimiento(
     procesarEscaneo,
 
     onManualCode,
+
+    onManualUbicacion,
 
 
     /* ---------- CANTIDAD ---------- */
@@ -434,6 +533,15 @@ InventoryService.crearMovimiento(
     codigoManual,
 
     setCodigoManual,
+
+
+    /* ---------- MODAL MANUAL DE UBICACIÓN ---------- */
+
+    mostrarManualUbicacion,
+
+    abrirModalManualUbicacion,
+
+    setMostrarManualUbicacion,
 
   };
 

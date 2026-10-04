@@ -23,6 +23,16 @@ jest.mock('../../src/services/InventoryService', () => ({
   crearMovimiento: jest.fn(),
   guardarMovimiento: jest.fn(),
   estaUbicacionFinalizada: jest.fn(),
+  estaOnline: jest.fn(),
+  sincronizarPendientes: jest.fn(),
+}));
+
+// Estado de conexión que devuelve el hook
+let mockEstadoConexion = { online: true };
+
+jest.mock('../../src/logic/useConectividad', () => ({
+  __esModule: true,
+  default: () => mockEstadoConexion,
 }));
 
 // Harness: ejecuta el hook y expone su resultado en `current`.
@@ -44,6 +54,11 @@ describe('useHomeLogic', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+
+    mockEstadoConexion = { online: true };
+
+    InventoryService.estaOnline.mockResolvedValue(true);
+
     act(() => {
       renderer = create(<Harness navigation={navigation} />);
     });
@@ -126,9 +141,9 @@ describe('useHomeLogic', () => {
 
   describe('abrirModalManual', () => {
 
-    test('avisa si aún no hay ubicación y no abre el modal', () => {
-      act(() => {
-        current.abrirModalManual();
+    test('avisa si aún no hay ubicación y no abre el modal', async () => {
+      await act(async () => {
+        await current.abrirModalManual();
       });
 
       expect(Alert.alert).toHaveBeenCalledWith(
@@ -151,11 +166,39 @@ describe('useHomeLogic', () => {
         await current.procesarEscaneo('ubicacion', 'A1');
       });
 
-      act(() => {
-        current.abrirModalManual();
+      await act(async () => {
+        await current.abrirModalManual();
       });
 
       expect(current.mostrarManual).toBe(true);
+    });
+
+    test('sin conexión también deja meter códigos a mano', async () => {
+      /* Con la copia local del maestro la validación ya no
+         necesita red, así que el bloqueo se levantó */
+      InventoryService.validarUbicacion.mockResolvedValue({
+        ok: true,
+        ubicacion: { seccion: 'A', area: '1', subzona: '1' },
+      });
+
+      InventoryService.cargarUbicacion.mockResolvedValue([]);
+
+      await act(async () => {
+        await current.procesarEscaneo('ubicacion', 'A1');
+      });
+
+      InventoryService.estaOnline.mockResolvedValue(false);
+
+      await act(async () => {
+        await current.abrirModalManual();
+      });
+
+      expect(current.mostrarManual).toBe(true);
+
+      expect(Alert.alert).not.toHaveBeenCalledWith(
+        'Sin conexión',
+        expect.anything()
+      );
     });
 
   });
@@ -193,20 +236,202 @@ describe('useHomeLogic', () => {
       InventoryService.validarUbicacion.mockResolvedValue({
         ok: false,
         titulo: 'Ubicación no encontrada',
-        mensaje: 'El código 99999-999-Z999 no existe en el maestro',
+        mensaje: 'El código LIN2-A99-Z99 no existe en el maestro',
       });
 
       await act(async () => {
-        await current.procesarEscaneo('ubicacion', '99999-999-Z999');
+        await current.procesarEscaneo(
+          'ubicacion',
+          'LIN2-A99-Z99'
+        );
       });
 
       expect(Alert.alert).toHaveBeenCalledWith(
         'Ubicación no encontrada',
-        'El código 99999-999-Z999 no existe en el maestro'
+        'El código LIN2-A99-Z99 no existe en el maestro'
       );
 
       expect(current.ubicacion).toBeNull();
       expect(InventoryService.cargarUbicacion).not.toHaveBeenCalled();
+    });
+
+    test('normaliza el código antes de validar y de guardarlo', async () => {
+
+      /* Al teclearlo es fácil dejar espacios o escribirlo en
+         minúsculas, y los códigos del maestro son siempre
+         `SECCION-AREA-SUBZONA` en mayúsculas. */
+
+      InventoryService.validarUbicacion.mockResolvedValue({
+        ok: true,
+        ubicacion: { seccion: 'LIN2', area: 'A01', subzona: 'Z01' },
+      });
+
+      InventoryService.cargarUbicacion.mockResolvedValue([]);
+
+      await act(async () => {
+        await current.procesarEscaneo(
+          'ubicacion',
+          '  lin2-a01-z01  '
+        );
+      });
+
+      expect(InventoryService.validarUbicacion)
+        .toHaveBeenCalledWith('LIN2-A01-Z01');
+
+      expect(InventoryService.cargarUbicacion)
+        .toHaveBeenCalledWith('LIN2-A01-Z01');
+
+      /* Lo que se muestra y se guarda también va normalizado */
+      expect(current.ubicacion).toBe('LIN2-A01-Z01');
+    });
+
+    test('no deja dos formas del mismo código en el estado', async () => {
+
+      InventoryService.validarUbicacion.mockResolvedValue({
+        ok: true,
+        ubicacion: { seccion: 'LIN2', area: 'A01', subzona: 'Z01' },
+      });
+
+      InventoryService.cargarUbicacion.mockResolvedValue([]);
+
+      await act(async () => {
+        await current.procesarEscaneo(
+          'ubicacion',
+          'LIN2-A01-Z01'
+        );
+      });
+
+      await act(async () => {
+        await current.procesarEscaneo(
+          'ubicacion',
+          'lin2-a01-z01'
+        );
+      });
+
+      expect(current.ubicacion).toBe('LIN2-A01-Z01');
+    });
+
+  });
+
+
+  // =====================================================
+  // Entrada manual de ubicación
+  // =====================================================
+
+  describe('onManualUbicacion', () => {
+
+    beforeEach(() => {
+      InventoryService.validarUbicacion.mockResolvedValue({
+        ok: true,
+        ubicacion: { seccion: 'LIN2', area: 'A01', subzona: 'Z01' },
+      });
+
+      InventoryService.cargarUbicacion.mockResolvedValue([]);
+    });
+
+    test('abre el modal sin exigir ubicación previa', async () => {
+
+      expect(current.ubicacion).toBeNull();
+
+      await act(async () => {
+        await current.abrirModalManualUbicacion();
+      });
+
+      expect(current.mostrarManualUbicacion).toBe(true);
+    });
+
+    test('acepta el código tecleado y devuelve true', async () => {
+
+      await act(async () => {
+        await current.abrirModalManualUbicacion();
+      });
+
+      let valida;
+
+      await act(async () => {
+        valida = await current.onManualUbicacion(
+          'LIN2-A01-Z01'
+        );
+      });
+
+      expect(valida).toBe(true);
+      expect(current.ubicacion).toBe('LIN2-A01-Z01');
+    });
+
+    test('normaliza el código tecleado', async () => {
+
+      await act(async () => {
+        await current.onManualUbicacion(
+          ' lin2-a01-z01 '
+        );
+      });
+
+      expect(InventoryService.validarUbicacion)
+        .toHaveBeenCalledWith('LIN2-A01-Z01');
+
+      expect(current.ubicacion).toBe('LIN2-A01-Z01');
+    });
+
+    test('devuelve false y avisa si el código no existe', async () => {
+
+      InventoryService.validarUbicacion.mockResolvedValue({
+        ok: false,
+        titulo: 'Ubicación no encontrada',
+        mensaje: 'El código LIN2-A99-Z99 no está en la copia local del maestro',
+      });
+
+      let valida;
+
+      await act(async () => {
+        valida = await current.onManualUbicacion(
+          'LIN2-A99-Z99'
+        );
+      });
+
+      /* `false` es lo que mantiene el modal abierto */
+      expect(valida).toBe(false);
+
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'Ubicación no encontrada',
+        expect.stringContaining('LIN2-A99-Z99')
+      );
+
+      expect(current.ubicacion).toBeNull();
+    });
+
+    test('no toca la ubicación anterior si la nueva es inválida', async () => {
+
+      await act(async () => {
+        await current.onManualUbicacion(
+          'LIN2-A01-Z01'
+        );
+      });
+
+      InventoryService.validarUbicacion.mockResolvedValue({
+        ok: false,
+        titulo: 'Ubicación no encontrada',
+        mensaje: 'no está en la copia local del maestro',
+      });
+
+      await act(async () => {
+        await current.onManualUbicacion(
+          'LIN2-A99-Z99'
+        );
+      });
+
+      /* La que estaba sigue puesta */
+      expect(current.ubicacion).toBe('LIN2-A01-Z01');
+    });
+
+    test('funciona sin conexión', async () => {
+
+      InventoryService.estaOnline.mockResolvedValue(false);
+
+      await act(async () => {
+        await current.abrirModalManualUbicacion();
+      });
+
+      expect(current.mostrarManualUbicacion).toBe(true);
     });
 
   });
@@ -400,7 +625,9 @@ describe('useHomeLogic', () => {
           cantidad,
         })
       );
-      InventoryService.guardarMovimiento.mockResolvedValue({});
+      InventoryService.guardarMovimiento.mockResolvedValue({
+        pendiente: false,
+      });
 
       await act(async () => {
         await current.procesarEscaneo('ubicacion', 'A1');
@@ -415,18 +642,85 @@ describe('useHomeLogic', () => {
       });
 
       expect(InventoryService.guardarMovimiento)
-        .toHaveBeenCalledWith({
+        .toHaveBeenCalledWith(
+          {
+            ubicacion: 'A1',
+            articulo: '123456',
+            cantidad: 5,
+          },
+          {
+            provisionalArticulo: false,
+            ubicacionProvisional: false,
+          }
+        );
+
+      expect(current.ultimosArticulos).toEqual([
+        {
           ubicacion: 'A1',
           articulo: '123456',
           cantidad: 5,
-        });
-
-      expect(current.ultimosArticulos).toEqual([
-        { ubicacion: 'A1', articulo: '123456', cantidad: 5 },
+          pendiente: false,
+        },
       ]);
 
       expect(current.articuloTemp).toBeNull();
       expect(current.mostrarCantidad).toBe(false);
+    });
+
+    test('marca el artículo como pendiente si no se pudo sincronizar', async () => {
+      InventoryService.validarUbicacion.mockResolvedValue({
+        ok: true,
+        ubicacion: { seccion: 'A', area: '1', subzona: '1' },
+      });
+      InventoryService.cargarUbicacion.mockResolvedValue([]);
+      InventoryService.validarArticulo.mockResolvedValue({
+        ok: true,
+        esSIC: false,
+        provisional: true,
+        articulo: null,
+      });
+      InventoryService.crearMovimiento.mockImplementation(
+        (ubicacion, articulo, cantidad) => ({
+          ubicacion,
+          articulo,
+          cantidad,
+        })
+      );
+      InventoryService.guardarMovimiento.mockResolvedValue({
+        pendiente: true,
+      });
+
+      await act(async () => {
+        await current.procesarEscaneo('ubicacion', 'A1');
+      });
+
+      await act(async () => {
+        await current.procesarEscaneo('articulo', '123456');
+      });
+
+      expect(current.articuloSinValidar).toBe(true);
+
+      await act(async () => {
+        await current.confirmarCantidad(2);
+      });
+
+      expect(InventoryService.guardarMovimiento)
+        .toHaveBeenCalledWith(
+          expect.anything(),
+          {
+            provisionalArticulo: true,
+            ubicacionProvisional: false,
+          }
+        );
+
+      expect(current.ultimosArticulos).toEqual([
+        {
+          ubicacion: 'A1',
+          articulo: '123456',
+          cantidad: 2,
+          pendiente: true,
+        },
+      ]);
     });
 
   });
