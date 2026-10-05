@@ -197,6 +197,55 @@
 
 ## Distribución de la app
 
+- [ ] **P0. Rama `develop` con APK de prueba propia**: hoy **no hay forma de
+  probar una APK real antes de publicarla**. Los builds salen de tags `v*` sobre
+  `master`, así que la primera prueba de un cambio es la release que llega a los
+  usuarios. Pasó el 2026-10-05: la `1.0.5` salió con el bundle sin configuración
+  de Supabase y arrancaba en pantalla blanca.
+  - Crear la rama `develop`. `master` + tag `v*` siguen siendo la ruta de
+    release, sin cambios.
+  - Nuevo perfil `development-apk` en `eas.json`: `distribution: internal`,
+    `android.buildType: apk`, `channel: develop`,
+    `appVersionSource: local` **sin** `autoIncrement` (para que los builds de
+    prueba no roben la versión remota que usan las releases) y
+    `EXPO_PUBLIC_APP_ENV: development` para que no salga el modal de
+    actualización (`ES_DESPLIEGUE` en `Main.js`).
+  - **Ese perfil tiene que llevar `EXPO_PUBLIC_SUPABASE_URL` y
+    `EXPO_PUBLIC_SUPABASE_KEY`**: es justo lo que faltó en la `1.0.5`. El build
+    ocurre en la nube de EAS, que no recibe el `.env` local; sin ellas el bundle
+    sale sin credenciales y la app no arranca. Las variables ya están en
+    `build.preview.env` y `build.production.env`, así que se pueden copiar.
+  - Workflow `.github/workflows/build-android-develop.yml`: push a `develop` →
+    `npm ci` → `npm test` → `eas build --profile development-apk` →
+    verificación del bundle → **artifact** de Actions. Sin tag, sin GitHub
+    Release y sin tocar la versión remota.
+  - Extraer la verificación del bundle del `build-android.yml` (ahora está
+    inline) a `scripts/verificar-bundle-apk.sh` y llamarla desde los dos
+    workflows: es el candado que ya evitó publicar otra APK rota.
+  - `tests.yml`: añadir `develop` a los `branches` de `push` y `pull_request`.
+  - La APK de prueba necesita `version: 1.0.5-dev.<run_number>` y un
+    `android.versionCode` siempre creciente (`900000 + run_number`): Android no
+    reinstala un APK cuyo `versionCode` no sea mayor que el del ya instalado.
+  - **Ojo con la firma**: un perfil nuevo de EAS genera su propia clave, así que
+    la APK de `development-apk` **no se podrá instalar encima** de la de
+    `preview` (mismo `android.package`, `conteo.koxka`) y habrá que desinstalar
+    la anterior. Verificarlo. Si molesta, la alternativa es reutilizar el perfil
+    `preview` (comparte firma, pero entonces los builds de prueba comparten
+    clave y versión con las releases y sus updates se mezclan en el canal
+    `preview`).
+  - **No cambiar `android.package` solo en `develop`**: la divergencia acabaría
+    en un merge a `master` y renombraría la app de los usuarios.
+  - Prioridad: alta.
+
+- [ ] **Revisar el perfil `development` de `eas.json`**: declara
+  `developmentClient: true` pero **`expo-dev-client` no está instalado**
+  (SDK 54), así que tal como está no se puede usar. Además no lleva las
+  variables de Supabase, que es el escenario exacto que rompió la `1.0.5`.
+  Decidir entre instalarlo (dev client + Metro, obliga a tener el PC con
+  `npm start` encendido para usar la app) o borrar el perfil y quedarse solo con
+  `development-apk`.
+  - Prioridad: media.
+
 - [ ] **P1. Build de producción**: hoy **no existe ningún build del perfil
   `production`**; los ocho últimos de Android son `preview` / internal, así que
   el canal `production` no tiene a nadie detrás y las updates se publican solo en
