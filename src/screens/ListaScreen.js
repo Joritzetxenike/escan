@@ -43,27 +43,51 @@ export default function ListaScreen() {
     const uri = FileSystem.documentDirectory + nombre;
     const ubicacion = nombre.replace(/\.csv$/i, '');
 
-    try {
-      const resultado =
-        await InventoryService.finalizarUbicacion(ubicacion);
+    /* Compartir y cerrar no son la misma cosa. Solo se cierra si
+       la ubicación sigue abierta: si ya estaba terminada, volver
+       a enviarla no cambia nada, avisa de algo que no ha pasado
+       y sin conexión encola un `finalizar` duplicado (esa
+       operación nunca se fusiona en la cola). Mismo patrón que
+       se sigue al borrar un registro. */
 
-      if (resultado?.pendiente) {
+    let sigueAbierta = true;
+
+    try {
+      sigueAbierta = !(await InventoryService.estaUbicacionFinalizada(
+        ubicacion
+      ));
+    } catch (e) {
+      /* Sin poder comprobarlo no se cierra: cerrar a ciegas es
+         justo lo que duplica la cola. Compartir no tiene efectos
+         secundarios, así que continúa igualmente. */
+
+      console.error('No se pudo comprobar el estado de la ubicación:', e);
+      sigueAbierta = false;
+    }
+
+    if (sigueAbierta) {
+      try {
+        const resultado =
+          await InventoryService.finalizarUbicacion(ubicacion);
+
+        if (resultado?.pendiente) {
+          Alert.alert(
+            'Sin conexión',
+            `La ubicación ${ubicacion} se marcará como terminada al sincronizar`
+          );
+        } else {
+          Alert.alert(
+            'Ubicación terminada',
+            `La ubicación ${ubicacion} se ha marcado como terminada`
+          );
+        }
+      } catch (e) {
+        console.error('Error finalizando ubicación:', e);
         Alert.alert(
-          'Sin conexión',
-          `La ubicación ${ubicacion} se marcará como terminada al sincronizar`
-        );
-      } else {
-        Alert.alert(
-          'Ubicación terminada',
-          `La ubicación ${ubicacion} se ha marcado como terminada`
+          'Aviso',
+          `No se pudo marcar la ubicación ${ubicacion} como terminada`
         );
       }
-    } catch (e) {
-      console.error('Error finalizando ubicación:', e);
-      Alert.alert(
-        'Aviso',
-        `No se pudo marcar la ubicación ${ubicacion} como terminada`
-      );
     }
 
     try {
