@@ -537,14 +537,15 @@ Disparado al pushear un **tag `v*`**:
 
 ### EAS — `eas.json`
 
-| Perfil        | Uso            | Channel     | BuildType    | `EXPO_PUBLIC_APP_ENV` |
-| ------------- | -------------- | ----------- | ------------ | -------------------- |
-| `development` | Dev client     | development | —            | `development`        |
-| `preview`     | APK de prueba  | preview     | apk          | `production`         |
-| `production`  | Play Store     | production  | app-bundle   | `production`         |
+| Perfil        | Uso            | Channel     | BuildType    | `EXPO_PUBLIC_APP_ENV` | Supabase |
+| ------------- | -------------- | ----------- | ------------ | -------------------- | -------- |
+| `development` | Dev client     | development | —            | `development`        | —        |
+| `preview`     | APK de prueba  | preview     | apk          | `production`         | sí       |
+| `production`  | Play Store     | production  | app-bundle   | `production`         | sí       |
 
 - Cada perfil fija la variable de entorno `EXPO_PUBLIC_APP_ENV` en `eas.json`, de modo que el check de actualizaciones de `Main.js` solo se activa en los builds desplegados (`preview`/`production`).
 
+- `preview` y `production` fijan también `EXPO_PUBLIC_SUPABASE_URL` y `EXPO_PUBLIC_SUPABASE_KEY`. **Son necesarias ahí**: el build ocurre en la nube de EAS, que no recibe el `.env` local. Sin ellas el bundle sale sin credenciales (ver más abajo).
 - `cli.appVersionSource: "remote"` y `cli.requireCommit: true`.
 - `preview` y `production` con `autoIncrement: true`.
 
@@ -563,14 +564,29 @@ EXPO_PUBLIC_APP_ENV=development
 SUPABASE_SERVICE_ROLE_KEY=<service_role_key>   # solo para el script de import
 ```
 
-- `.env` está en `.gitignore`; **no se sube al repo**.
+- `.env` está en `.gitignore`; **no se sube al repo** (y por eso **tampoco llega al builder de EAS**).
 - `EXPO_PUBLIC_APP_ENV` distingue el entorno:
   - `development` → desarrollo con Expo (Expo Go / dev server). El check de actualización de `Main.js` **no** se ejecuta.
   - `production` → app desplegada (APK/AAB). El check de actualización **sí** se ejecuta.
   - En `eas.json` cada perfil fija el valor (`development`/`preview`/`production`), por lo que los builds remotos llevan su valor correcto aunque `.env` no esté subido.
-- `supabaseClient.js` lanza un error al importarse si faltan las variables → la app no arranca.
+- `supabaseClient.js` **no lanza** al importarse si faltan las variables: exporta `configError` y `App.js` muestra un aviso. Antes sí lanzaba, y eso tumbaba el bundle entero antes de montar React (pantalla blanca sin logs).
 - En CI se inyectan vía secrets del repo: `EXPO_PUBLIC_SUPABASE_URL` y `EXPO_PUBLIC_SUPABASE_KEY`.
-- `EXPO_PUBLIC_*` se embebe en el bundle en build time (EAS usa el `.env` local).
+- `EXPO_PUBLIC_*` se embebe en el bundle en **build time**. En los builds remotos los valores salen de `eas.json` (`build.<perfil>.env`), no del `.env` local: la anon key es pública y la RLS protege los datos.
+- `build-android.yml` abre el APK recién construido y comprueba que el host de Supabase esté dentro de `assets/index.android.bundle`. Si falta, el release no se crea.
+
+---
+
+## Pantalla blanca en release: causa y prevención
+
+Pasó en la **1.0.5**. El APK se compila en la nube de EAS; como `.env` no se sube, el bundle embebido salió sin las variables de Supabase. `supabaseClient.js` pedía esas variables con un `throw` **en tiempo de import**, y como está en la cadena de arranque (`index.js → App.js → Main.js → … → DataProvider → SupabaseProvider → supabaseClient`), el bundle reventaba antes de que React montara nada. En release no hay caja de error roja ni log: solo el splash blanco, para siempre.
+
+Con la 1.0.4 no se notó porque una OTA traía las credenciales y tapaba el bundle roto. Al instalar la 1.0.5, cuyo runtime no tenía OTA, el fallo quedó a la vista.
+
+Prevención, en tres capas:
+
+1. `eas.json` lleva las variables, así que el bundle remoto sale bien.
+2. El paso **Verificar bundle del APK** en CI falla el release si el bundle no las trae.
+3. `supabaseClient.js` no rompe el arranque y `ErrorBoundary` en `App.js` convierte cualquier fallo de render en un mensaje en pantalla.
 
 ---
 
