@@ -599,6 +599,69 @@ describe('useHomeLogic', () => {
       expect(current.mostrarCantidad).toBe(true);
     });
 
+    test('devuelve false si el artículo no existe, para que el modal siga abierto', async () => {
+
+      InventoryService.validarArticulo.mockResolvedValue({
+        ok: false,
+        titulo: 'Artículo no encontrado',
+        mensaje: 'El código 999999 no existe en el maestro',
+      });
+
+      let aceptado;
+
+      await act(async () => {
+        aceptado = await current.onManualCode('999999');
+      });
+
+      expect(aceptado).toBe(false);
+    });
+
+    test('devuelve true si el artículo se acepta', async () => {
+
+      InventoryService.validarArticulo.mockResolvedValue({
+        ok: true,
+        esSIC: false,
+        articulo: { item: '123456', tipo: 'Normal' },
+      });
+
+      let aceptado;
+
+      await act(async () => {
+        aceptado = await current.onManualCode('123456');
+      });
+
+      expect(aceptado).toBe(true);
+    });
+
+    test('devuelve true con la ubicación terminada, porque no hay nada que corregir', async () => {
+
+      /* Con la ubicación cerrada no se puede añadir nada. El
+         código tecleado puede estar bien, así que el modal
+         debe cerrarse en lugar de quedarse abierto pidiendo
+         una corrección que no serviría. */
+
+      InventoryService.validarUbicacion.mockResolvedValue({
+        ok: true,
+        ubicacion: { seccion: 'A', area: '1', subzona: '1', stat: 'Fin' },
+      });
+
+      InventoryService.cargarUbicacion.mockResolvedValue([]);
+
+      await act(async () => {
+        await current.procesarEscaneo('ubicacion', 'A1');
+      });
+
+      expect(current.ubicacionFinalizada).toBe(true);
+
+      let aceptado;
+
+      await act(async () => {
+        aceptado = await current.onManualCode('123456');
+      });
+
+      expect(aceptado).toBe(true);
+    });
+
   });
 
   // =====================================================

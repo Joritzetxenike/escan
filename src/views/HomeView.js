@@ -181,11 +181,22 @@ export default function HomeView({
       <ManualCodeModal
         visible={state.mostrarManual}
 
-        onConfirm={(codigo) => {
+        onConfirm={async (codigo) => {
 
-          actions.onManualCode(codigo);
+          const valido =
+            await actions.onManualCode(codigo);
 
-          actions.setMostrarManual(false);
+          /* Igual que el de ubicación: si el artículo no
+             existe el modal se queda abierto y conserva lo
+             tecleado para poder corregirlo. */
+
+          if (valido) {
+
+            actions.setMostrarManual(false);
+
+          }
+
+          return valido;
 
         }}
 
@@ -221,6 +232,8 @@ export default function HomeView({
               false
             );
           }
+
+          return valida;
 
         }}
 

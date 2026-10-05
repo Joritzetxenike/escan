@@ -22,10 +22,15 @@ export default function ManualCodeModal({
     if (!visible) setCodigo('');
   }, [visible]);
 
-  const handleConfirm = () => {
+  /* El campo solo se vacía si el llamador confirma que el
+     código se ha aceptado. Si vuelve a decir que no, el modal
+     sigue abierto y el texto se conserva para corregirlo. Al
+     cerrarse el modal, `visible` a false ya lo limpia. */
+
+  const handleConfirm = async () => {
     if (!codigo) return;
-    onConfirm(codigo);
-    setCodigo('');
+    const aceptado = await onConfirm(codigo);
+    if (aceptado) setCodigo('');
   };
 
   return (

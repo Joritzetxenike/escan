@@ -44,6 +44,26 @@ describe('ManualCodeModal', () => {
     });
   };
 
+  /* Igual que `presionarPorTexto`, pero esperando a que
+     termine el `onConfirm`, que ahora es asíncrono. */
+
+  const confirmarYEsperar = async () => {
+    const textos = renderer.root.findAllByType(Text);
+    const match = textos.find((t) => String(textoDe(t)) === 'Confirmar');
+
+    let nodo = match.parent;
+    while (nodo && typeof nodo.props?.onPress !== 'function') {
+      nodo = nodo.parent;
+    }
+
+    await act(async () => {
+      await nodo.props.onPress();
+    });
+  };
+
+  const valorDelCampo = () =>
+    renderer.root.findByType(TextInput).props.value;
+
   const montar = (sobres = {}) => {
     act(() => {
       renderer = create(
@@ -170,6 +190,43 @@ describe('ManualCodeModal', () => {
 
       expect(dataProps.onConfirm)
         .toHaveBeenCalledWith('LIN2-A01-Z01');
+    });
+
+  });
+
+
+  // =====================================================
+  // CÓDIGO RECHAZADO
+  // =====================================================
+
+  describe('cuando el código no se acepta', () => {
+
+    /* Es lo que pasa con un artículo tecleado a mano que no
+       existe: el modal avisa y se queda abierto, así que el
+       texto tiene que sobrevivir para poder corregirlo. */
+
+    test('conserva el texto para que se pueda corregir', async () => {
+
+      montar({
+        onConfirm: jest.fn().mockResolvedValue(false),
+      });
+
+      escribirCodigo('999999');
+      await confirmarYEsperar();
+
+      expect(valorDelCampo()).toBe('999999');
+    });
+
+    test('vacía el texto cuando sí se acepta', async () => {
+
+      montar({
+        onConfirm: jest.fn().mockResolvedValue(true),
+      });
+
+      escribirCodigo('123456');
+      await confirmarYEsperar();
+
+      expect(valorDelCampo()).toBe('');
     });
 
   });

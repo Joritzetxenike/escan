@@ -203,7 +203,14 @@ export function useHomeLogic(navigation) {
   /* =====================================================
    * ARTÍCULO
    * ===================================================== */
-
+/**
+   * Devuelve `false` solo cuando el código tecleado no es
+   * válido y hay que corregirlo, para que el modal pueda
+   * quedarse abierto con el texto puesto. En el resto de
+   * casos devuelve `true`, incluso con la ubicación cerrada:
+   * ahí no hay nada que corregir en lo tecleado y el modal
+   * debe cerrarse.
+   */
   const procesarArticulo = async (codigo) => {
 
     /* ---------- UBICACIÓN TERMINADA ---------- */
@@ -215,7 +222,7 @@ export function useHomeLogic(navigation) {
         `La ubicación ${ubicacion} está terminada y no admite más artículos`
       );
 
-      return;
+      return true;
     }
 
     const resultado =
@@ -235,7 +242,7 @@ export function useHomeLogic(navigation) {
         resultado.mensaje
       );
 
-      return;
+      return false;
     }
 
 
@@ -267,6 +274,8 @@ export function useHomeLogic(navigation) {
     );
 
     setMostrarCantidad(true);
+
+    return true;
 
   };
 
@@ -300,9 +309,7 @@ export function useHomeLogic(navigation) {
 
       if (tipo === 'articulo') {
 
-        await procesarArticulo(codigo);
-
-        return true;
+        return await procesarArticulo(codigo);
 
       }
 
@@ -373,14 +380,14 @@ export function useHomeLogic(navigation) {
    * CÓDIGO MANUAL
    * ===================================================== */
 
-  const onManualCode = (codigo) => {
-
-    procesarEscaneo(
-      'articulo',
-      codigo
-    );
-
-  };
+  /**
+   * Devuelve `true` si el artículo se ha aceptado, para que el
+   * modal pueda cerrarse. Si el código no existe devuelve
+   * `false` y el modal se queda abierto con el texto puesto:
+   * un artículo tecleado a mano se equivoca fácil.
+   */
+  const onManualCode = (codigo) =>
+    procesarEscaneo('articulo', codigo);
 
 
   /**
