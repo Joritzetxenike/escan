@@ -17,10 +17,21 @@ export default function MainTabs() {
     <Tab.Navigator
       screenOptions={{
         headerShown: true,
+
+        /* Cabecera y tab bar en el celeste de marca, el mismo
+           de los botones de escanear. El casi negro se queda
+           para la cámara.
+
+           Contraste sobre `primary` (#00729E):
+             blanco            5.38:1  títulos y pestaña activa
+             onPrimaryMuted    4.71:1  etiqueta e icono inactivos
+           El inactivo no puede bajarse más: a 3.23:1 (un gris
+           tipo #C3C9D1) se queda por debajo del mínimo 4.5:1. */
+
         headerStyle: {
-          backgroundColor: colors.primaryDark,
+          backgroundColor: colors.primary,
         },
-        headerTintColor: '#FFFFFF',
+        headerTintColor: colors.onPrimary,
         headerTitleStyle: {
           fontWeight: 'bold',
           fontSize: 20,
@@ -28,13 +39,13 @@ export default function MainTabs() {
         headerTitleAlign: 'center',
 
         tabBarStyle: {
-          backgroundColor: colors.primaryDark,
+          backgroundColor: colors.primary,
           height: 60 + insets.bottom,
           paddingBottom: insets.bottom,
         },
 
-        tabBarActiveTintColor: '#FFFFFF',
-        tabBarInactiveTintColor: '#C3C9D1',
+        tabBarActiveTintColor: colors.onPrimary,
+        tabBarInactiveTintColor: colors.onPrimaryMuted,
       }}
     >
       <Tab.Screen

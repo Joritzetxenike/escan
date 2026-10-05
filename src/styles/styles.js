@@ -1,19 +1,29 @@
 import { StyleSheet } from 'react-native';
 
 /* =====================================================
- * PALETA DE COLORES — gris y limpio, con el celeste de
- * marca reservado a acentos y botones de acción
- * ===================================================== */
+ * PALETA DE COLORES — gris y limpio, con un único celeste
+ * de marca
+ * =====================================================
+ *
+ * Antes había dos celestes: `primary` (#009DE2) para bordes,
+ * iconos y acentos, y `primaryStrong` (#00729E) para todo lo
+ * que lleva texto blanco encima. El segundo existía porque el
+ * blanco sobre el primero se queda en 3:1, por debajo del
+ * mínimo 4.5:1.
+ *
+ * Ahora hay uno solo, `#00729E`, que da 5.38:1 con blanco y
+ * cumple el mínimo. Es el color de los botones de escanear y
+ * también el de la cabecera y la tab bar.
+ */
 
 export const colors = {
-  primary: '#009DE2',        // celeste de marca (bordes, iconos, acentos)
-  /* El blanco sobre `primary` se queda en 3:1, por debajo
-     del mínimo de 4.5:1. Todo relleno que lleve texto
-     blanco encima usa este tono más oscuro del mismo
-     celeste (5.4:1). */
-  primaryStrong: '#00729E',
-  primaryDark: '#1F2937',    // casi negro (cabecera, tab bar, scanner)
-  onPrimary: '#FFFFFF',
+  primary: '#00729E',        // celeste de marca (barras, botones, acentos)
+  onPrimary: '#FFFFFF',      // texto e iconos sobre `primary` (5.38:1)
+  /* Variante para lo secundario sobre `primary`: 4.71:1, se
+     distingue del blanco de la pestaña activa sin perder
+     legibilidad. Un tono más apagado se quedaba en 3.23:1. */
+  onPrimaryMuted: '#E8F1F7',
+  primaryDark: '#1F2937',    // casi negro (cámara y títulos, nunca barras)
   text: '#111827',           // texto principal (casi negro)
   textSecondary: '#4B5563',  // texto secundario
   border: '#E5E7EB',
@@ -37,7 +47,7 @@ container: {
 
   /* ---------- BOTONES ---------- */
   customButton: {
-    backgroundColor: colors.primaryStrong,
+    backgroundColor: colors.primary,
     paddingVertical: 15,
     paddingHorizontal: 25,
     borderRadius: 8,

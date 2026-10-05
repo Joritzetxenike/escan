@@ -158,7 +158,7 @@ describe('ModalFormulario', () => {
       );
 
       expect(estilo.backgroundColor)
-        .toBe(colors.primaryStrong);
+        .toBe(colors.primary);
 
       expect(estilo.borderColor)
         .toBe(colors.primary);
