@@ -183,6 +183,16 @@ homeContent: {
     textAlign: 'center',
   },
 
+  /* Contador de lecturas bajo el hint: solo aparece mientras
+     se acumulan lecturas del mismo código. */
+  scanProgressText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+
   /* ---------- MODAL ---------- */
   modalOverlay: {
     flex: 1,

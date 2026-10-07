@@ -9,6 +9,7 @@ import { CameraView } from 'expo-camera';
 import { MaterialIcons } from '@expo/vector-icons';
 
 import { styles, colors } from '../styles/styles';
+import { REQUIRED_READS } from '../constants/scannerConstants';
 
 export default function ScannerView({
   state,
@@ -168,6 +169,17 @@ export default function ScannerView({
         <Text style={styles.hintText}>
           {state.hintText}
         </Text>
+
+
+        {/* ---------- PROGRESO ---------- */}
+
+        {state.progreso?.count > 0 && (
+
+          <Text style={styles.scanProgressText}>
+            {state.progreso.codigo} · {state.progreso.count}/{REQUIRED_READS}
+          </Text>
+
+        )}
 
 
       </View>

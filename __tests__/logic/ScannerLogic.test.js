@@ -424,6 +424,141 @@ describe('useScannerLogic', () => {
 
 
   // =====================================================
+  // progreso del escaneo
+  // =====================================================
+  //
+  // La UI necesita ver qué código se está acumulando y
+  // cuántas lecturas lleva, pero el buffer es un ref: aquí
+  // se comprueba que el espejo (`progreso`) sigue al ref en
+  // los tres caminos —lectura, validación y caducidad—.
+
+  describe('progreso del escaneo', () => {
+
+    const escanear = (data) => {
+      act(() => {
+        current.handleBarcodeScanned({
+          type: 'ean13',
+          data,
+        });
+      });
+    };
+
+    /* Avanza más allá del intervalo de 500 ms del hook. */
+    const esperarIntervalo = async () => {
+      await act(async () => {
+        await new Promise((resolve) =>
+          setTimeout(resolve, 700)
+        );
+      });
+    };
+
+    test('la primera lectura muestra el código con 1 lectura', () => {
+      montar({ tipo: 'articulo', onScan: jest.fn() });
+
+      ScannerService.esCodigoValido.mockReturnValue(true);
+      ScannerService.actualizarBuffer.mockReturnValue({
+        validado: false,
+        buffer: { value: '123456', count: 1, lastTime: 0 },
+      });
+
+      escanear('123456');
+
+      expect(current.progreso).toEqual({
+        codigo: '123456',
+        count: 1,
+      });
+    });
+
+    test('refleja el buffer mientras no valida', () => {
+      montar({ tipo: 'articulo', onScan: jest.fn() });
+
+      ScannerService.esCodigoValido.mockReturnValue(true);
+      ScannerService.actualizarBuffer.mockReturnValue({
+        validado: false,
+        buffer: { value: '123456', count: 3, lastTime: 0 },
+      });
+
+      escanear('123456');
+
+      expect(current.progreso).toEqual({
+        codigo: '123456',
+        count: 3,
+      });
+    });
+
+    test('se oculta al validar el código', () => {
+      montar({ tipo: 'articulo', onScan: jest.fn() });
+
+      ScannerService.esCodigoValido.mockReturnValue(true);
+      ScannerService.actualizarBuffer.mockReturnValue({
+        validado: true,
+        buffer: { value: '', count: 0, lastTime: 0 },
+      });
+
+      escanear('123456');
+
+      expect(current.progreso).toEqual({
+        codigo: '',
+        count: 0,
+      });
+    });
+
+    test('se oculta si el buffer se estanca', async () => {
+      montar({ tipo: 'articulo', onScan: jest.fn() });
+
+      ScannerService.esCodigoValido.mockReturnValue(true);
+      ScannerService.actualizarBuffer.mockReturnValue({
+        validado: false,
+        buffer: { value: '123456', count: 2, lastTime: 0 },
+      });
+
+      escanear('123456');
+
+      expect(current.progreso.count).toBe(2);
+
+      /* Sin lecturas nuevas el intervalo caduca el buffer
+         (el mock devuelve undefined, como en un reset). */
+      ScannerService.resetBufferIfStale.mockReturnValue(
+        undefined
+      );
+
+      await esperarIntervalo();
+
+      expect(current.progreso).toEqual({
+        codigo: '',
+        count: 0,
+      });
+    });
+
+    test('conserva el progreso si el buffer sigue vivo', async () => {
+      montar({ tipo: 'articulo', onScan: jest.fn() });
+
+      ScannerService.esCodigoValido.mockReturnValue(true);
+      ScannerService.actualizarBuffer.mockReturnValue({
+        validado: false,
+        buffer: { value: '123456', count: 3, lastTime: 0 },
+      });
+
+      escanear('123456');
+
+      ScannerService.resetBufferIfStale.mockReturnValue({
+        value: '123456',
+        count: 3,
+        lastTime: Date.now(),
+      });
+
+      await esperarIntervalo();
+
+      expect(current.progreso).toEqual({
+        codigo: '123456',
+        count: 3,
+      });
+    });
+
+  });
+
+
+  // =====================================================
   // flash
   // =====================================================
 

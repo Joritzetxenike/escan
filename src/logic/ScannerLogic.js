@@ -98,6 +98,29 @@ export function useScannerLogic(navigation, route) {
     lastTime: 0,
   });
 
+  /* =====================================================
+   * PROGRESO PARA LA UI
+   * =====================================================
+   *
+   * El buffer vive en un ref para que las lecturas sean
+   * síncronas entre eventos, pero un ref no repinta: este
+   * estado es solo su espejo para mostrar en pantalla qué
+   * código se está acumulando y cuántas lecturas faltan.
+   * La fuente de verdad sigue siendo el ref.
+   */
+
+  const [progreso, setProgreso] = useState({
+    codigo: '',
+    count: 0,
+  });
+
+  const reflejarProgreso = (buffer) => {
+    setProgreso({
+      codigo: buffer?.value ?? '',
+      count: buffer?.count ?? 0,
+    });
+  };
+
   const ultimoInvalido = useRef({
     code: '',
     time: 0,
@@ -136,6 +159,8 @@ export function useScannerLogic(navigation, route) {
         ScannerService.resetBufferIfStale(
           scanBuffer.current
         );
+
+      reflejarProgreso(scanBuffer.current);
 
     }, 500);
 
@@ -213,6 +238,8 @@ export function useScannerLogic(navigation, route) {
 
     scanBuffer.current = resultado.buffer;
 
+    reflejarProgreso(scanBuffer.current);
+
 
     /* ---------- TODAVÍA NO VALIDADO ---------- */
 
@@ -265,6 +292,8 @@ export function useScannerLogic(navigation, route) {
 
     frameRect,
     onFrameLayout,
+
+    progreso,
 
     volver,
 

@@ -36,6 +36,7 @@ describe('ScannerView', () => {
     hintText: 'Escanea un artículo',
     flashActivo: false,
     soportaFlash: true,
+    progreso: { codigo: '', count: 0 },
   };
 
   const dataActions = {
@@ -224,6 +225,46 @@ describe('ScannerView', () => {
       expect(onFrameLayout).toHaveBeenCalledWith({
         nativeEvent: { layout },
       });
+    });
+
+  });
+
+
+  // =====================================================
+  // INDICADOR DE PROGRESO
+  // =====================================================
+  //
+  // Debajo del hint se muestra "codigo · n/7" solo mientras
+  // se acumulan lecturas; sin lecturas no debe haber rastro.
+
+  describe('indicador de progreso', () => {
+
+    const textos = () =>
+      renderer.root.findAllByType(Text)
+        .map((t) => String(textoDe(t)));
+
+    test('muestra el código y el contador mientras acumula', () => {
+      montar({
+        progreso: { codigo: '123456', count: 3 },
+      });
+
+      expect(textos()).toContain('123456 · 3/7');
+    });
+
+    test('cambia de código al reiniciarse el buffer', () => {
+      montar({
+        progreso: { codigo: '999999', count: 1 },
+      });
+
+      expect(textos()).toContain('999999 · 1/7');
+    });
+
+    test('no se muestra sin lecturas', () => {
+      montar();
+
+      expect(
+        textos().some((t) => t.includes('·'))
+      ).toBe(false);
     });
 
   });
