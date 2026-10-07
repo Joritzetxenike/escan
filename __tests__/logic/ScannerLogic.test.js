@@ -155,7 +155,7 @@ describe('useScannerLogic', () => {
       const { Alert } = jest.requireMock('react-native');
       expect(Alert.alert).toHaveBeenCalledWith(
         'Ubicación inválida',
-        'El código 50100 no sigue el formato seccion-area-subzona (ej. 50100-111-Z101)'
+        'El código 50100 no sigue el formato seccion-area-subzona (ej. LIN2-A01-Z01)'
       );
 
       expect(ScannerService.esCodigoValido).not.toHaveBeenCalled();
@@ -223,6 +223,201 @@ describe('useScannerLogic', () => {
       });
 
       expect(navigation.goBack).toHaveBeenCalled();
+    });
+
+  });
+
+
+  // =====================================================
+  // filtro del marco
+  // =====================================================
+  //
+  // El recuadro de la cámara es decorativo: para que lo que
+  // se ve dentro sea lo único que se escanea hay que medirlo
+  // (`onLayout`) y descartar los `bounds` cuyo centro caiga
+  // fuera. Coordenadas del marco de prueba: x 45, y 300,
+  // 300x180 (centro 195,390; con tolerancia 32 → x 13..377,
+  // y 268..502).
+
+  describe('filtro del marco', () => {
+
+    const medirMarco = (
+      layout = { x: 45, y: 300, width: 300, height: 180 }
+    ) => {
+      act(() => {
+        current.onFrameLayout({
+          nativeEvent: { layout },
+        });
+      });
+    };
+
+    /* `bounds` con el centro en (cx, cy). */
+    const boundsEn = (cx, cy) => ({
+      origin: { x: cx - 25, y: cy - 10 },
+      size: { width: 50, height: 20 },
+    });
+
+    test('descarta en silencio un código fuera del marco', () => {
+      const onScan = jest.fn();
+      montar({ tipo: 'articulo', onScan });
+      medirMarco();
+
+      ScannerService.esCodigoValido.mockReturnValue(true);
+
+      act(() => {
+        current.handleBarcodeScanned({
+          type: 'ean13',
+          data: '123456',
+          bounds: boundsEn(10, 10),
+        });
+      });
+
+      expect(ScannerService.esCodigoValido)
+        .not.toHaveBeenCalled();
+      expect(ScannerService.actualizarBuffer)
+        .not.toHaveBeenCalled();
+      expect(onScan).not.toHaveBeenCalled();
+      expect(navigation.goBack).not.toHaveBeenCalled();
+    });
+
+    test('el filtro se aplica antes de validar el formato: sin aviso si está fuera', () => {
+      const onScan = jest.fn();
+      montar({ tipo: 'ubicacion', onScan });
+      medirMarco();
+
+      const UbicacionValidator =
+        jest.requireMock('../../src/validators/UbicacionValidator').default;
+      UbicacionValidator.validarFormato.mockReturnValue(false);
+
+      act(() => {
+        current.handleBarcodeScanned({
+          type: 'qr',
+          data: '50100',
+          bounds: boundsEn(10, 10),
+        });
+      });
+
+      const { Alert } = jest.requireMock('react-native');
+      expect(Alert.alert).not.toHaveBeenCalled();
+      expect(UbicacionValidator.validarFormato)
+        .not.toHaveBeenCalled();
+      expect(onScan).not.toHaveBeenCalled();
+    });
+
+    test('procesa un código dentro del marco', () => {
+      const onScan = jest.fn();
+      montar({ tipo: 'articulo', onScan });
+      medirMarco();
+
+      ScannerService.esCodigoValido.mockReturnValue(true);
+      ScannerService.actualizarBuffer.mockReturnValue({
+        validado: true,
+        buffer: { value: '', count: 0, lastTime: 0 },
+      });
+
+      act(() => {
+        current.handleBarcodeScanned({
+          type: 'ean13',
+          data: '123456',
+          bounds: boundsEn(195, 390),
+        });
+      });
+
+      expect(onScan).toHaveBeenCalledWith({
+        codigo: '123456',
+        tipo: 'articulo',
+      });
+      expect(navigation.goBack).toHaveBeenCalled();
+    });
+
+    test('acepta lo que quede dentro del margen de tolerancia (32 px)', () => {
+      const onScan = jest.fn();
+      montar({ tipo: 'articulo', onScan });
+      medirMarco();
+
+      ScannerService.esCodigoValido.mockReturnValue(true);
+
+      /* Centro a 25 px del borde izquierdo dibujado (x=45):
+         fuera del recuadro, dentro del margen. */
+      act(() => {
+        current.handleBarcodeScanned({
+          type: 'ean13',
+          data: '123456',
+          bounds: boundsEn(20, 390),
+        });
+      });
+
+      expect(ScannerService.esCodigoValido)
+        .toHaveBeenCalledWith('123456');
+    });
+
+    test('acepta si el marco aún no se ha medido', () => {
+      const onScan = jest.fn();
+      montar({ tipo: 'articulo', onScan });
+
+      ScannerService.esCodigoValido.mockReturnValue(true);
+
+      act(() => {
+        current.handleBarcodeScanned({
+          type: 'ean13',
+          data: '123456',
+          bounds: boundsEn(10, 10),
+        });
+      });
+
+      expect(ScannerService.esCodigoValido)
+        .toHaveBeenCalledWith('123456');
+    });
+
+    test('acepta si expo-camera no da bounds', () => {
+      const onScan = jest.fn();
+      montar({ tipo: 'articulo', onScan });
+      medirMarco();
+
+      ScannerService.esCodigoValido.mockReturnValue(true);
+
+      act(() => {
+        current.handleBarcodeScanned({
+          type: 'ean13',
+          data: '123456',
+        });
+      });
+
+      expect(ScannerService.esCodigoValido)
+        .toHaveBeenCalledWith('123456');
+    });
+
+    test('acepta si el rect de bounds está vacío', () => {
+      const onScan = jest.fn();
+      montar({ tipo: 'articulo', onScan });
+      medirMarco();
+
+      ScannerService.esCodigoValido.mockReturnValue(true);
+
+      act(() => {
+        current.handleBarcodeScanned({
+          type: 'ean13',
+          data: '123456',
+          bounds: {
+            origin: { x: 0, y: 0 },
+            size: { width: 0, height: 0 },
+          },
+        });
+      });
+
+      expect(ScannerService.esCodigoValido)
+        .toHaveBeenCalledWith('123456');
+    });
+
+    test('volver a medir el marco no cambia nada si las medidas son las mismas', () => {
+      montar({ tipo: 'articulo', onScan: jest.fn() });
+
+      medirMarco();
+      const rect = current.frameRect;
+
+      medirMarco();
+
+      expect(current.frameRect).toBe(rect);
     });
 
   });

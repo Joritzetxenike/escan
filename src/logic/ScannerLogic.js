@@ -4,6 +4,7 @@ import { useCameraPermissions } from 'expo-camera';
 
 import ScannerService from '../services/ScannerService';
 import UbicacionValidator from '../validators/UbicacionValidator';
+import { TOLERANCIA_MARCO } from '../constants/scannerConstants';
 
 export function useScannerLogic(navigation, route) {
 
@@ -31,6 +32,65 @@ export function useScannerLogic(navigation, route) {
   };
 
   const soportaFlash = Platform.OS !== 'web';
+
+  /* =====================================================
+   * MARCO DE ESCANEO
+   * =====================================================
+   *
+   * El recuadro que se pinta en pantalla es decorativo, así
+   * que hay que medirlo (`onLayout` en la vista) para poder
+   * descartar los códigos que caen fuera. Las coordenadas de
+   * `bounds` vienen en el espacio de la vista de la cámara
+   * y el overlay ocupa la misma pantalla, así que coinciden.
+   */
+
+  const [frameRect, setFrameRect] = useState(null);
+
+  const onFrameLayout = (event) => {
+    const { x, y, width, height } = event.nativeEvent.layout;
+
+    setFrameRect((previo) =>
+      previo &&
+      previo.x === x &&
+      previo.y === y &&
+      previo.width === width &&
+      previo.height === height
+        ? previo
+        : { x, y, width, height }
+    );
+  };
+
+  /* Sin medidas aún (primeros eventos) o sin bounds fiables
+     (expo-camera puede devolver un rect vacío) se acepta:
+     mejor una lectura de más que ignorar todo. */
+
+  const dentroDelMarco = (bounds) => {
+
+    if (!frameRect) {
+      return true;
+    }
+
+    if (
+      !bounds ||
+      !bounds.origin ||
+      !bounds.size ||
+      bounds.size.width === 0 ||
+      bounds.size.height === 0
+    ) {
+      return true;
+    }
+
+    const cx = bounds.origin.x + bounds.size.width / 2;
+    const cy = bounds.origin.y + bounds.size.height / 2;
+
+    return (
+      cx >= frameRect.x - TOLERANCIA_MARCO &&
+      cx <= frameRect.x + frameRect.width + TOLERANCIA_MARCO &&
+      cy >= frameRect.y - TOLERANCIA_MARCO &&
+      cy <= frameRect.y + frameRect.height + TOLERANCIA_MARCO
+    );
+
+  };
 
   const scanBuffer = useRef({
     value: '',
@@ -88,7 +148,19 @@ export function useScannerLogic(navigation, route) {
    * CÓDIGO ESCANEADO
    * ===================================================== */
 
-  const handleBarcodeScanned = ({ type, data }) => {
+  const handleBarcodeScanned = ({ type, data, bounds }) => {
+
+    /* ---------- FILTRO DEL MARCO ---------- */
+
+    /* Solo cuenta lo que se ve dentro del recuadro: sin este
+       filtro cualquier código a la vista (un cartel de la
+       estantería, la ubicación de al lado...) contaminaría
+       el buffer o dispararía alertas. Se descarta en
+       silencio para no spamear avisos. */
+
+    if (!dentroDelMarco(bounds)) {
+      return;
+    }
 
     console.log('SCAN:', type, data);
 
@@ -114,7 +186,7 @@ export function useScannerLogic(navigation, route) {
 
         Alert.alert(
           'Ubicación inválida',
-          `El código ${data} no sigue el formato seccion-area-subzona (ej. 50100-111-Z101)`
+          `El código ${data} no sigue el formato seccion-area-subzona (ej. LIN2-A01-Z01)`
         );
 
         return;
@@ -190,6 +262,9 @@ export function useScannerLogic(navigation, route) {
     flashActivo,
     toggleFlash,
     soportaFlash,
+
+    frameRect,
+    onFrameLayout,
 
     volver,
 

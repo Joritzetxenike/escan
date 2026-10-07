@@ -16,6 +16,22 @@
 - [ ] **Filtrar más los artículos** (NOTA para el usuario al crear el Excel): refinar los filtros del maestro de artículos antes del import (fantasma, método, posibles exclusores de ítems, etc.).
   - Prioridad: media.
 
+- [x] **Hacer real el recuadro del escáner** (HECHO): el marco era decorativo y el decoder de `CameraView` procesaba toda la imagen (`src/views/ScannerView.js`). Se implementó el **filtro por posición** (sin dependencias nuevas, sigue funcionando en Expo Go):
+  - El marco mide su posición con `onLayout` (`testID="scan-frame"`) y el hook la guarda (`state.frameRect` / `actions.onFrameLayout` en `src/logic/ScannerLogic.js`).
+  - `handleBarcodeScanned` descarta en silencio (sin alerta, sin tocar el buffer) los códigos cuyo centro de `bounds` cae fuera del marco, con `TOLERANCIA_MARCO = 32` px (`src/constants/scannerConstants.js`). El filtro va antes de las validaciones.
+  - Fallbacks a favor del usuario: sin `frameRect` medido (primeros eventos) o sin `bounds`/rect vacío (puede devolverlos expo-camera) → se acepta.
+  - Tests en `__tests__/logic/ScannerLogic.test.js` (bloque "filtro del marco") y `__tests__/views/ScannerView.test.js` (bloque "marco").
+  - **Pendiente manual**: verificar en dispositivo que el espacio de coordenadas de `bounds` coincide con el overlay (iOS/Android/web).
+  - Prioridad: media.
+
+- [ ] **Unificar las constantes del escáner**: hay dos copias de los parámetros de lectura que se mantienen a mano y pueden divergir.
+  - Reales (en uso): `LECTURAS_NECESARIAS = 7` y `TIMEOUT = 1200` en `src/services/ScannerService.js:1-2`, y el `6` hardcodeado en `esCodigoValido` (línea 10).
+  - Fantasma: `src/constants/scannerConstants.js` — `REQUIRED_READS`, `BUFFER_TIMEOUT` y `MIN_CODE_LENGTH` **no las importa nadie**; `RESET_INTERVAL` solo la usa `src/hooks/useScanner.js` (código muerto).
+  - Hacer que `ScannerService` importe de `scannerConstants` y borrar las locales; `ScannerLogic.js:140` debería usar `RESET_INTERVAL` en vez del `500` inline.
+  - Arreglar el test `__tests__/services/ScannerService.test.js:105` ("después de 10 lecturas" cuando el valor es 7) usando `REQUIRED_READS`.
+  - Decidir si se borra `src/hooks/useScanner.js`.
+  - Prioridad: baja.
+
 ## Visualización de datos vía web
 
 - [x] **Crear un panel web administrativo separado**: iniciar una aplicación React + Vite, responsive y sin módulos nativos de la app móvil.

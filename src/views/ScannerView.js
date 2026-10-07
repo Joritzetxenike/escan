@@ -154,6 +154,8 @@ export default function ScannerView({
         {/* ---------- MARCO ---------- */}
 
         <View
+          testID="scan-frame"
+          onLayout={actions.onFrameLayout}
           style={[
             styles.scanFrame,
             state.tipo === 'ubicacion' && styles.scanFrameSquare,

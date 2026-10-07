@@ -1,4 +1,4 @@
-const LECTURAS_NECESARIAS = 10;
+const LECTURAS_NECESARIAS = 7;
 const TIMEOUT = 1200;
 
 const ScannerService = {

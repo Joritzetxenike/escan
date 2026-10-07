@@ -43,6 +43,7 @@ describe('ScannerView', () => {
     volver: jest.fn(),
     toggleFlash: jest.fn(),
     requestPermission: jest.fn(),
+    onFrameLayout: jest.fn(),
   };
 
   const textoDe = (nodo) => {
@@ -177,6 +178,52 @@ describe('ScannerView', () => {
 
       expect(botonFlash()).toBeUndefined();
 
+    });
+
+  });
+
+
+  // =====================================================
+  // MARCO
+  // =====================================================
+  //
+  // El recuadro es decorativo, así que la vista tiene que
+  // informar de su posición real al hook para poder filtrar
+  // los escaneos que caen fuera. El hook se encarga de
+  // interpretar el evento; aquí solo se comprueba el cableado.
+
+  describe('marco', () => {
+
+    const marco = () =>
+      renderer.root.findByProps({ testID: 'scan-frame' });
+
+    test('está conectado al onLayout del hook', () => {
+      montar();
+
+      expect(marco().props.onLayout)
+        .toBe(dataActions.onFrameLayout);
+    });
+
+    test('le pasa el layout medido al hook', () => {
+      const onFrameLayout = jest.fn();
+      montar({}, { onFrameLayout });
+
+      const layout = {
+        x: 45,
+        y: 300,
+        width: 300,
+        height: 180,
+      };
+
+      act(() => {
+        marco().props.onLayout({
+          nativeEvent: { layout },
+        });
+      });
+
+      expect(onFrameLayout).toHaveBeenCalledWith({
+        nativeEvent: { layout },
+      });
     });
 
   });
