@@ -193,8 +193,8 @@ o tecleando la ubicación, o tocando su CSV en la lista):
 
 Una ubicación en `'Fin'` **no admite más operaciones**:
 - Home cachea el estado de la ubicación al escanearla: con `'Fin'` no permite escanear ni introducir artículos (aviso «Ubicación terminada»). Al volver a la pestaña Home desde Lista se reconsulta el estado en el maestro (1 petición) para recoger un `'Fin'` recién marcado.
-- El modal de artículos (usado desde Estado y desde Lista) consulta él mismo `estaUbicacionFinalizada` al abrirse: con `'Fin'` no permite **editar cantidades** ni **eliminar filas**.
-- En la pestaña Lista no se permite **borrar filas** de esa ubicación (sí se puede borrar el CSV completo con **"Borrar CSV"** o exportarlo con **"Exportar"**, ambos dentro del modal).
+- El modal de artículos (el mismo en Lista y en Estado) consulta él mismo `estaUbicacionFinalizada` al abrirse: con `'Fin'` no permite **editar cantidades** ni **eliminar filas**.
+- En la pestaña Lista, dentro del modal del CSV, se puede **editar la cantidad** tocándola (y **eliminar filas**): al guardar se escribe el **CSV y la base de datos** (o la cola), igual que en Estado. Todo queda bloqueado si la ubicación está en `'Fin'`. El CSV completo se sigue pudiendo borrar con **"Borrar CSV"** o exportar con **"Exportar"**.
 
 ---
 

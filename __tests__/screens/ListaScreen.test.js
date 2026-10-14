@@ -44,7 +44,14 @@ jest.mock('../../src/components/ArticulosModal', () => {
   const React = require('react');
   const { TouchableOpacity } = require('react-native');
 
-  return ({ onExportar, onBorrar, titulo }) => (
+  return ({
+    onExportar,
+    onBorrar,
+    titulo,
+    onIniciarEdicion,
+    onChangeValor,
+    onGuardarEdicion,
+  }) => (
     <>
       {onExportar && (
         <TouchableOpacity
@@ -58,6 +65,30 @@ jest.mock('../../src/components/ArticulosModal', () => {
           onPress={() => onBorrar(titulo)}
         />
       )}
+      {onIniciarEdicion && (
+        <TouchableOpacity
+          testID="editar-0"
+          onPress={() => onIniciarEdicion(0)}
+        />
+      )}
+      {onChangeValor && (
+        <TouchableOpacity
+          testID="cambiar-valor-9"
+          onPress={() => onChangeValor('9')}
+        />
+      )}
+      {onChangeValor && (
+        <TouchableOpacity
+          testID="cambiar-valor-invalido"
+          onPress={() => onChangeValor('abc')}
+        />
+      )}
+      {onGuardarEdicion && (
+        <TouchableOpacity
+          testID="guardar-0"
+          onPress={() => onGuardarEdicion(0)}
+        />
+      )}
     </>
   );
 });
@@ -66,6 +97,7 @@ jest.mock('../../src/services/InventoryService', () => ({
   estaUbicacionFinalizada: jest.fn(),
   finalizarUbicacion: jest.fn(),
   eliminarMovimiento: jest.fn(),
+  actualizarMovimiento: jest.fn(),
 }));
 
 
@@ -308,6 +340,77 @@ describe('ListaScreen', () => {
     );
 
     expect(Sharing.shareAsync).not.toHaveBeenCalled();
+  });
+
+
+  // =====================================================
+  // EDITAR CANTIDAD DESDE EL CSV
+  // =====================================================
+
+  it('edita la cantidad y la guarda en el CSV y en la base de datos', async () => {
+
+    InventoryService.estaUbicacionFinalizada
+      .mockResolvedValue(false);
+    InventoryService.actualizarMovimiento
+      .mockResolvedValue({ pendiente: false });
+
+    await montar();
+    await abrirPorNombre();
+
+    await presionar('editar-0');
+    await presionar('cambiar-valor-9');
+    await presionar('guardar-0');
+
+    expect(InventoryService.actualizarMovimiento)
+      .toHaveBeenCalledWith({
+        ubicacion: UBICACION,
+        articulo: '123456',
+        cantidad: 9,
+      });
+  });
+
+
+  it('avisa y no guarda si la cantidad no es válida', async () => {
+
+    InventoryService.estaUbicacionFinalizada
+      .mockResolvedValue(false);
+
+    await montar();
+    await abrirPorNombre();
+
+    await presionar('editar-0');
+    await presionar('cambiar-valor-invalido');
+    await presionar('guardar-0');
+
+    expect(Alert.alert).toHaveBeenCalledWith(
+      'Error',
+      'Introduce una cantidad válida'
+    );
+
+    expect(InventoryService.actualizarMovimiento)
+      .not.toHaveBeenCalled();
+  });
+
+
+  it('avisa y no guarda si la ubicación está terminada', async () => {
+
+    InventoryService.estaUbicacionFinalizada
+      .mockResolvedValue(true);
+
+    await montar();
+    await abrirPorNombre();
+
+    await presionar('editar-0');
+    await presionar('cambiar-valor-9');
+    await presionar('guardar-0');
+
+    expect(Alert.alert).toHaveBeenCalledWith(
+      'Ubicación terminada',
+      expect.stringContaining(UBICACION)
+    );
+
+    expect(InventoryService.actualizarMovimiento)
+      .not.toHaveBeenCalled();
   });
 
 });

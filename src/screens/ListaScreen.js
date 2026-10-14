@@ -27,6 +27,12 @@ export default function ListaScreen() {
   const [registros, setRegistros] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
 
+  /* Fila en edición dentro del modal del CSV. El índice es el
+     real en `registros`, no el de la lista filtrada. */
+
+  const [editandoIndex, setEditandoIndex] = useState(null);
+  const [nuevaCantidad, setNuevaCantidad] = useState('');
+
   const [mostrarManualUbicacion, setMostrarManualUbicacion] =
     useState(false);
 
@@ -45,6 +51,13 @@ export default function ListaScreen() {
       cargarCsvs();
     }, [])
   );
+
+  /* ---------- EDICIÓN DE CANTIDAD ---------- */
+
+  const cerrarEdicion = () => {
+    setEditandoIndex(null);
+    setNuevaCantidad('');
+  };
 
   /* =====================================================
    * ABRIR CSV POR UBICACIÓN
@@ -81,6 +94,7 @@ export default function ListaScreen() {
 
     setCsvSeleccionado(nombreCsvUbicacion(ubicacion));
     setRegistros(filas);
+    cerrarEdicion();
     setModalVisible(true);
 
     return true;
@@ -190,6 +204,7 @@ export default function ListaScreen() {
         });
       setCsvSeleccionado(nombre);
       setRegistros(filas);
+      cerrarEdicion();
       setModalVisible(true);
     } catch (e) {
       Alert.alert('Error', 'No se pudo abrir el CSV');
@@ -233,6 +248,7 @@ export default function ListaScreen() {
               setRegistros((actual) =>
                 actual.filter((_, i) => i !== index)
               );
+              cerrarEdicion();
             } catch (e) {
               console.error(e);
               Alert.alert('Error', 'No se pudo eliminar el registro');
@@ -241,6 +257,61 @@ export default function ListaScreen() {
         },
       ]
     );
+  };
+
+  /* ---------- GUARDAR CANTIDAD EDITADA ----------
+   *
+   * Escribe el CSV y la base de datos (o la cola) igual que la
+   * pestaña Estado. Si la ubicación ya está terminada no se
+   * cambia nada: la comprobación se repite aquí, aparte de la
+   * que hace el propio modal, por si pasó a `Fin` mientras
+   * estaba abierto.
+   */
+
+  const guardarCantidad = async (index) => {
+    const cant = Number(nuevaCantidad);
+
+    if (!Number.isInteger(cant) || cant < 0) {
+      Alert.alert('Error', 'Introduce una cantidad válida');
+      return;
+    }
+
+    const reg = registros[index];
+
+    try {
+      const finalizada =
+        await InventoryService.estaUbicacionFinalizada(reg.ubicacion);
+
+      if (finalizada) {
+        Alert.alert(
+          'Ubicación terminada',
+          `La ubicación ${reg.ubicacion} está terminada y no admite cambios`
+        );
+        return;
+      }
+    } catch (e) {
+      console.error('No se pudo comprobar el estado de la ubicación:', e);
+    }
+
+    try {
+      await InventoryService.actualizarMovimiento({
+        ubicacion: reg.ubicacion,
+        articulo: reg.articulo,
+        cantidad: cant,
+      });
+
+      setRegistros((actual) =>
+        actual.map((r, i) =>
+          i === index ? { ...r, cantidad: cant } : r
+        )
+      );
+
+      cerrarEdicion();
+
+    } catch (e) {
+      console.error(e);
+      Alert.alert('Error', 'No se pudo actualizar la cantidad');
+    }
   };
 
   /* ---------- RENDER ITEM CSV ---------- */
@@ -310,8 +381,19 @@ export default function ListaScreen() {
         visible={modalVisible}
         titulo={csvSeleccionado}
         articulos={registros}
-        onCerrar={() => setModalVisible(false)}
+        onCerrar={() => {
+          cerrarEdicion();
+          setModalVisible(false);
+        }}
         codigoUbicacion={csvSeleccionado?.replace(/\.csv$/i, '')}
+        editandoIndex={editandoIndex}
+        editandoValor={nuevaCantidad}
+        onIniciarEdicion={(index) => {
+          setEditandoIndex(index);
+          setNuevaCantidad(String(registros[index].cantidad ?? 0));
+        }}
+        onChangeValor={setNuevaCantidad}
+        onGuardarEdicion={guardarCantidad}
         onEliminar={borrarRegistro}
         onExportar={exportarCsv}
         onBorrar={borrarCsv}
