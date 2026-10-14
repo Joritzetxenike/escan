@@ -104,6 +104,77 @@ describe('CsvProvider', () => {
 
 
   // =====================================================
+  // obtenerRegistroUbicacion
+  // =====================================================
+
+  describe('obtenerRegistroUbicacion', () => {
+
+    test('devuelve la fila del artículo si está contado', async () => {
+
+      FileSystem.getInfoAsync.mockResolvedValue({
+        exists: true,
+      });
+
+      FileSystem.readAsStringAsync.mockResolvedValue(
+        'A1,123456,5\nA1,999999,10'
+      );
+
+      const resultado =
+        await CsvProvider.obtenerRegistroUbicacion(
+          'A1',
+          '999999'
+        );
+
+      expect(resultado).toEqual({
+        ubicacion: 'A1',
+        articulo: '999999',
+        cantidad: 10,
+      });
+
+    });
+
+
+    test('devuelve null si el artículo no está contado', async () => {
+
+      FileSystem.getInfoAsync.mockResolvedValue({
+        exists: true,
+      });
+
+      FileSystem.readAsStringAsync.mockResolvedValue(
+        'A1,123456,5'
+      );
+
+      const resultado =
+        await CsvProvider.obtenerRegistroUbicacion(
+          'A1',
+          '999999'
+        );
+
+      expect(resultado).toBeNull();
+
+    });
+
+
+    test('devuelve null si no existe el CSV', async () => {
+
+      FileSystem.getInfoAsync.mockResolvedValue({
+        exists: false,
+      });
+
+      const resultado =
+        await CsvProvider.obtenerRegistroUbicacion(
+          'A1',
+          '123456'
+        );
+
+      expect(resultado).toBeNull();
+
+    });
+
+  });
+
+
+  // =====================================================
   // guardarMovimiento
   // =====================================================
 

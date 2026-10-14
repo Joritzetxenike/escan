@@ -36,7 +36,22 @@ export function useHomeLogic(navigation) {
 
   const [ultimosArticulos, setUltimosArticulos] = useState([]);
 
-  const [escaneadosSesion, setEscaneadosSesion] = useState([]);
+  /* Cantidad ya contada de `articuloTemp` en la ubicación,
+     leída del CSV al validarlo; `null` si es nuevo. */
+
+  const [cantidadExistente, setCantidadExistente] =
+    useState(null);
+
+  /* Cómo se guarda la próxima cantidad: `normal` (artículo
+     nuevo), `sumar` (existente + tecleado) o `sobrescribir`
+     (lo tecleado reemplaza lo que había). */
+
+  const [modoGuardar, setModoGuardar] = useState('normal');
+
+  /* Modal propio que pregunta qué hacer con un artículo que ya
+     estaba contado: sumar, sobrescribir o cancelar. */
+
+  const [mostrarExistente, setMostrarExistente] = useState(false);
 
   const [mostrarManual, setMostrarManual] = useState(false);
 
@@ -205,10 +220,6 @@ export function useHomeLogic(navigation) {
         codigoNormalizado
       );
 
-      // Reiniciamos los artículos escaneados
-      // para la nueva ubicación
-      setEscaneadosSesion([]);
-
       return true;
 
     } catch (e) {
@@ -249,8 +260,7 @@ export function useHomeLogic(navigation) {
     const resultado =
       await InventoryService.validarArticulo(
         codigo,
-        ubicacion,
-        escaneadosSesion
+        ubicacion
       );
 
 
@@ -287,12 +297,37 @@ export function useHomeLogic(navigation) {
 
     setArticuloTemp(codigo);
 
-    setEscaneadosSesion(
-      prev => [
-        ...prev,
-        codigo,
-      ]
-    );
+
+    /* ---------- ¿YA CONTADO EN EL CSV? ---------- */
+
+    /* La verdad de lo contado es el CSV de la ubicación. Si el
+       artículo ya está, no se puede dar por nuevo: se avisa y
+       se deja elegir entre sumar la cantidad nueva, reemplazar
+       la que había o cancelar. */
+
+    const existente =
+      await InventoryService.obtenerCantidadGuardada(
+        ubicacion,
+        codigo
+      );
+
+    if (existente != null) {
+
+      setCantidadExistente(existente);
+
+      /* En vez de un Alert nativo que no se puede maquetar, se
+         abre el modal propio. La elección (sumar/sobrescribir/
+         cancelar) la resuelven `elegirSumar`, `elegirSobrescribir`
+         y `cancelarExistente`. */
+
+      setMostrarExistente(true);
+
+      return true;
+
+    }
+
+
+    setModoGuardar('normal');
 
     setMostrarCantidad(true);
 
@@ -442,6 +477,12 @@ export function useHomeLogic(navigation) {
 
     setArticuloSinValidar(false);
 
+    setCantidadExistente(null);
+
+    setModoGuardar('normal');
+
+    setMostrarExistente(false);
+
     setCodigoManual('');
 
     setMostrarManual(false);
@@ -455,21 +496,52 @@ export function useHomeLogic(navigation) {
    * DESCARTAR ARTÍCULO
    * =====================================================
    *
-   * El código se reserva en `escaneadosSesion` al validarlo,
-   * antes de que exista movimiento guardado, para que un
-   * doble escaneo no abra dos veces el modal. Al cancelar hay
-   * que devolver esa reserva: si no, el artículo queda
-   * marcado como escaneado y al volver a leerlo el validador
-   * lo rechaza por duplicado.
+   * Al cancelar el modal de cantidad no se toca el CSV (aún
+   * no se ha guardado nada), así que basta con limpiar el
+   * artículo en curso. Si ya estaba contado, la próxima
+   * lectura vuelve a leer su cantidad del CSV.
    */
 
   const descartarArticulo = () => {
 
-    setEscaneadosSesion(
-      prev => prev.filter(
-        c => c !== articuloTemp
-      )
-    );
+    limpiarArticulo();
+
+  };
+
+
+  /* =====================================================
+   * ARTÍCULO YA CONTADO
+   * =====================================================
+   *
+   * Acciones del modal propio. Sumar y sobrescribir solo
+   * fijan `modoGuardar` y abren el modal de cantidad; la
+   * cantidad final la calcula `confirmarCantidad`. Cancelar
+   * descarta el artículo en curso sin tocar el CSV.
+   */
+
+  const elegirSumar = () => {
+
+    setModoGuardar('sumar');
+
+    setMostrarExistente(false);
+
+    setMostrarCantidad(true);
+
+  };
+
+
+  const elegirSobrescribir = () => {
+
+    setModoGuardar('sobrescribir');
+
+    setMostrarExistente(false);
+
+    setMostrarCantidad(true);
+
+  };
+
+
+  const cancelarExistente = () => {
 
     limpiarArticulo();
 
@@ -486,11 +558,20 @@ export function useHomeLogic(navigation) {
 
     try {
 
+      /* Al sumar, lo tecleado se añade a lo que ya había en el
+         CSV; en cualquier otro caso, es la cantidad a guardar. */
+
+      const cantidadFinal =
+        modoGuardar === 'sumar' &&
+        cantidadExistente != null
+          ? cantidadExistente + cantidad
+          : cantidad;
+
       const movimiento =
 InventoryService.crearMovimiento(
           ubicacion,
           articuloTemp,
-          cantidad
+          cantidadFinal
         );
 
 
@@ -588,6 +669,19 @@ InventoryService.crearMovimiento(
     descartarArticulo,
 
     setMostrarCantidad,
+
+
+    /* ---------- ARTÍCULO YA CONTADO ---------- */
+
+    mostrarExistente,
+
+    cantidadExistente,
+
+    elegirSumar,
+
+    elegirSobrescribir,
+
+    cancelarExistente,
 
 
     /* ---------- MODAL MANUAL ---------- */

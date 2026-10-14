@@ -25,6 +25,7 @@ jest.mock('../../src/services/InventoryService', () => ({
   validarUbicacion: jest.fn(),
   crearMovimiento: jest.fn(),
   guardarMovimiento: jest.fn(),
+  obtenerCantidadGuardada: jest.fn(),
   estaUbicacionFinalizada: jest.fn(),
   estaOnline: jest.fn(),
   sincronizarPendientes: jest.fn(),
@@ -62,6 +63,11 @@ describe('useHomeLogic', () => {
     mockEstadoConexion = { online: true };
 
     InventoryService.estaOnline.mockResolvedValue(true);
+
+    // Por defecto el artículo no está contado: solo los tests
+    // del flujo de "ya contado" fuerzan una cantidad.
+    InventoryService.obtenerCantidadGuardada
+      .mockResolvedValue(null);
 
     act(() => {
       renderer = create(<Harness navigation={navigation} />);
@@ -931,7 +937,7 @@ describe('useHomeLogic', () => {
 
     });
 
-    test('libera la reserva y permite volver a escanear el mismo código', async () => {
+    test('volver a escanear el mismo código lo admite de nuevo', async () => {
 
       await prepararArticulo();
 
@@ -946,49 +952,169 @@ describe('useHomeLogic', () => {
       expect(current.articuloTemp).toBe('123456');
       expect(current.mostrarCantidad).toBe(true);
 
-      /* El segundo escaneo ya no arrastra el código como
-         duplicado: `validarDuplicado` no lo encuentra. */
-
-      const escaneos =
-        InventoryService.validarArticulo.mock.calls;
-
-      expect(escaneos[escaneos.length - 1][2])
-        .toEqual([]);
-
     });
 
-    test('conserva la reserva cuando el movimiento sí se guarda', async () => {
+  });
 
-      InventoryService.crearMovimiento
-        .mockImplementation(
-          (ubicacion, articulo, cantidad) => ({
-            ubicacion,
-            articulo,
-            cantidad,
-          })
-        );
-      InventoryService.guardarMovimiento
-        .mockResolvedValue({ pendiente: false });
 
-      await prepararArticulo();
+  // =====================================================
+  // ARTÍCULO YA CONTADO (SUMAR / SOBRESCRIBIR / CANCELAR)
+  // =====================================================
 
-      await act(async () => {
-        await current.confirmarCantidad(5);
+  describe('artículo ya contado', () => {
+
+    const prepararUbicacion = async () => {
+
+      InventoryService.validarUbicacion.mockResolvedValue({
+        ok: true,
+        ubicacion: { seccion: 'A', area: '1', subzona: '1' },
+      });
+      InventoryService.cargarUbicacion.mockResolvedValue([]);
+      InventoryService.validarArticulo.mockResolvedValue({
+        ok: true,
+        esSIC: false,
+        articulo: { item: '123456', tipo: 'Normal' },
+      });
+      InventoryService.crearMovimiento.mockImplementation(
+        (ubicacion, articulo, cantidad) => ({
+          ubicacion,
+          articulo,
+          cantidad,
+        })
+      );
+      InventoryService.guardarMovimiento.mockResolvedValue({
+        pendiente: false,
       });
 
-      /* El artículo guardado sigue marcado como contado
-         para que un nuevo escaneo del mismo código avise
-         de duplicado. */
+      await act(async () => {
+        await current.procesarEscaneo('ubicacion', 'A1');
+      });
+
+    };
+
+    /* El aviso ya no es un Alert nativo: abre el modal propio
+       (`mostrarExistente`), así que las opciones se eligen
+       llamando a las acciones del hook. */
+
+    test('avisa con el modal y guarda la cantidad existente', async () => {
+
+      await prepararUbicacion();
+      InventoryService.obtenerCantidadGuardada
+        .mockResolvedValue(5);
 
       await act(async () => {
         await current.onManualCode('123456');
       });
 
-      const escaneos =
-        InventoryService.validarArticulo.mock.calls;
+      expect(current.mostrarExistente).toBe(true);
+      expect(current.cantidadExistente).toBe(5);
 
-      expect(escaneos[escaneos.length - 1][2])
-        .toEqual(['123456']);
+      /* No es un Alert ni pide cantidad todavía */
+      expect(Alert.alert).not.toHaveBeenCalled();
+      expect(current.mostrarCantidad).toBe(false);
+
+    });
+
+    test('sumar abre el modal de cantidad y suma a lo existente', async () => {
+
+      await prepararUbicacion();
+      InventoryService.obtenerCantidadGuardada
+        .mockResolvedValue(5);
+
+      await act(async () => {
+        await current.onManualCode('123456');
+      });
+
+      act(() => {
+        current.elegirSumar();
+      });
+
+      expect(current.mostrarExistente).toBe(false);
+      expect(current.mostrarCantidad).toBe(true);
+
+      await act(async () => {
+        await current.confirmarCantidad(3);
+      });
+
+      expect(InventoryService.guardarMovimiento)
+        .toHaveBeenCalledWith(
+          {
+            ubicacion: 'A1',
+            articulo: '123456',
+            cantidad: 8,
+          },
+          expect.any(Object)
+        );
+
+    });
+
+    test('sobrescribir guarda solo la cantidad tecleada', async () => {
+
+      await prepararUbicacion();
+      InventoryService.obtenerCantidadGuardada
+        .mockResolvedValue(5);
+
+      await act(async () => {
+        await current.onManualCode('123456');
+      });
+
+      act(() => {
+        current.elegirSobrescribir();
+      });
+
+      await act(async () => {
+        await current.confirmarCantidad(3);
+      });
+
+      expect(InventoryService.guardarMovimiento)
+        .toHaveBeenCalledWith(
+          {
+            ubicacion: 'A1',
+            articulo: '123456',
+            cantidad: 3,
+          },
+          expect.any(Object)
+        );
+
+    });
+
+    test('cancelar cierra el modal y no guarda nada', async () => {
+
+      await prepararUbicacion();
+      InventoryService.obtenerCantidadGuardada
+        .mockResolvedValue(5);
+
+      await act(async () => {
+        await current.onManualCode('123456');
+      });
+
+      act(() => {
+        current.cancelarExistente();
+      });
+
+      expect(current.mostrarExistente).toBe(false);
+      expect(current.mostrarCantidad).toBe(false);
+      expect(current.articuloTemp).toBeNull();
+
+      expect(
+        InventoryService.guardarMovimiento
+      ).not.toHaveBeenCalled();
+
+    });
+
+    test('un artículo nuevo no avisa y abre el modal directamente', async () => {
+
+      await prepararUbicacion();
+      InventoryService.obtenerCantidadGuardada
+        .mockResolvedValue(null);
+
+      await act(async () => {
+        await current.onManualCode('123456');
+      });
+
+      expect(current.mostrarExistente).toBe(false);
+      expect(Alert.alert).not.toHaveBeenCalled();
+      expect(current.mostrarCantidad).toBe(true);
 
     });
 

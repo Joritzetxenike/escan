@@ -160,6 +160,23 @@ const InventoryService = {
   },
 
   /**
+   * Cantidad ya contada de un artículo en la ubicación según
+   * el CSV local (fuente de verdad), o `null` si no está.
+   * Sirve para avisar del código repetido y poder sumar.
+   */
+  async obtenerCantidadGuardada(ubicacion, articulo) {
+
+    const registro =
+      await CsvProvider.obtenerRegistroUbicacion(
+        ubicacion,
+        articulo
+      );
+
+    return registro?.cantidad ?? null;
+
+  },
+
+  /**
    * Offline la cola es la única fuente de verdad: si la
    * ubicación tiene una finalización pendiente de enviar, se
    * considera terminada y no admite más operaciones.
@@ -278,14 +295,12 @@ const InventoryService = {
 
   async validarArticulo(
     codigoArticulo,
-    ubicacion,
-    articulosEscaneados
+    ubicacion
   ) {
 
     const resultado = await ArticuloValidator.validar(
       codigoArticulo,
-      ubicacion,
-      articulosEscaneados
+      ubicacion
     );
 
     /* ---------- Aceptado sin conexión ---------- */

@@ -51,35 +51,6 @@ describe('ArticuloValidator', () => {
 
   });
 
-  describe('validarDuplicado', () => {
-
-    test('acepta un artículo que no está en la sesión', () => {
-      expect(
-        ArticuloValidator.validarDuplicado(
-          '123456',
-          ['999999'],
-          'A1'
-        )
-      ).toBeNull();
-    });
-
-    test('rechaza un artículo ya escaneado', () => {
-      const resultado =
-        ArticuloValidator.validarDuplicado(
-          '123456',
-          ['123456'],
-          'A1'
-        );
-
-      expect(resultado.titulo).toBe('Artículo duplicado');
-      expect(resultado.mensaje).toBe(
-        'El artículo 123456 ya ha sido escaneado en la ubicación A1'
-      );
-    });
-
-  });
-
-
   // =====================================================
   // CONSULTA A LA COPIA LOCAL
   // =====================================================
@@ -91,29 +62,11 @@ describe('ArticuloValidator', () => {
       const resultado =
         await ArticuloValidator.validar(
           '123456',
-          null,
-          []
+          null
         );
 
       expect(resultado.ok).toBe(false);
       expect(resultado.titulo).toBe('Error');
-
-      expect(
-        maestrosService.asegurarListo
-      ).not.toHaveBeenCalled();
-    });
-
-    test('rechaza un duplicado, sin tocar la copia', async () => {
-
-      const resultado =
-        await ArticuloValidator.validar(
-          '123456',
-          'A1',
-          ['123456']
-        );
-
-      expect(resultado.ok).toBe(false);
-      expect(resultado.titulo).toBe('Artículo duplicado');
 
       expect(
         maestrosService.asegurarListo
@@ -125,8 +78,7 @@ describe('ArticuloValidator', () => {
       const resultado =
         await ArticuloValidator.validar(
           '123456',
-          'A1',
-          []
+          'A1'
         );
 
       expect(resultado.ok).toBe(true);
@@ -144,8 +96,7 @@ describe('ArticuloValidator', () => {
       const resultado =
         await ArticuloValidator.validar(
           '123456',
-          'A1',
-          []
+          'A1'
         );
 
       expect(resultado.ok).toBe(true);
@@ -158,8 +109,7 @@ describe('ArticuloValidator', () => {
       const resultado =
         await ArticuloValidator.validar(
           '123456',
-          'A1',
-          []
+          'A1'
         );
 
       expect(resultado.ok).toBe(false);
@@ -173,8 +123,7 @@ describe('ArticuloValidator', () => {
       const resultado =
         await ArticuloValidator.validar(
           '999999',
-          'A1',
-          []
+          'A1'
         );
 
       expect(resultado.ok).toBe(false);
@@ -190,8 +139,7 @@ describe('ArticuloValidator', () => {
       const resultado =
         await ArticuloValidator.validar(
           '999999',
-          'A1',
-          []
+          'A1'
         );
 
       expect(resultado.mensaje).toContain(
@@ -209,8 +157,7 @@ describe('ArticuloValidator', () => {
       const resultado =
         await ArticuloValidator.validar(
           '123456',
-          'A1',
-          []
+          'A1'
         );
 
       expect(resultado.ok).toBe(false);
@@ -227,8 +174,7 @@ describe('ArticuloValidator', () => {
       const resultado =
         await ArticuloValidator.validar(
           '123456',
-          'A1',
-          []
+          'A1'
         );
 
       expect(resultado.provisional).toBe(false);

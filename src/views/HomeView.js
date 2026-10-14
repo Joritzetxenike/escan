@@ -1,6 +1,7 @@
 import { View, Text, TouchableOpacity } from 'react-native';
 
 import CantidadModal from '../components/CantidadModal';
+import ArticuloExistenteModal from '../components/ArticuloExistenteModal';
 import ManualCodeModal from '../components/ManualCodeModal';
 import EstadoBanner from '../components/EstadoBanner';
 
@@ -242,6 +243,27 @@ export default function HomeView({
         onCancel={() =>
           actions.setMostrarManualUbicacion(false)
         }
+      />
+
+
+      {/* =====================================================
+          MODAL ARTÍCULO YA CONTADO
+      ===================================================== */}
+
+      <ArticuloExistenteModal
+        visible={state.mostrarExistente}
+
+        articulo={state.articuloTemp}
+
+        ubicacion={state.ubicacion}
+
+        cantidad={state.cantidadExistente}
+
+        onSumar={actions.elegirSumar}
+
+        onSobrescribir={actions.elegirSobrescribir}
+
+        onCancelar={actions.cancelarExistente}
       />
 
 

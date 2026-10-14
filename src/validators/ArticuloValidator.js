@@ -35,21 +35,6 @@ class ArticuloValidator {
 
   }
 
-  validarDuplicado(codigoArticulo, articulosEscaneados, ubicacion) {
-
-    if (articulosEscaneados.includes(codigoArticulo)) {
-      return {
-        ok: false,
-        titulo: 'Artículo duplicado',
-        mensaje:
-          `El artículo ${codigoArticulo} ya ha sido escaneado en la ubicación ${ubicacion}`,
-      };
-    }
-
-    return null;
-
-  }
-
   /**
    * Mensaje para cuando no hay copia utilizable. Incluye el
    * motivo real del fallo (normalmente una descarga
@@ -97,20 +82,12 @@ class ArticuloValidator {
 
   }
 
-  async validar(codigoArticulo, ubicacion, articulosEscaneados) {
+  async validar(codigoArticulo, ubicacion) {
 
     const sinUbicacion =
       this.validarUbicacionPrevia(ubicacion);
 
     if (sinUbicacion) return sinUbicacion;
-
-    const duplicado = this.validarDuplicado(
-      codigoArticulo,
-      articulosEscaneados,
-      ubicacion
-    );
-
-    if (duplicado) return duplicado;
 
     /* ---------- Copia local ---------- */
 

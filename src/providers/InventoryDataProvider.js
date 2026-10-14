@@ -53,6 +53,14 @@ const InventoryDataProvider = {
     throw new Error('obtenerArticulosUbicacion() no implementado');
   },
 
+  /**
+   * Devuelve la fila `{ ubicacion, articulo, cantidad }` de un
+   * artículo en la ubicación, o `null` si no está contado.
+   */
+  async obtenerRegistroUbicacion(ubicacion, articulo) {
+    throw new Error('obtenerRegistroUbicacion() no implementado');
+  },
+
   /* =======================================================
    * ARTÍCULOS
    * ======================================================= */

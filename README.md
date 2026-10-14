@@ -98,10 +98,11 @@ El escáner requiere que un mismo código se lea **10 veces consecutivas en 1200
 1. **Home** → "Escanear ubicación" → `ScannerScreen` (tipo `ubicacion`) → el código vuelve por `onScan` → `cargarUbicacion()` guarda la ubicación actual y obtiene sus artículos (1 petición).
 2. **Home** → "Escanear artículo" (o botón `+` para introducción manual) → `procesarArticulo()`:
    - Si la ubicación actual está **terminada** (`Fin`), el aviso "Ubicación terminada" sale **al pulsar** el botón (antes de abrir la cámara o el modal); `procesarArticulo()` conserva la misma comprobación como red de seguridad.
-   - `validarArticulo()` comprueba: existe ubicación escaneada → el artículo no está repetido en la sesión → existe en `maestroArticulo`.
+   - `validarArticulo()` comprueba contra la copia local: existe ubicación escaneada → existe en `maestroArticulo` (y no es genérico).
    - Si `tipo === 'SIC'` muestra un aviso antes de continuar.
    - Si el artículo es **genérico** (tipo `GEN`/`GENERICO`) se rechaza indicando el motivo, aunque exista en el maestro.
    - Si el código **no existe** en el maestro, el aviso lo dice expresamente.
+   - Si el artículo **ya está contado** en la ubicación (lo dice el CSV local, la fuente de verdad), avisa con su cantidad actual y ofrece **Sumar** (existente + lo tecleado), **Sobrescribir** (solo lo tecleado) o **Cancelar**. Ver más abajo.
 3. **Cantidad** → modal `CantidadModal` → `confirmarCantidad()` → `guardarMovimiento()`:
    - `upsert` en la tabla `conteo` (ubicación, item, cant).
    - Actualiza `stat = 'Proceso'` en `maestroUbicacion`, `maestroArea` y `maestroSeccion` (4 peticiones en total).
@@ -402,6 +403,29 @@ guarda descripciones).
 La lógica vive en `maestrosService.sugerirArticulos()` (expuesta por
 `InventoryService` y `HomeLogic`), y el desplegable en `ManualCodeModal` a
 través del prop opcional `sugerencias`.
+
+### Artículo ya contado: sumar o sobrescribir
+
+Al escanear/teclear un artículo que **ya está contado en la ubicación**, la app
+no lo da por nuevo ni lo pisa en silencio: abre un modal propio
+(`ArticuloExistenteModal`) con la cantidad que ya había y deja elegir entre
+**Sumar** y **Sobrescribir**, con **Cancelar** debajo. Se usa un modal propio y
+no un `Alert` nativo para poder maquetar los tres botones.
+
+- El criterio es el **CSV local de la ubicación** (la fuente de verdad de lo
+  contado), consultado con `InventoryService.obtenerCantidadGuardada()` →
+  `CsvProvider.obtenerRegistroUbicacion()`. Funciona también sin conexión.
+- **Sumar** → la cantidad tecleada se **suma** a la existente (`existente + nueva`).
+- **Sobrescribir** → la cantidad tecleada **reemplaza** la que había.
+- **Cancelar** → no se cambia nada (no se abre el modal de cantidad).
+- La cantidad final se guarda con el `upsert` habitual (`conteo` y CSV), así que
+  el resultado es el mismo con o sin conexión.
+
+La decisión vive en `HomeLogic`: `procesarArticulo()` abre el modal
+(`mostrarExistente` y `cantidadExistente`), `elegirSumar()`/`elegirSobrescribir()`
+fijan `modoGuardar` y `cancelarExistente()` descarta el artículo; la cantidad
+final la calcula `confirmarCantidad()` antes de guardar. El porcentaje/estado de
+la ubicación no cambia por esto: sigue siendo `upsert` de una fila por artículo.
 
 ### Sin conexión, qué se puede y qué no
 

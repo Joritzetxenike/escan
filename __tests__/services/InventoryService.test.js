@@ -350,6 +350,56 @@ describe('InventoryService', () => {
 
 
   // =====================================================
+  // obtenerCantidadGuardada
+  // =====================================================
+
+  describe('obtenerCantidadGuardada', () => {
+
+    test('devuelve la cantidad del artículo ya contado en el CSV', async () => {
+
+      mockArchivos['file:///test/A1.csv'] =
+        'A1,123456,5\nA1,999999,10';
+
+      const resultado =
+        await InventoryService.obtenerCantidadGuardada(
+          'A1',
+          '123456'
+        );
+
+      expect(resultado).toBe(5);
+
+    });
+
+    test('devuelve null si el artículo no está en el CSV', async () => {
+
+      mockArchivos['file:///test/A1.csv'] = 'A1,123456,5';
+
+      const resultado =
+        await InventoryService.obtenerCantidadGuardada(
+          'A1',
+          '999999'
+        );
+
+      expect(resultado).toBeNull();
+
+    });
+
+    test('devuelve null si no hay CSV de la ubicación', async () => {
+
+      const resultado =
+        await InventoryService.obtenerCantidadGuardada(
+          'A1',
+          '123456'
+        );
+
+      expect(resultado).toBeNull();
+
+    });
+
+  });
+
+
+  // =====================================================
   // validarArticulo
   // =====================================================
 
@@ -359,8 +409,7 @@ describe('InventoryService', () => {
       const resultado =
         await InventoryService.validarArticulo(
           '123456',
-          null,
-          []
+          null
         );
 
       expect(resultado.ok).toBe(false);
@@ -372,31 +421,13 @@ describe('InventoryService', () => {
       expect(DataProvider.obtenerArticulo).not.toHaveBeenCalled();
     });
 
-    test('debe rechazar un artículo duplicado', async () => {
-      const resultado =
-        await InventoryService.validarArticulo(
-          '123456',
-          'A1',
-          ['123456']
-        );
-
-      expect(resultado.ok).toBe(false);
-      expect(resultado.titulo).toBe('Artículo duplicado');
-      expect(resultado.mensaje).toBe(
-        'El artículo 123456 ya ha sido escaneado en la ubicación A1'
-      );
-
-      expect(DataProvider.obtenerArticulo).not.toHaveBeenCalled();
-    });
-
     test('debe rechazar un artículo que no está en la copia local', async () => {
       maestrosService.existeArticulo.mockReturnValue(false);
 
       const resultado =
         await InventoryService.validarArticulo(
           '999999',
-          'A1',
-          []
+          'A1'
         );
 
       expect(resultado.ok).toBe(false);
@@ -410,8 +441,7 @@ describe('InventoryService', () => {
       const resultado =
         await InventoryService.validarArticulo(
           '123456',
-          'A1',
-          []
+          'A1'
         );
 
       expect(resultado.ok).toBe(true);
@@ -425,8 +455,7 @@ describe('InventoryService', () => {
       const resultado =
         await InventoryService.validarArticulo(
           '123456',
-          'A1',
-          []
+          'A1'
         );
 
       expect(resultado.ok).toBe(true);
@@ -451,8 +480,7 @@ describe('InventoryService', () => {
       const resultado =
         await InventoryService.validarArticulo(
           '123456',
-          'A1',
-          []
+          'A1'
         );
 
       expect(resultado.ok).toBe(false);

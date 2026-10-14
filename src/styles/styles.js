@@ -266,6 +266,63 @@ ultimosArticulosTitle: {
     fontWeight: 'bold',
   },
 
+  /* ---------- MODAL DE ARTÍCULO YA CONTADO ----------
+     Dos acciones positivas en fila (sumar / sobrescribir) y
+     el cancelar debajo, a ancho completo. En fila, el par de
+     botones se reparte el ancho con `modalBotonEnFila` y se
+     separa con un margen pequeño; el `paddingHorizontal` de
+     `customButton` se recorta para que "Sobrescribir" quepa. */
+
+  modalMensaje: {
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+
+  modalAccionesVertical: {
+    width: '100%',
+    marginTop: 15,
+  },
+
+  modalFilaBotones: {
+    flexDirection: 'row',
+    width: '100%',
+  },
+
+  /* Los dos botones de la fila miden lo mismo: `flex: 1` los
+     reparte a medias y el borde (aunque en el relleno no se
+     vea, por ser del mismo color) iguala el recuadro. */
+
+  modalBotonEnFila: {
+    flex: 1,
+    paddingHorizontal: 8,
+    marginHorizontal: 4,
+    borderWidth: 2,
+    borderColor: colors.primary,
+  },
+
+  /* Acción secundaria con el color de marca: mismo peso que
+     un botón relleno pero sin competir con la acción principal. */
+
+  modalBotonTerciario: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: colors.primary,
+  },
+
+  modalTextoPrimario: {
+    color: colors.primary,
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+
+  modalBotonCancelar: {
+    width: '100%',
+    marginTop: 10,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: colors.danger,
+  },
+
   /* ---------- SUGERENCIAS (ENTRADA MANUAL) ----------
      Lista de códigos que empiezan por lo tecleado. Acotada en
      alto para que no empuje los botones fuera de la pantalla;

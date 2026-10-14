@@ -63,6 +63,23 @@ const CsvProvider = {
     }
   },
 
+  /**
+   * Devuelve la fila `{ ubicacion, articulo, cantidad }` de un
+   * artículo en la ubicación, o `null` si no está contado. Se
+   * usa para avisar de que un código ya está en el CSV y poder
+   * sumarle la cantidad nueva.
+   */
+  async obtenerRegistroUbicacion(ubicacion, articulo) {
+
+    const registros =
+      await this.obtenerArticulosUbicacion(ubicacion);
+
+    return (
+      registros.find(r => r.articulo === articulo) ?? null
+    );
+
+  },
+
   async guardarMovimiento({
     ubicacion,
     articulo,
