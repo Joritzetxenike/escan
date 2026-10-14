@@ -73,7 +73,7 @@ const InventoryDataProvider = {
 
   /**
    * Descarga el maestro de artículos completo para la copia
-   * local offline: `{ codigos: string[], sic: string[] }`.
+   * local offline: `{ codigos: string[], sic: string[], genericos: string[] }`.
    *
    * Se pide en una sola llamada porque son ~211.000 filas y
    * PostgREST devuelve 1.000 por petición.

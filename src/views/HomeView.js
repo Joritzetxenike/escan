@@ -181,6 +181,8 @@ export default function HomeView({
       <ManualCodeModal
         visible={state.mostrarManual}
 
+        sugerencias={actions.sugerirArticulos}
+
         onConfirm={async (codigo) => {
 
           const valido =

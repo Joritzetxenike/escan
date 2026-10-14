@@ -13,6 +13,7 @@ jest.mock('../../src/services/maestrosService', () => ({
   asegurarListo: jest.fn(),
   existeArticulo: jest.fn(),
   esSIC: jest.fn(),
+  esGenerico: jest.fn(),
   obtenerEstado: jest.fn(() => ({ error: null })),
 }));
 
@@ -24,6 +25,7 @@ describe('ArticuloValidator', () => {
     maestrosService.asegurarListo.mockResolvedValue(true);
     maestrosService.existeArticulo.mockReturnValue(true);
     maestrosService.esSIC.mockReturnValue(false);
+    maestrosService.esGenerico.mockReturnValue(false);
     maestrosService.obtenerEstado.mockReturnValue({
       error: null,
     });
@@ -150,6 +152,21 @@ describe('ArticuloValidator', () => {
       expect(resultado.esSIC).toBe(true);
     });
 
+    test('rechaza un artículo genérico indicando el motivo', async () => {
+      maestrosService.esGenerico.mockReturnValue(true);
+
+      const resultado =
+        await ArticuloValidator.validar(
+          '123456',
+          'A1',
+          []
+        );
+
+      expect(resultado.ok).toBe(false);
+      expect(resultado.titulo).toBe('Artículo genérico');
+      expect(resultado.mensaje).toContain('genérico');
+    });
+
     test('rechaza un artículo que NO está en la copia', async () => {
       maestrosService.existeArticulo.mockReturnValue(false);
 
@@ -163,7 +180,7 @@ describe('ArticuloValidator', () => {
       expect(resultado.ok).toBe(false);
       expect(resultado.titulo).toBe('Artículo no encontrado');
       expect(resultado.mensaje).toContain(
-        'no está en la copia local del maestro'
+        'no existe en el maestro'
       );
     });
 

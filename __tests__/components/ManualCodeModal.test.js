@@ -233,6 +233,80 @@ describe('ManualCodeModal', () => {
 
 
   // =====================================================
+  // SUGERENCIAS (ENTRADA MANUAL)
+  // =====================================================
+
+  describe('sugerencias', () => {
+
+    /* El modal pide las sugerencias con un pequeño retardo
+       para no filtrar en cada pulsación. Se espera de sobra
+       ese retardo (200 ms) y se comprueba el resultado. */
+
+    const esperarDebounce = async () => {
+      await act(async () => {
+        await new Promise((resolver) =>
+          setTimeout(resolver, 260)
+        );
+      });
+    };
+
+    test('no pide sugerencias con menos de 2 caracteres', async () => {
+      const sugerencias = jest.fn(() => ['123456']);
+
+      montar({ sugerencias });
+
+      escribirCodigo('1');
+      await esperarDebounce();
+
+      expect(sugerencias).not.toHaveBeenCalled();
+    });
+
+    test('pide las sugerencias de lo tecleado', async () => {
+      const sugerencias = jest.fn(() => [
+        '123456',
+        '123999',
+      ]);
+
+      montar({ sugerencias });
+
+      escribirCodigo('12');
+      await esperarDebounce();
+
+      expect(sugerencias).toHaveBeenCalledWith('12');
+    });
+
+    test('muestra la lista y al pulsar una rellena el campo', async () => {
+      montar({
+        sugerencias: () => ['123456', '123999'],
+      });
+
+      escribirCodigo('12');
+      await esperarDebounce();
+
+      expect(
+        JSON.stringify(renderer.toJSON())
+      ).toContain('123456');
+
+      presionarPorTexto('123456');
+
+      expect(valorDelCampo()).toBe('123456');
+    });
+
+    test('no muestra lista si no se le pasa la función', async () => {
+      montar();
+
+      escribirCodigo('12');
+      await esperarDebounce();
+
+      expect(
+        JSON.stringify(renderer.toJSON())
+      ).not.toContain('sugerencia-articulo');
+    });
+
+  });
+
+
+  // =====================================================
   // CICLO DE VIDA
   // =====================================================
 

@@ -20,11 +20,15 @@ jest.mock('../../src/services/InventoryService', () => ({
   cargarUbicacion: jest.fn(),
   validarArticulo: jest.fn(),
   validarUbicacion: jest.fn(),
+  cargarUbicacion: jest.fn(),
+  validarArticulo: jest.fn(),
+  validarUbicacion: jest.fn(),
   crearMovimiento: jest.fn(),
   guardarMovimiento: jest.fn(),
   estaUbicacionFinalizada: jest.fn(),
   estaOnline: jest.fn(),
   sincronizarPendientes: jest.fn(),
+  sugerirArticulos: jest.fn(() => []),
 }));
 
 // Estado de conexión que devuelve el hook
@@ -133,7 +137,55 @@ describe('useHomeLogic', () => {
       );
     });
 
+    test('avisa si la ubicación está terminada y no navega', async () => {
+      InventoryService.validarUbicacion.mockResolvedValue({
+        ok: true,
+        ubicacion: { seccion: 'A', area: '1', subzona: '1', stat: 'Fin' },
+      });
+
+      InventoryService.cargarUbicacion.mockResolvedValue([]);
+
+      await act(async () => {
+        await current.procesarEscaneo('ubicacion', 'A1');
+      });
+
+      act(() => {
+        current.abrirScannerArticulo();
+      });
+
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'Ubicación terminada',
+        expect.stringContaining('A1')
+      );
+
+      expect(navigation.navigate).not.toHaveBeenCalled();
+    });
+
   });
+
+  // =====================================================
+  // sugerirArticulos
+  // =====================================================
+
+  describe('sugerirArticulos', () => {
+
+    test('delega en el servicio de inventario', () => {
+
+      InventoryService.sugerirArticulos.mockReturnValue([
+        '123456',
+      ]);
+
+      const resultado = current.sugerirArticulos('123');
+
+      expect(
+        InventoryService.sugerirArticulos
+      ).toHaveBeenCalledWith('123');
+
+      expect(resultado).toEqual(['123456']);
+    });
+
+  });
+
 
   // =====================================================
   // abrirModalManual
@@ -199,6 +251,30 @@ describe('useHomeLogic', () => {
         'Sin conexión',
         expect.anything()
       );
+    });
+
+    test('avisa si la ubicación está terminada y no abre el modal', async () => {
+      InventoryService.validarUbicacion.mockResolvedValue({
+        ok: true,
+        ubicacion: { seccion: 'A', area: '1', subzona: '1', stat: 'Fin' },
+      });
+
+      InventoryService.cargarUbicacion.mockResolvedValue([]);
+
+      await act(async () => {
+        await current.procesarEscaneo('ubicacion', 'A1');
+      });
+
+      await act(async () => {
+        await current.abrirModalManual();
+      });
+
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'Ubicación terminada',
+        expect.stringContaining('A1')
+      );
+
+      expect(current.mostrarManual).toBe(false);
     });
 
   });
@@ -563,6 +639,27 @@ describe('useHomeLogic', () => {
       );
 
       expect(current.articuloTemp).toBeNull();
+    });
+
+    test('rechaza un artículo genérico y no pide cantidad', async () => {
+      InventoryService.validarArticulo.mockResolvedValue({
+        ok: false,
+        titulo: 'Artículo genérico',
+        mensaje:
+          'El código 555555 es un artículo genérico y no se puede contar.',
+      });
+
+      await act(async () => {
+        await current.onManualCode('555555');
+      });
+
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'Artículo genérico',
+        expect.stringContaining('555555')
+      );
+
+      expect(current.articuloTemp).toBeNull();
+      expect(current.mostrarCantidad).toBe(false);
     });
 
     test('avisa cuando el artículo es SIC', async () => {

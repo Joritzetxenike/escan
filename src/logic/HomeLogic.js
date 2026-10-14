@@ -77,10 +77,29 @@ export function useHomeLogic(navigation) {
   };
 
 
+  /* Se avisa al intentar meter un artículo, no después de
+     escanearlo/teclearlo: la ubicación terminada no admite
+     más artículos, así que no tiene sentido abrir la cámara ni
+     el modal para luego rechazarlo. */
+  const avisoUbicacionTerminada = () => {
+
+    Alert.alert(
+      'Ubicación terminada',
+      `La ubicación ${ubicacion} está terminada y no admite más artículos`
+    );
+
+  };
+
+
   const abrirScannerArticulo = () => {
 
     if (!ubicacion) {
       avisoSinUbicacion();
+      return;
+    }
+
+    if (ubicacionFinalizada) {
+      avisoUbicacionTerminada();
       return;
     }
 
@@ -113,6 +132,11 @@ export function useHomeLogic(navigation) {
 
     if (!ubicacion) {
       avisoSinUbicacion();
+      return;
+    }
+
+    if (ubicacionFinalizada) {
+      avisoUbicacionTerminada();
       return;
     }
 
@@ -217,10 +241,7 @@ export function useHomeLogic(navigation) {
 
     if (ubicacionFinalizada) {
 
-      Alert.alert(
-        'Ubicación terminada',
-        `La ubicación ${ubicacion} está terminada y no admite más artículos`
-      );
+      avisoUbicacionTerminada();
 
       return true;
     }
@@ -391,6 +412,17 @@ export function useHomeLogic(navigation) {
 
 
   /**
+   * Sugerencias de la copia local para la entrada manual de
+   * artículos. Referencia estable para que el `useEffect` del
+   * modal no se dispare en cada render.
+   */
+  const sugerirArticulos = useCallback(
+    (texto) => InventoryService.sugerirArticulos(texto),
+    []
+  );
+
+
+  /**
    * Devuelve `true` si la ubicación es válida, para que el
    * modal pueda seguir abierto cuando el código tecleado no
    * existe: con tres partes es fácil equivocarse y obligar a
@@ -543,6 +575,8 @@ InventoryService.crearMovimiento(
     procesarEscaneo,
 
     onManualCode,
+
+    sugerirArticulos,
 
     onManualUbicacion,
 

@@ -266,4 +266,30 @@ ultimosArticulosTitle: {
     fontWeight: 'bold',
   },
 
+  /* ---------- SUGERENCIAS (ENTRADA MANUAL) ----------
+     Lista de códigos que empiezan por lo tecleado. Acotada en
+     alto para que no empuje los botones fuera de la pantalla;
+     el usuario desplaza si hay más. */
+
+  sugerencias: {
+    width: '100%',
+    maxHeight: 160,
+    marginTop: 4,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+  },
+
+  sugerencia: {
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderStrong,
+  },
+
+  sugerenciaTexto: {
+    fontSize: 15,
+  },
+
 },);

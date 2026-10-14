@@ -1,12 +1,12 @@
 import React from 'react';
 import { create, act } from 'react-test-renderer';
-import { TouchableOpacity, Alert } from 'react-native';
+import { Text, TouchableOpacity, Alert } from 'react-native';
 
 import ListaScreen from '../../src/screens/ListaScreen';
 import InventoryService from '../../src/services/InventoryService';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 
 
 // =====================================================
@@ -16,6 +16,7 @@ import { useFocusEffect } from '@react-navigation/native';
 jest.mock('expo-file-system/legacy', () => ({
   documentDirectory: 'file:///test/',
   readDirectoryAsync: jest.fn(),
+  getInfoAsync: jest.fn(),
   readAsStringAsync: jest.fn(),
   deleteAsync: jest.fn(),
 }));
@@ -26,6 +27,7 @@ jest.mock('expo-sharing', () => ({
 
 jest.mock('@react-navigation/native', () => ({
   useFocusEffect: jest.fn(),
+  useNavigation: jest.fn(),
 }));
 
 jest.mock('@expo/vector-icons', () => ({
@@ -34,7 +36,31 @@ jest.mock('@expo/vector-icons', () => ({
 
 jest.mock('../../src/components/EstadoBanner', () => () => null);
 
-jest.mock('../../src/components/ArticulosModal', () => () => null);
+/* La pantalla real abre el CSV desde el modal: aquí el modal
+   solo expone botones que llaman a los handlers con su
+   `titulo` (el nombre del CSV), que es lo que se prueba. */
+
+jest.mock('../../src/components/ArticulosModal', () => {
+  const React = require('react');
+  const { TouchableOpacity } = require('react-native');
+
+  return ({ onExportar, onBorrar, titulo }) => (
+    <>
+      {onExportar && (
+        <TouchableOpacity
+          testID="exportar-csv"
+          onPress={() => onExportar(titulo)}
+        />
+      )}
+      {onBorrar && (
+        <TouchableOpacity
+          testID="borrar-csv"
+          onPress={() => onBorrar(titulo)}
+        />
+      )}
+    </>
+  );
+});
 
 jest.mock('../../src/services/InventoryService', () => ({
   estaUbicacionFinalizada: jest.fn(),
@@ -52,6 +78,8 @@ describe('ListaScreen', () => {
   const CSV = '50100-111-Z101.csv';
   const UBICACION = '50100-111-Z101';
 
+  const navegar = jest.fn();
+
   let renderer;
 
   beforeEach(() => {
@@ -62,7 +90,13 @@ describe('ListaScreen', () => {
 
     jest.spyOn(console, 'error').mockImplementation(() => {});
 
+    useNavigation.mockReturnValue({ navigate: navegar });
+
     FileSystem.readDirectoryAsync.mockResolvedValue([CSV]);
+
+    FileSystem.getInfoAsync.mockResolvedValue({ exists: true });
+
+    FileSystem.readAsStringAsync.mockResolvedValue(`${UBICACION},123456,5`);
 
     Sharing.shareAsync.mockResolvedValue(undefined);
 
@@ -90,13 +124,31 @@ describe('ListaScreen', () => {
     });
   };
 
-  /* Con un solo CSV la fila tiene tres botones:
-     nombre, compartir y borrar. El segundo es el de compartir. */
+  /* Abre el CSV tocando su nombre en la lista. */
 
-  const compartir = async () => {
+  const abrirPorNombre = async () => {
     await act(async () => {
-      renderer.root.findAllByType(TouchableOpacity)[1].props.onPress();
+      const textos = renderer.root.findAllByType(Text);
+      const match = textos.find((t) => t.props.children === CSV);
+
+      let nodo = match.parent;
+      while (nodo && typeof nodo.props?.onPress !== 'function') {
+        nodo = nodo.parent;
+      }
+
+      await nodo.props.onPress();
     });
+  };
+
+  const presionar = async (testID) => {
+    await act(async () => {
+      await renderer.root.findByProps({ testID }).props.onPress();
+    });
+  };
+
+  const onScan = () => {
+    const llamada = navegar.mock.calls.find((c) => c[0] === 'Scanner');
+    return llamada[1].onScan;
   };
 
 
@@ -109,7 +161,8 @@ describe('ListaScreen', () => {
     InventoryService.estaUbicacionFinalizada.mockResolvedValue(true);
 
     await montar();
-    await compartir();
+    await abrirPorNombre();
+    await presionar('exportar-csv');
 
     expect(InventoryService.estaUbicacionFinalizada)
       .toHaveBeenCalledWith(UBICACION);
@@ -138,7 +191,8 @@ describe('ListaScreen', () => {
     InventoryService.estaUbicacionFinalizada.mockResolvedValue(false);
 
     await montar();
-    await compartir();
+    await abrirPorNombre();
+    await presionar('exportar-csv');
 
     expect(InventoryService.finalizarUbicacion)
       .toHaveBeenCalledTimes(1);
@@ -165,7 +219,8 @@ describe('ListaScreen', () => {
       .mockRejectedValue(new Error('sin red'));
 
     await montar();
-    await compartir();
+    await abrirPorNombre();
+    await presionar('exportar-csv');
 
     /* Cerrar a ciegas es lo que duplica la cola */
 
@@ -189,7 +244,8 @@ describe('ListaScreen', () => {
       .mockRejectedValue(new Error('fallo'));
 
     await montar();
-    await compartir();
+    await abrirPorNombre();
+    await presionar('exportar-csv');
 
     expect(Alert.alert).toHaveBeenCalledWith(
       'Aviso',
@@ -197,6 +253,61 @@ describe('ListaScreen', () => {
     );
 
     expect(Sharing.shareAsync).toHaveBeenCalled();
+  });
+
+
+  // =====================================================
+  // ESCANEAR UBICACIÓN
+  // =====================================================
+
+  it('navega al escáner de ubicación y abre el CSV escaneado', async () => {
+
+    await montar();
+
+    await presionar('btn-escanear-ubicacion-lista');
+
+    expect(navegar).toHaveBeenCalledWith(
+      'Scanner',
+      expect.objectContaining({ tipo: 'ubicacion' })
+    );
+
+    await act(async () => {
+      await onScan()({ codigo: UBICACION });
+    });
+
+    expect(FileSystem.readAsStringAsync).toHaveBeenCalledWith(
+      `file:///test/${CSV}`
+    );
+
+    expect(Alert.alert).not.toHaveBeenCalledWith(
+      'Sin registros',
+      expect.any(String)
+    );
+  });
+
+
+  // =====================================================
+  // UBICACIÓN SIN CSV
+  // =====================================================
+
+  it('avisa si la ubicación escaneada no tiene CSV', async () => {
+
+    FileSystem.getInfoAsync.mockResolvedValue({ exists: false });
+
+    await montar();
+
+    await presionar('btn-escanear-ubicacion-lista');
+
+    await act(async () => {
+      await onScan()({ codigo: UBICACION });
+    });
+
+    expect(Alert.alert).toHaveBeenCalledWith(
+      'Sin registros',
+      expect.stringContaining(UBICACION)
+    );
+
+    expect(Sharing.shareAsync).not.toHaveBeenCalled();
   });
 
 });

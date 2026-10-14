@@ -3,6 +3,7 @@ import CsvProvider from '../providers/csv/csvProvider';
 import ArticuloValidator from '../validators/ArticuloValidator';
 import UbicacionValidator from '../validators/UbicacionValidator';
 import conectividadService from './conectividadService';
+import maestrosService from './maestrosService';
 import pendientesService from './pendientesService';
 import { esErrorDeRed } from '../helpers/redHelper';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -317,6 +318,12 @@ const InventoryService = {
       articulo,
       cantidad,
     };
+  },
+
+  /* Sugerencias para la entrada manual de artículos: códigos
+     de la copia local que empiezan por lo tecleado. */
+  sugerirArticulos(texto, limite) {
+    return maestrosService.sugerirArticulos(texto, limite);
   },
 };
 

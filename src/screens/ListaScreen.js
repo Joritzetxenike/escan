@@ -10,17 +10,25 @@ import {
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { styles, colors } from '../styles/styles';
 import ArticulosModal from '../components/ArticulosModal';
+import ManualCodeModal from '../components/ManualCodeModal';
 import EstadoBanner from '../components/EstadoBanner';
 import InventoryService from '../services/InventoryService';
+import UbicacionValidator from '../validators/UbicacionValidator';
+import { nombreCsvUbicacion, leerCsvUbicacion } from '../helpers/csvHelper';
 
 export default function ListaScreen() {
+  const navigation = useNavigation();
+
   const [csvs, setCsvs] = useState([]);
   const [csvSeleccionado, setCsvSeleccionado] = useState(null);
   const [registros, setRegistros] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
+
+  const [mostrarManualUbicacion, setMostrarManualUbicacion] =
+    useState(false);
 
   /* ---------- CARGAR CSV ---------- */
   const cargarCsvs = async () => {
@@ -37,6 +45,55 @@ export default function ListaScreen() {
       cargarCsvs();
     }, [])
   );
+
+  /* =====================================================
+   * ABRIR CSV POR UBICACIÓN
+   *
+   * Para ver un CSV hay que conocer su ubicación: se abre
+   * escaneándola o escribiéndola a mano. No se valida contra
+   * la copia del maestro (solo el formato): el objetivo es
+   * abrir un CSV local que ya existe, y exigir la copia
+   * bloquearía verlo si la copia está desactualizada.
+   * ===================================================== */
+
+  const abrirCsvParaUbicacion = async (codigo) => {
+    const ubicacion = UbicacionValidator.normalizar(codigo);
+
+    if (!UbicacionValidator.validarFormato(ubicacion)) {
+      Alert.alert(
+        'Ubicación inválida',
+        `El código ${ubicacion} no sigue el formato seccion-area-subzona (ej. LIN2-A01-Z01)`
+      );
+      return false;
+    }
+
+    const filas = await leerCsvUbicacion(ubicacion);
+
+    if (filas.length === 0) {
+      Alert.alert(
+        'Sin registros',
+        `No hay registros para ${ubicacion}`
+      );
+      /* El formato es correcto: se cierra el modal manual para
+         mostrar el aviso, no hay nada que corregir en lo tecleado. */
+      return true;
+    }
+
+    setCsvSeleccionado(nombreCsvUbicacion(ubicacion));
+    setRegistros(filas);
+    setModalVisible(true);
+
+    return true;
+  };
+
+  const abrirScannerUbicacion = () => {
+    navigation.navigate('Scanner', {
+      tipo: 'ubicacion',
+      onScan: ({ codigo }) => {
+        abrirCsvParaUbicacion(codigo);
+      },
+    });
+  };
 
   /* ---------- EXPORTAR CSV ---------- */
   const exportarCsv = async (nombre) => {
@@ -193,19 +250,35 @@ export default function ListaScreen() {
         <Text style={{ fontSize: 18 }}>{item}</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => exportarCsv(item)} style={{ marginHorizontal: 10 }}>
-        <MaterialIcons name="file-upload" size={26} color={colors.primary} />
-      </TouchableOpacity>
-
-      <TouchableOpacity onPress={() => borrarCsv(item)}>
-        <MaterialIcons name="delete-outline" size={26} color={colors.danger} />
-      </TouchableOpacity>
+      <MaterialIcons name="chevron-right" size={26} color={colors.textSecondary} />
     </View>
   );
 
   return (
     <View style={[styles.container, { flex: 1, padding: 10 }]}>
       <EstadoBanner />
+
+      {/* ---------- ESCANEAR / ESCRIBIR UBICACIÓN ---------- */}
+
+      <View style={{ flexDirection: 'row', marginBottom: 15 }}>
+        <TouchableOpacity
+          style={[styles.customButton, styles.botonEscanear]}
+          testID="btn-escanear-ubicacion-lista"
+          onPress={abrirScannerUbicacion}
+        >
+          <Text style={styles.buttonText}>Escanear ubicación</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.customButton, styles.botonMas]}
+          accessibilityRole="button"
+          accessibilityLabel="Introducir ubicación a mano"
+          testID="btn-manual-ubicacion-lista"
+          onPress={() => setMostrarManualUbicacion(true)}
+        >
+          <Text style={styles.buttonText}>+</Text>
+        </TouchableOpacity>
+      </View>
 
       {csvs.length === 0 ? (
         <Text style={{ fontSize: 16, color: colors.textSecondary }}>No hay archivos CSV</Text>
@@ -217,6 +290,22 @@ export default function ListaScreen() {
         />
       )}
 
+      <ManualCodeModal
+        visible={mostrarManualUbicacion}
+        titulo="Introduce el código de ubicación"
+        placeholder="LIN2-A01-Z01"
+        autoCapitalize="characters"
+        testID="input-ubicacion-manual-lista"
+        onConfirm={async (codigo) => {
+          const valida = await abrirCsvParaUbicacion(codigo);
+          if (valida) {
+            setMostrarManualUbicacion(false);
+          }
+          return valida;
+        }}
+        onCancel={() => setMostrarManualUbicacion(false)}
+      />
+
       <ArticulosModal
         visible={modalVisible}
         titulo={csvSeleccionado}
@@ -224,6 +313,8 @@ export default function ListaScreen() {
         onCerrar={() => setModalVisible(false)}
         codigoUbicacion={csvSeleccionado?.replace(/\.csv$/i, '')}
         onEliminar={borrarRegistro}
+        onExportar={exportarCsv}
+        onBorrar={borrarCsv}
       />
     </View>
   );

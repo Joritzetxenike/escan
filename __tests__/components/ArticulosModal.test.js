@@ -63,6 +63,18 @@ describe('ArticulosModal', () => {
     });
   };
 
+  const escribirBusqueda = (texto) => {
+    const input = renderer.root.findByProps({ testID: 'input-buscar-articulo' });
+    act(() => {
+      input.props.onChangeText(texto);
+    });
+  };
+
+  const existeTexto = (texto) =>
+    renderer.root
+      .findAllByType(Text)
+      .some((t) => String(textoDe(t)) === texto);
+
   beforeEach(() => {
     jest.clearAllMocks();
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});
@@ -128,6 +140,121 @@ describe('ArticulosModal', () => {
 
     expect(InventoryService.estaUbicacionFinalizada)
       .toHaveBeenCalledWith('50100-111-Z101');
+  });
+
+  test('muestra y dispara exportar y borrar CSV con el titulo', async () => {
+    InventoryService.estaUbicacionFinalizada.mockResolvedValue(true);
+
+    const onExportar = jest.fn();
+    const onBorrar = jest.fn();
+
+    await montar({
+      titulo: '50100-111-Z101.csv',
+      codigoUbicacion: '50100-111-Z101',
+      onExportar,
+      onBorrar,
+    });
+
+    /* Se permiten aunque la ubicación esté terminada: el CSV
+       completo sí se puede exportar y borrar. */
+
+    presionarPorTexto('Exportar');
+    presionarPorTexto('Borrar CSV');
+
+    expect(Alert.alert).not.toHaveBeenCalled();
+    expect(onExportar).toHaveBeenCalledWith('50100-111-Z101.csv');
+    expect(onBorrar).toHaveBeenCalledWith('50100-111-Z101.csv');
+  });
+
+  test('filtra los artículos por código ignorando mayúsculas', async () => {
+    InventoryService.estaUbicacionFinalizada.mockResolvedValue(false);
+
+    await montar({
+      articulos: [
+        { articulo: 'ABC123', cantidad: 1 },
+        { articulo: 'xyz789', cantidad: 2 },
+      ],
+    });
+
+    escribirBusqueda('123');
+    expect(existeTexto('ABC123')).toBe(true);
+    expect(existeTexto('xyz789')).toBe(false);
+
+    escribirBusqueda('abc');
+    expect(existeTexto('ABC123')).toBe(true);
+    expect(existeTexto('xyz789')).toBe(false);
+
+    escribirBusqueda('YZ');
+    expect(existeTexto('ABC123')).toBe(false);
+    expect(existeTexto('xyz789')).toBe(true);
+  });
+
+  test('avisa cuando el filtro no encuentra ningún código', async () => {
+    InventoryService.estaUbicacionFinalizada.mockResolvedValue(false);
+
+    await montar();
+
+    escribirBusqueda('nada-coincide');
+
+    expect(existeTexto('Sin resultados para «nada-coincide»')).toBe(true);
+    expect(existeTexto('123456')).toBe(false);
+  });
+
+  test('al filtrar, editar y eliminar usan el índice original', async () => {
+    InventoryService.estaUbicacionFinalizada.mockResolvedValue(false);
+
+    await montar({
+      articulos: [
+        { articulo: 'AA111', cantidad: 11 },
+        { articulo: 'BB222', cantidad: 22 },
+        { articulo: 'CC333', cantidad: 33 },
+      ],
+    });
+
+    escribirBusqueda('CC');
+
+    expect(existeTexto('AA111')).toBe(false);
+    expect(existeTexto('CC333')).toBe(true);
+
+    presionarPorTexto('33');
+    presionarPorTexto('delete-outline');
+
+    expect(dataProps.onIniciarEdicion).toHaveBeenCalledWith(2);
+    expect(dataProps.onEliminar).toHaveBeenCalledWith(2);
+  });
+
+  test('limpia el filtro al cerrar y volver a abrir', async () => {
+    InventoryService.estaUbicacionFinalizada.mockResolvedValue(false);
+
+    await montar();
+
+    escribirBusqueda('654');
+    expect(existeTexto('123456')).toBe(false);
+
+    await act(async () => {
+      renderer.update(<ArticulosModal {...dataProps} visible={false} />);
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      renderer.update(<ArticulosModal {...dataProps} visible />);
+      await Promise.resolve();
+    });
+
+    expect(existeTexto('123456')).toBe(true);
+  });
+
+  test('no muestra acciones CSV si no se pasan los handlers', async () => {
+    InventoryService.estaUbicacionFinalizada.mockResolvedValue(false);
+
+    await montar();
+
+    const textos = renderer.root
+      .findAllByType(Text)
+      .map((t) => textoDe(t));
+
+    expect(textos).not.toContain('Exportar');
+    expect(textos).not.toContain('Borrar CSV');
   });
 
 });

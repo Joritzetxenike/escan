@@ -16,6 +16,12 @@
 - [ ] **Filtrar más los artículos** (NOTA para el usuario al crear el Excel): refinar los filtros del maestro de artículos antes del import (fantasma, método, posibles exclusores de ítems, etc.).
   - Prioridad: media.
 
+- [ ] **Rechazar artículos genéricos al escanear** (código HECHO, falta migración): los tipos de artículo son MRP, SIC y genérico (`GEN`/`GENERICO`). Al escanear se mantiene el aviso de SIC (deja continuar) y se rechaza el genérico indicando el motivo; un código que no está en el maestro avisa "No existe en el maestro".
+  - Nueva migración `supabase/migrations/20261014_maestro_genericos.sql`: la RPC `descargar_maestro_articulos()` pasa a devolver `{ codigos, sic, genericos }`.
+  - `maestrosService` guarda `genericos` en `maestro-articulos.json` y expone `esGenerico()`; `ArticuloValidator` lo rechaza. Tests y README actualizados (337 tests).
+  - **Pendiente**: aplicar la migración en Supabase y **refrescar la copia local** (icono ⟳). Sin ese refresh, una copia antigua no lleva `genericos` y los genéricos se siguen aceptando.
+  - Prioridad: alta.
+
 - [x] **Hacer real el recuadro del escáner** (HECHO): el marco era decorativo y el decoder de `CameraView` procesaba toda la imagen (`src/views/ScannerView.js`). Se implementó el **filtro por posición** (sin dependencias nuevas, sigue funcionando en Expo Go):
   - El marco mide su posición con `onLayout` (`testID="scan-frame"`) y el hook la guarda (`state.frameRect` / `actions.onFrameLayout` en `src/logic/ScannerLogic.js`).
   - `handleBarcodeScanned` descarta en silencio (sin alerta, sin tocar el buffer) los códigos cuyo centro de `bounds` cae fuera del marco, con `TOLERANCIA_MARCO = 32` px (`src/constants/scannerConstants.js`). El filtro va antes de las validaciones.

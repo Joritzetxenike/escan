@@ -68,17 +68,26 @@ const ARBOL = [
 ];
 
 const MAESTRO = {
-  codigos: ['123456', '789012'],
+  codigos: [
+    '123456',
+    '123999',
+    '789012',
+    '555555',
+    '-BXC05.4010',
+    '-BXC05.4010 -SUB',
+  ],
   sic: ['789012'],
+  genericos: ['555555'],
 };
 
 const escribirArticulos = (actualizadoAt) => {
   mockArchivos[ARTICULOS] = JSON.stringify({
     version: 1,
     actualizado_at: actualizadoAt,
-    total: 2,
+    total: MAESTRO.codigos.length,
     codigos: MAESTRO.codigos,
     sic: MAESTRO.sic,
+    genericos: MAESTRO.genericos,
   });
 };
 
@@ -176,6 +185,64 @@ describe('maestrosService', () => {
       expect(maestrosService.esSIC('000000')).toBe(false);
     });
 
+    test('distingue los genéricos', () => {
+      expect(maestrosService.esGenerico('555555')).toBe(true);
+      expect(maestrosService.esGenerico('123456')).toBe(false);
+      expect(maestrosService.esGenerico('000000')).toBe(false);
+    });
+
+    test('sugiere los códigos que empiezan por lo tecleado', () => {
+      expect(
+        maestrosService.sugerirArticulos('123')
+      ).toEqual(['123456', '123999']);
+    });
+
+    test('ignora mayúsculas/minúsculas al buscar', () => {
+      expect(
+        maestrosService.sugerirArticulos('-bxc05')
+      ).toEqual(['-BXC05.4010', '-BXC05.4010 -SUB']);
+    });
+
+    test('devuelve los códigos reales, no lo tecleado', () => {
+      const resultado =
+        maestrosService.sugerirArticulos('-bxc');
+
+      expect(resultado).toContain('-BXC05.4010');
+    });
+
+    test('no sugiere con menos de 2 caracteres', () => {
+      expect(maestrosService.sugerirArticulos('1')).toEqual([]);
+      expect(maestrosService.sugerirArticulos('')).toEqual([]);
+      expect(
+        maestrosService.sugerirArticulos(undefined)
+      ).toEqual([]);
+    });
+
+    test('respeta el límite de sugerencias', () => {
+      expect(
+        maestrosService.sugerirArticulos('12', 1)
+      ).toHaveLength(1);
+    });
+
+    test('devuelve una lista ordenada', () => {
+      const resultado =
+        maestrosService.sugerirArticulos('123', 8);
+
+      expect(resultado).toEqual([...resultado].sort());
+    });
+
+    test('no sugiere nada si no hay copia', () => {
+      /* Se recarga el módulo sin cargar la copia. */
+      jest.resetModules();
+
+      const suelto =
+        require('../../src/services/maestrosService').default;
+
+      expect(
+        suelto.sugerirArticulos('123')
+      ).toEqual([]);
+    });
+
     test('reconoce las ubicaciones de la copia', () => {
       expect(
         maestrosService.existeUbicacion('LIN2-A01-Z01')
@@ -222,7 +289,8 @@ describe('maestrosService', () => {
 
       expect(articulos.codigos).toEqual(MAESTRO.codigos);
       expect(articulos.sic).toEqual(MAESTRO.sic);
-      expect(articulos.total).toBe(2);
+      expect(articulos.genericos).toEqual(MAESTRO.genericos);
+      expect(articulos.total).toBe(MAESTRO.codigos.length);
 
       /* El árbol se aplana a códigos seccion-area-subzona */
       expect(ubicaciones.ubicaciones).toEqual([

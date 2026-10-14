@@ -49,6 +49,8 @@ jest.mock('../../src/services/maestrosService', () => ({
   asegurarListo: jest.fn(),
   existeArticulo: jest.fn(),
   esSIC: jest.fn(),
+  esGenerico: jest.fn(),
+  sugerirArticulos: jest.fn(() => []),
   existeUbicacion: jest.fn(),
   obtenerEstado: jest.fn(() => ({ error: null })),
 }));
@@ -93,6 +95,7 @@ describe('InventoryService', () => {
     maestrosService.asegurarListo.mockResolvedValue(true);
     maestrosService.existeArticulo.mockReturnValue(true);
     maestrosService.esSIC.mockReturnValue(false);
+    maestrosService.esGenerico.mockReturnValue(false);
     maestrosService.existeUbicacion.mockReturnValue(true);
   });
 
@@ -399,7 +402,7 @@ describe('InventoryService', () => {
       expect(resultado.ok).toBe(false);
       expect(resultado.titulo).toBe('Artículo no encontrado');
       expect(resultado.mensaje).toContain(
-        'El código 999999 no está en la copia local del maestro'
+        'El código 999999 no existe en el maestro'
       );
     });
 
@@ -765,6 +768,32 @@ describe('InventoryService', () => {
         articulo: '123456',
         cantidad: 10,
       });
+    });
+
+  });
+
+
+  // =====================================================
+  // SUGERENCIAS
+  // =====================================================
+
+  describe('sugerirArticulos', () => {
+
+    test('delega en la copia local del maestro', () => {
+
+      maestrosService.sugerirArticulos.mockReturnValue([
+        '123456',
+        '123999',
+      ]);
+
+      const resultado =
+        InventoryService.sugerirArticulos('123');
+
+      expect(
+        maestrosService.sugerirArticulos
+      ).toHaveBeenCalledWith('123', undefined);
+
+      expect(resultado).toEqual(['123456', '123999']);
     });
 
   });

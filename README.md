@@ -97,8 +97,11 @@ El escáner requiere que un mismo código se lea **10 veces consecutivas en 1200
 
 1. **Home** → "Escanear ubicación" → `ScannerScreen` (tipo `ubicacion`) → el código vuelve por `onScan` → `cargarUbicacion()` guarda la ubicación actual y obtiene sus artículos (1 petición).
 2. **Home** → "Escanear artículo" (o botón `+` para introducción manual) → `procesarArticulo()`:
+   - Si la ubicación actual está **terminada** (`Fin`), el aviso "Ubicación terminada" sale **al pulsar** el botón (antes de abrir la cámara o el modal); `procesarArticulo()` conserva la misma comprobación como red de seguridad.
    - `validarArticulo()` comprueba: existe ubicación escaneada → el artículo no está repetido en la sesión → existe en `maestroArticulo`.
    - Si `tipo === 'SIC'` muestra un aviso antes de continuar.
+   - Si el artículo es **genérico** (tipo `GEN`/`GENERICO`) se rechaza indicando el motivo, aunque exista en el maestro.
+   - Si el código **no existe** en el maestro, el aviso lo dice expresamente.
 3. **Cantidad** → modal `CantidadModal` → `confirmarCantidad()` → `guardarMovimiento()`:
    - `upsert` en la tabla `conteo` (ubicación, item, cant).
    - Actualiza `stat = 'Proceso'` en `maestroUbicacion`, `maestroArea` y `maestroSeccion` (4 peticiones en total).
@@ -111,9 +114,36 @@ El escáner requiere que un mismo código se lea **10 veces consecutivas en 1200
 | Ruta      | Pantalla       | Descripción                                                                 |
 | --------- | -------------- | --------------------------------------------------------------------------- |
 | `Home`    | HomeScreen     | Escáner de ubicación, escaneo de artículos, últimos artículos de la sesión  |
-| `Lista`   | ListaScreen    | Archivos CSV guardados en el dispositivo (abrir, exportar, borrar con aviso y sync a BD) |
+| `Lista`   | ListaScreen    | Abre el CSV de una ubicación escaneándola o tecleándola; lista de CSVs guardados. Exportar/borrar viven en el modal |
 | `Estado`  | EstadoScreen   | Resumen de estados por defecto y, tras el conmutador, el árbol sección → área → ubicación con artículos por ubicación |
 | `Scanner` | ScannerScreen  | Cámara con overlay para escanear códigos                                    |
+
+### Abrir un CSV (pestaña Lista)
+
+Para ver o modificar el CSV de una ubicación hay que **conocer su ubicación**:
+se abre con el botón **"Escanear ubicación"** (cámara) o con el **`+`** para
+teclearla a mano. El código se normaliza y se comprueba el **formato**
+(`seccion-area-subzona`); no se valida contra la copia del maestro, porque el
+objetivo es abrir un CSV local que ya existe y exigir la copia podría bloquearlo
+si está desactualizada. Si no hay CSV para esa ubicación se muestra el aviso
+**"Sin registros"**.
+
+La pantalla sigue mostrando además la **lista de CSVs** guardados: al tocar un
+nombre se abre igualmente su modal. Los botones de **exportar/terminar** y
+**borrar CSV** ya no están en cada fila: viven **dentro del modal de artículos**
+(ver más abajo).
+
+### Buscar códigos en el modal de artículos
+
+El modal de artículos (el mismo en Lista y en Estado) tiene un **buscador**
+arriba de la lista: filtra los artículos por **código** con coincidencia tipo
+**"contiene"**, **ignorando mayúsculas/minúsculas** (teclear `4010` encuentra
+`-BXC05.4010`). Si no coincide ninguno muestra **"Sin resultados para «…»"** y
+el botón **×** limpia el filtro. El filtro se reinicia al cerrar el modal.
+
+No busca por descripción (los CSV no la guardan) ni por cantidad, y no altera
+las filas: editar o eliminar una fila filtrada sigue actuando sobre el artículo
+correcto (se conserva su posición real en el CSV).
 
 ### EstadoScreen (resumen + lista)
 
@@ -128,7 +158,7 @@ El escáner requiere que un mismo código se lea **10 veces consecutivas en 1200
 
 ### Borrado de movimientos
 
-- El borrado **solo** se realiza desde la pestaña Lista (CSV): al eliminar una fila se muestra un aviso de que **también se borrará de la base de datos** y se elimina en ambos sitios.
+- El borrado **solo** se realiza desde el modal de artículos de la pestaña Lista (CSV): al eliminar una fila se muestra un aviso de que **también se borrará de la base de datos** y se elimina en ambos sitios.
 - En el modal de artículos de Estado ya no aparece la columna **Eliminar**.
 
 ### Resumen de estados (porcentajes)
@@ -153,7 +183,8 @@ El escáner requiere que un mismo código se lea **10 veces consecutivas en 1200
 
 ## Terminar una ubicación desde Lista
 
-Al pulsar el botón de **compartir** de un CSV en la pestaña Lista:
+Al pulsar el botón **"Exportar"** dentro del modal de artículos (se abre escaneando
+o tecleando la ubicación, o tocando su CSV en la lista):
 
 1. La ubicación correspondiente al archivo se marca como **`Fin`** en la base de datos (`maestroUbicacion.stat = 'Fin'`).
 2. Si **todas** las ubicaciones de su área están en `'Fin'`, el área pasa a `'Fin'`; si **todas** las áreas de su sección están en `'Fin'`, la sección pasa a `'Fin'` (mismo patrón que el cambio a `'Proceso'` al guardar movimientos).
@@ -162,7 +193,7 @@ Al pulsar el botón de **compartir** de un CSV en la pestaña Lista:
 Una ubicación en `'Fin'` **no admite más operaciones**:
 - Home cachea el estado de la ubicación al escanearla: con `'Fin'` no permite escanear ni introducir artículos (aviso «Ubicación terminada»). Al volver a la pestaña Home desde Lista se reconsulta el estado en el maestro (1 petición) para recoger un `'Fin'` recién marcado.
 - El modal de artículos (usado desde Estado y desde Lista) consulta él mismo `estaUbicacionFinalizada` al abrirse: con `'Fin'` no permite **editar cantidades** ni **eliminar filas**.
-- En la pestaña Lista no se permite **borrar filas** de esa ubicación (sí se puede borrar el CSV completo o exportarlo).
+- En la pestaña Lista no se permite **borrar filas** de esa ubicación (sí se puede borrar el CSV completo con **"Borrar CSV"** o exportarlo con **"Exportar"**, ambos dentro del modal).
 
 ---
 
@@ -269,12 +300,12 @@ plano y el botón **Reintentar** de `EstadoBanner`.
 ### Copia local del maestro
 
 `src/services/maestrosService.js` mantiene una copia local de los maestros para
-poder validar artículos y ubicaciones **sin red**. En memoria son dos `Set`
-(códigos y SIC) más uno de ubicaciones, cargados desde dos ficheros:
+poder validar artículos y ubicaciones **sin red**. En memoria son tres `Set`
+(códigos, SIC y genéricos) más uno de ubicaciones, cargados desde dos ficheros:
 
 | Fichero                | Contenido                                             |
 | ---------------------- | ----------------------------------------------------- |
-| `maestro-articulos.json` | `version`, `actualizado_at`, `total`, `codigos`, `sic` |
+| `maestro-articulos.json` | `version`, `actualizado_at`, `total`, `codigos`, `sic`, `genericos` |
 | `maestro-ubicaciones.json` | `version`, `actualizado_at`, `ubicaciones` (`seccion-area-subzona`) |
 | `maestros-meta.json`   | Fechas de descarga y `rechazada_hasta` (aplazamiento) |
 
@@ -289,10 +320,15 @@ consulta anidada de siempre: son 199 filas.
 
 ```
 supabase/migrations/20261004_maestro_snapshot.sql
+supabase/migrations/20261014_maestro_genericos.sql
 ```
 
-Esa migración ya está aplicada: la RPC devuelve 211.578 códigos y 1.669 SIC. Sin
-ella la validación de artículos es estricta y no hay forma de escanear.
+La primera migración ya está aplicada: la RPC devuelve 211.578 códigos y 1.669
+SIC. La segunda **añade** `genericos` al mismo resultado (los artículos de tipo
+`GEN`/`GENERICO`), para rechazarlos al escanear en lugar de dejarlos pasar. Sin
+ella la validación de artículos es estricta y no hay forma de escanear. Una copia
+local descargada antes de aplicarla no lleva `genericos`: los genéricos se siguen
+aceptando hasta refrescar la copia (icono ⟳).
 
 La copia **no se actualiza sola**. La descarga de 3 MB en mitad de un conteo es
 molesta y deja al operario sin conexión, así que la decisión es suya:
@@ -348,6 +384,25 @@ recupera por su cuenta al cargar la copia de artículos, sin obligar a bajarse
 los 3 MB del maestro entero. Si aun así no puede, la validación de ubicaciones
 se rechaza con un aviso explícito en vez de aceptar códigos sin comprobar.
 
+### Autocompletado en la entrada manual de artículos
+
+Al teclear un artículo a mano (`+` de Home), el modal sugiere códigos de la
+copia local **que empiezan por lo tecleado**. Funciona sin conexión (usa la
+misma copia que la validación) y solo muestra **códigos** (la copia local no
+guarda descripciones).
+
+- Se compara **ignorando mayúsculas/minúsculas** (`bxc05` sugiere `-BXC05…`),
+  pero al elegir se escribe el código **real**.
+- Aparece a partir de **2 caracteres**, con un pequeño retardo (200 ms) para no
+  filtrar en cada pulsación, y muestra hasta **8** sugerencias ordenadas.
+- Al pulsar una sugerencia solo se **rellena el campo**: el operario revisa y
+  confirma (puede seguir editándolo).
+- Sin copia local no hay sugerencias, igual que no hay validación.
+
+La lógica vive en `maestrosService.sugerirArticulos()` (expuesta por
+`InventoryService` y `HomeLogic`), y el desplegable en `ManualCodeModal` a
+través del prop opcional `sugerencias`.
+
 ### Sin conexión, qué se puede y qué no
 
 | Acción                              | Sin conexión                                   |
@@ -370,6 +425,11 @@ Ambas entradas siguen siendo históricas: el `+` de artículos **exige** una
 ubicación previa (no se puede contar sin saber dónde), mientras que el de
 ubicaciones no la necesita, porque lo que se está introduciendo es precisamente
 la ubicación.
+
+Si la ubicación actual está **terminada** (`stat = 'Fin'`), tanto "Escanear
+artículo" como el `+` de artículo avisan al pulsarlos y no abren cámara ni
+modal. El botón "Escanear ubicación" (y su `+`) siguen libres: son la forma de
+pasar a otra ubicación.
 
 Los códigos de ubicación se normalizan a mayúsculas y sin espacios antes de
 validarlos, porque al teclearlos es fácil equivocarse de capitalización y los
@@ -454,7 +514,7 @@ CREATE TABLE public.conteo (
 | `maestroSeccion`   | Secciones de la planta                                     |
 | `maestroArea`      | Áreas dentro de cada sección                               |
 | `maestroUbicacion` | Ubicaciones individuales (PK compuesta: sección, área, subzona) |
-| `maestroArticulo`  | Catálogo de artículos (`item` = código, `dsca` = descripción, `tipo` = tipo, ej. `'SIC'`) |
+| `maestroArticulo`  | Catálogo de artículos (`item` = código, `dsca` = descripción, `tipo` = tipo, ej. `'MRP'`, `'SIC'`, `'GEN'`) |
 | `conteo`           | Movimientos / conteo por ubicación-artículo (no tiene columna de fecha) |
 
 ### Notas sobre el modelo
@@ -462,7 +522,7 @@ CREATE TABLE public.conteo (
 - `conteo.ubicacion` guarda la ubicación completa como string `seccion-area-subzona` (ej. `50100-111-Z101`). En `SupabaseProvider` se mapean `item → articulo` y `cant → cantidad` para mantener la misma interfaz que `CsvProvider`.
 - Las columnas `stat` usan un enum con valores `'Inicio'`, `'Proceso'`, `'Fin'`.
 - La tabla `conteo` **no tiene timestamp**: `obtenerUltimosMovimientos` no ordena cronológicamente (ordena por `ubicacion, item`). Si se necesita orden real, habría que añadir `updated_at timestamp default now()`.
-- `maestroArticulo.tipo` es un enum; si es `'SIC'`, la app avisa al escanearlo.
+- `maestroArticulo.tipo` es un enum; si es `'SIC'`, la app avisa al escanearlo y deja continuar; si es genérico (`GEN`/`GENERICO`), lo rechaza indicando el motivo.
 
 ---
 

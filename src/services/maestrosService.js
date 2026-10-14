@@ -19,7 +19,8 @@ import {
  * Ficheros en `documentDirectory`:
  *
  *   maestro-articulos.json   { version, actualizado_at,
- *                              total, codigos: [], sic: [] }
+ *                              total, codigos: [], sic: [],
+ *                              genericos: [] }
  *   maestro-ubicaciones.json  { version, actualizado_at,
  *                              ubicaciones: [] }
  *   maestros-meta.json       { articulos_at, ubicaciones_at,
@@ -201,6 +202,7 @@ const construirCache = (articulos, ubicaciones) => {
   return {
     codigos: new Set(articulos.codigos),
     sic: new Set(articulos.sic ?? []),
+    genericos: new Set(articulos.genericos ?? []),
     ubicaciones: Array.isArray(ubicaciones?.ubicaciones)
       ? new Set(ubicaciones.ubicaciones)
       : null,
@@ -376,6 +378,10 @@ const descargar = async () => {
       ? maestro.sic
       : [];
 
+    const genericos = Array.isArray(maestro?.genericos)
+      ? maestro.genericos
+      : [];
+
     /* Igual que con las ubicaciones: un maestro vacío en
        disco rechazaría todos los artículos del almacén. */
 
@@ -393,6 +399,7 @@ const descargar = async () => {
       total: codigos.length,
       codigos,
       sic,
+      genericos,
     });
 
     await guardarMeta({
@@ -405,6 +412,7 @@ const descargar = async () => {
     cache = {
       codigos: new Set(codigos),
       sic: new Set(sic),
+      genericos: new Set(genericos),
       ubicaciones: new Set(ubicaciones),
       actualizadoAt: Date.parse(actualizado),
     };
@@ -538,6 +546,53 @@ const existeArticulo = (codigo) =>
 
 const esSIC = (codigo) =>
   cache?.sic.has(codigo) ?? false;
+
+const esGenerico = (codigo) =>
+  cache?.genericos.has(codigo) ?? false;
+
+/* =======================================================
+ * SUGERENCIAS (ENTRADA MANUAL)
+ * =======================================================
+ *
+ * Cuando el operario teclea un artículo a mano, se le
+ * ofrecen los códigos de la copia local que EMPIEZAN por lo
+ * tecleado. La comparación ignora mayúsculas/minúsculas (los
+ * códigos reales las distinguen, pero quien teclea no debería
+ * pelearse con eso), y se devuelven los códigos REALES.
+ *
+ * Se exige un mínimo de caracteres para no listar media
+ * máquina al primer carácter. Al recorrer el `Set` se corta
+ * en cuanto se juntan `limite` coincidencias (y se ordenan
+ * para que la lista sea estable).
+ */
+
+const MIN_SUGERENCIA = 2;
+
+const sugerirArticulos = (texto, limite = 8) => {
+
+  const prefijo = (texto ?? '').trim();
+
+  if (!cache || prefijo.length < MIN_SUGERENCIA) {
+    return [];
+  }
+
+  const buscado = prefijo.toUpperCase();
+
+  const encontrados = [];
+
+  for (const codigo of cache.codigos) {
+
+    if (codigo.toUpperCase().startsWith(buscado)) {
+      encontrados.push(codigo);
+
+      if (encontrados.length === limite) break;
+    }
+
+  }
+
+  return encontrados.sort();
+
+};
 
 /**
  * `true` / `false` si se conoce la copia de ubicaciones,
@@ -704,6 +759,8 @@ const maestrosService = {
   asegurarListo,
   existeArticulo,
   esSIC,
+  esGenerico,
+  sugerirArticulos,
   existeUbicacion,
 
   antiguedadHoras,

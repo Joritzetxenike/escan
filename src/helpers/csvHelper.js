@@ -5,8 +5,11 @@ const DIR = FileSystem.documentDirectory;
 const safeName = (name) =>
   name.replace(/[^a-zA-Z0-9-_]/g, '_');
 
+export const nombreCsvUbicacion = (ubicacion) =>
+  `${safeName(ubicacion)}.csv`;
+
 const filePathForUbicacion = (ubicacion) =>
-  `${DIR}${safeName(ubicacion)}.csv`;
+  `${DIR}${nombreCsvUbicacion(ubicacion)}`;
 
 /* ---------- PARSER ---------- */
 const parseCsv = (csv) => {

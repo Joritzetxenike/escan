@@ -276,12 +276,12 @@ const SupabaseProvider = {
    * 40 segundos. La RPC `descargar_maestro_articulos()` lo
    * resuelve en una.
    *
-   * Devuelve `{ codigos: string[], sic: string[] }`: solo lo
-   * necesario para validar y para avisar de los SIC. No se
-   * copia `dsca` porque ocupa la mitad del tamaño y el CSV
-   * local tampoco la guarda.
+   * Devuelve `{ codigos, sic, genericos }`: solo lo
+   * necesario para validar y para avisar de los SIC y
+   * rechazar los genéricos. No se copia `dsca` porque ocupa
+   * la mitad del tamaño y el CSV local tampoco la guarda.
    *
-   * Ver `supabase/migrations/20261004_maestro_snapshot.sql`.
+   * Ver `supabase/migrations/20261014_maestro_genericos.sql`.
    */
   async obtenerMaestroArticulos() {
 
@@ -294,6 +294,7 @@ const SupabaseProvider = {
     return {
       codigos: data?.codigos ?? [],
       sic: data?.sic ?? [],
+      genericos: data?.genericos ?? [],
     };
   },
 

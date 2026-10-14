@@ -76,7 +76,23 @@ class ArticuloValidator {
       ok: false,
       titulo: 'Artículo no encontrado',
       mensaje:
-        `El código ${codigoArticulo} no está en la copia local del maestro. Si es un artículo nuevo, actualiza la copia del maestro (icono ⟳) antes de contarlo.`,
+        `El código ${codigoArticulo} no existe en el maestro. Si es un artículo nuevo, actualiza la copia del maestro (icono ⟳) antes de contarlo.`,
+    };
+
+  }
+
+  /**
+   * Un genérico existe en el maestro, pero no se cuenta: el
+   * aviso dice por qué en lugar de dejarlo pasar como "no
+   * encontrado".
+   */
+  esGenerico(codigoArticulo) {
+
+    return {
+      ok: false,
+      titulo: 'Artículo genérico',
+      mensaje:
+        `El código ${codigoArticulo} es un artículo genérico y no se puede contar.`,
     };
 
   }
@@ -104,6 +120,12 @@ class ArticuloValidator {
 
     if (!maestrosService.existeArticulo(codigoArticulo)) {
       return this.noEncontrado(codigoArticulo);
+    }
+
+    /* ---------- Genérico: existe pero no se cuenta ---------- */
+
+    if (maestrosService.esGenerico(codigoArticulo)) {
+      return this.esGenerico(codigoArticulo);
     }
 
     return {

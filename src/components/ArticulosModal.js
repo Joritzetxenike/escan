@@ -16,15 +16,19 @@ export default function ArticulosModal({
   onChangeValor,
   onGuardarEdicion,
   onEliminar,
+  onExportar,
+  onBorrar,
   codigoUbicacion,
 }) {
   const [finalizada, setFinalizada] = useState(false);
+  const [busqueda, setBusqueda] = useState('');
 
   const codigo = codigoUbicacion ?? titulo;
 
   useEffect(() => {
     if (!visible) {
       setFinalizada(false);
+      setBusqueda('');
       return;
     }
 
@@ -47,6 +51,15 @@ export default function ArticulosModal({
     };
   }, [visible, codigo]);
 
+  const termino = busqueda.trim().toUpperCase();
+  const visibles = articulos
+    .map((item, index) => ({ item, index }))
+    .filter(
+      ({ item }) =>
+        termino === '' ||
+        String(item.articulo ?? '').toUpperCase().includes(termino)
+    );
+
   const avisoFinalizada = () => {
     Alert.alert(
       'Ubicación terminada',
@@ -64,6 +77,28 @@ export default function ArticulosModal({
             <Text style={styles.empty}>No hay artículos en esta ubicación</Text>
           ) : (
             <>
+              <View style={styles.buscador}>
+                <MaterialIcons name="search" size={20} color={colors.textSecondary} />
+                <TextInput
+                  style={styles.buscadorInput}
+                  placeholder="Buscar código…"
+                  placeholderTextColor={colors.textSecondary}
+                  value={busqueda}
+                  onChangeText={setBusqueda}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  testID="input-buscar-articulo"
+                />
+                {busqueda !== '' && (
+                  <TouchableOpacity
+                    onPress={() => setBusqueda('')}
+                    testID="limpiar-busqueda"
+                  >
+                    <MaterialIcons name="close" size={20} color={colors.textSecondary} />
+                  </TouchableOpacity>
+                )}
+              </View>
+
               <View style={styles.headerRow}>
                 <Text style={[styles.headerCell, { flex: 2 }]}>Artículo</Text>
                 <Text style={[styles.headerCell, { flex: 1, textAlign: 'center' }]}>Descripción</Text>
@@ -74,7 +109,12 @@ export default function ArticulosModal({
               </View>
 
               <ScrollView style={styles.list}>
-                {articulos.map((item, index) => (
+                {visibles.length === 0 ? (
+                  <Text style={styles.empty}>
+                    {`Sin resultados para «${busqueda.trim()}»`}
+                  </Text>
+                ) : (
+                  visibles.map(({ item, index }) => (
                   <View key={index} style={styles.row}>
                     <Text style={[styles.cell, { flex: 2 }]} numberOfLines={1}>
                       {item.articulo}
@@ -131,9 +171,34 @@ export default function ArticulosModal({
                       </TouchableOpacity>
                     )}
                   </View>
-                ))}
+                  ))
+                )}
               </ScrollView>
             </>
+          )}
+
+          {(onExportar || onBorrar) && (
+            <View style={styles.accionesCsv}>
+              {onExportar && (
+                <TouchableOpacity
+                  style={[styles.accionButton, styles.accionExportar]}
+                  onPress={() => onExportar(titulo)}
+                >
+                  <MaterialIcons name="file-upload" size={20} color="#fff" />
+                  <Text style={styles.accionText}>Exportar</Text>
+                </TouchableOpacity>
+              )}
+
+              {onBorrar && (
+                <TouchableOpacity
+                  style={[styles.accionButton, styles.accionBorrar]}
+                  onPress={() => onBorrar(titulo)}
+                >
+                  <MaterialIcons name="delete-outline" size={20} color="#fff" />
+                  <Text style={styles.accionText}>Borrar CSV</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           )}
 
           <TouchableOpacity style={styles.closeButton} onPress={onCerrar}>
@@ -156,7 +221,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 8,
     padding: 15,
-    maxHeight: '90%',
+    height: '92%',
   },
   title: {
     fontSize: 20,
@@ -168,6 +233,21 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: colors.textSecondary,
     marginVertical: 20,
+  },
+  buscador: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    marginBottom: 10,
+  },
+  buscadorInput: {
+    flex: 1,
+    paddingVertical: 8,
+    fontSize: 15,
   },
   headerRow: {
     flexDirection: 'row',
@@ -181,7 +261,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   list: {
-    maxHeight: 400,
+    flex: 1,
   },
   row: {
     flexDirection: 'row',
@@ -202,6 +282,31 @@ const styles = StyleSheet.create({
     width: 45,
     textAlign: 'center',
     fontSize: 13,
+  },
+  accionesCsv: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 15,
+  },
+  accionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 6,
+    padding: 12,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  accionExportar: {
+    backgroundColor: colors.primary,
+  },
+  accionBorrar: {
+    backgroundColor: colors.danger,
+  },
+  accionText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 15,
   },
   closeButton: {
     backgroundColor: colors.primary,
