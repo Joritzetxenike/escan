@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 
+import { AuthProvider } from './src/context/AuthContext';
 import RootNavigator from './src/navigation/RootNavigator';
 import UpdateModal from './src/components/UpdateModal';
 import { comprobarActualizacion } from './src/services/updateService';
@@ -22,7 +23,7 @@ export default function Main() {
   /* ---------- Copia local de los maestros ----------
      Sin copia no se puede validar ningún código, así que
      esta descarga sí es automática. Las siguientes solo se
-     avisan (`BannerMaestros`) y las decide el operario. */
+     avisan (`MaestrosBanner`) y las decide el operario. */
 
   useEffect(() => {
     maestrosService.iniciar();
@@ -42,17 +43,19 @@ export default function Main() {
   }, []);
 
   return (
-    <NavigationContainer>
-      <RootNavigator />
+    <AuthProvider>
+      <NavigationContainer>
+        <RootNavigator />
 
-      <UpdateModal
-        visible={updateInfo !== null}
-        versionActual={updateInfo?.versionActual}
-        ultimaVersion={updateInfo?.ultimaVersion}
-        apkUrl={updateInfo?.apkUrl}
-        notas={updateInfo?.notas}
-        onCerrar={() => setUpdateInfo(null)}
-      />
-    </NavigationContainer>
+        <UpdateModal
+          visible={updateInfo !== null}
+          versionActual={updateInfo?.versionActual}
+          ultimaVersion={updateInfo?.ultimaVersion}
+          apkUrl={updateInfo?.apkUrl}
+          notas={updateInfo?.notas}
+          onCerrar={() => setUpdateInfo(null)}
+        />
+      </NavigationContainer>
+    </AuthProvider>
   );
 }

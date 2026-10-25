@@ -3,6 +3,7 @@ import DataProvider from '../../src/providers/DataProvider';
 import conectividadService from '../../src/services/conectividadService';
 import pendientesService from '../../src/services/pendientesService';
 import maestrosService from '../../src/services/maestrosService';
+import authService from '../../src/services/authService';
 import * as FileSystem from 'expo-file-system/legacy';
 
 // Mockeamos el proveedor y la conectividad para NO tocar
@@ -43,6 +44,10 @@ jest.mock('../../src/services/pendientesService', () => ({
 
 // La validación ya no consulta Supabase: va contra la copia
 // local del maestro.
+jest.mock('../../src/services/authService', () => ({
+  obtenerMatricula: jest.fn(() => '1234'),
+}));
+
 jest.mock('../../src/services/maestrosService', () => ({
   DIAS_PELIGROSO: 7,
   SIN_CONEXION: 'Sin conexión',
@@ -146,8 +151,8 @@ describe('InventoryService', () => {
       ).not.toHaveBeenCalled();
 
       expect(resultado).toEqual([
-        { ubicacion: 'A1', articulo: '123456', cantidad: 5 },
-        { ubicacion: 'A1', articulo: '999999', cantidad: 10 },
+        { ubicacion: 'A1', articulo: '123456', cantidad: 5, matricula: '' },
+        { ubicacion: 'A1', articulo: '999999', cantidad: 10, matricula: '' },
       ]);
     });
 
@@ -167,7 +172,7 @@ describe('InventoryService', () => {
         .toHaveBeenCalled();
 
       expect(resultado).toEqual([
-        { ubicacion: 'A1', articulo: '123456', cantidad: 5 },
+        { ubicacion: 'A1', articulo: '123456', cantidad: 5, matricula: '' },
       ]);
     });
 
@@ -201,7 +206,7 @@ describe('InventoryService', () => {
         FileSystem.writeAsStringAsync
       ).toHaveBeenCalledWith(
         'file:///test/A1.csv',
-        'A1,123456,10'
+        'A1,123456,10,1234'
       );
 
       expect(pendientesService.encolar).not.toHaveBeenCalled();
@@ -223,7 +228,7 @@ describe('InventoryService', () => {
         FileSystem.writeAsStringAsync
       ).toHaveBeenCalledWith(
         'file:///test/A1.csv',
-        'A1,123456,10'
+        'A1,123456,10,1234'
       );
 
       expect(
@@ -319,7 +324,7 @@ describe('InventoryService', () => {
         FileSystem.writeAsStringAsync
       ).toHaveBeenCalledWith(
         'file:///test/A1.csv',
-        'A1,123456,3'
+        'A1,123456,3,1234'
       );
 
       expect(resultado.pendiente).toBe(false);
@@ -609,7 +614,7 @@ describe('InventoryService', () => {
         FileSystem.writeAsStringAsync
       ).toHaveBeenCalledWith(
         'file:///test/A1.csv',
-        'A1,999999,10'
+        'A1,999999,10,'
       );
 
       expect(resultado).toEqual({
@@ -639,7 +644,7 @@ describe('InventoryService', () => {
         FileSystem.writeAsStringAsync
       ).toHaveBeenCalledWith(
         'file:///test/A1.csv',
-        'A1,999999,10'
+        'A1,999999,10,'
       );
 
       expect(pendientesService.encolar).toHaveBeenCalledWith(

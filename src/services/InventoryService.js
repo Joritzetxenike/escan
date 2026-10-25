@@ -5,8 +5,8 @@ import UbicacionValidator from '../validators/UbicacionValidator';
 import conectividadService from './conectividadService';
 import maestrosService from './maestrosService';
 import pendientesService from './pendientesService';
+import authService from './authService';
 import { esErrorDeRed } from '../helpers/redHelper';
-import * as FileSystem from 'expo-file-system/legacy';
 
 /* =======================================================
  * SERVICIO DE INVENTARIO
@@ -26,23 +26,9 @@ import * as FileSystem from 'expo-file-system/legacy';
  * operación como pendiente, nunca como guardada.
  * ======================================================= */
 
-const DIR = FileSystem.documentDirectory;
-
-const safeName = (name) =>
-  name.replace(/[^a-zA-Z0-9-_]/g, '_');
-
 const eliminarDeCsv = async (ubicacion, articulo) => {
-  const path = `${DIR}${safeName(ubicacion)}.csv`;
   try {
-    const exists = await FileSystem.getInfoAsync(path);
-    if (!exists.exists) return;
-    const content = await FileSystem.readAsStringAsync(path);
-    const lines = content.split('\n').filter(l => l.trim());
-    const filtered = lines.filter(l => {
-      const cols = l.split(',');
-      return !(cols[0] === ubicacion && cols[1] === articulo);
-    });
-    await FileSystem.writeAsStringAsync(path, filtered.join('\n'));
+    await CsvProvider.eliminarMovimiento(ubicacion, articulo);
   } catch (e) {
     console.error('Error eliminando de CSV:', e);
   }
@@ -217,7 +203,12 @@ const InventoryService = {
 
     /* ---------- 1. CSV local (siempre) ---------- */
 
-    await CsvProvider.guardarMovimiento(movimiento)
+    const movimientoLocal = {
+      ...movimiento,
+      matricula: authService.obtenerMatricula(),
+    };
+
+    await CsvProvider.guardarMovimiento(movimientoLocal)
       .catch(e =>
         console.error('Error guardando en CSV:', e)
       );
@@ -239,7 +230,12 @@ const InventoryService = {
 
   async actualizarMovimiento(movimiento, opciones = {}) {
 
-    await CsvProvider.guardarMovimiento(movimiento)
+    const movimientoLocal = {
+      ...movimiento,
+      matricula: authService.obtenerMatricula(),
+    };
+
+    await CsvProvider.guardarMovimiento(movimientoLocal)
       .catch(e =>
         console.error('Error actualizando en CSV:', e)
       );

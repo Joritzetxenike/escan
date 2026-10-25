@@ -70,11 +70,13 @@ describe('CsvProvider', () => {
           ubicacion: 'A1',
           articulo: '123456',
           cantidad: 5,
+          matricula: '',
         },
         {
           ubicacion: 'A1',
           articulo: '999999',
           cantidad: 10,
+          matricula: '',
         },
       ]);
 
@@ -83,6 +85,37 @@ describe('CsvProvider', () => {
       ).toHaveBeenCalledWith(
         'file:///test/A1.csv'
       );
+
+    });
+
+
+    test('debe leer la matrícula de la cuarta columna', async () => {
+
+      FileSystem.getInfoAsync.mockResolvedValue({
+        exists: true,
+      });
+
+      FileSystem.readAsStringAsync.mockResolvedValue(
+        'A1,123456,5,1234\nA1,999999,10,5678'
+      );
+
+      const resultado =
+        await CsvProvider.obtenerArticulosUbicacion('A1');
+
+      expect(resultado).toEqual([
+        {
+          ubicacion: 'A1',
+          articulo: '123456',
+          cantidad: 5,
+          matricula: '1234',
+        },
+        {
+          ubicacion: 'A1',
+          articulo: '999999',
+          cantidad: 10,
+          matricula: '5678',
+        },
+      ]);
 
     });
 
@@ -129,6 +162,7 @@ describe('CsvProvider', () => {
         ubicacion: 'A1',
         articulo: '999999',
         cantidad: 10,
+        matricula: '',
       });
 
     });
@@ -196,13 +230,14 @@ describe('CsvProvider', () => {
         ubicacion: 'A1',
         articulo: '123456',
         cantidad: 5,
+        matricula: '1234',
       });
 
       expect(
         FileSystem.writeAsStringAsync
       ).toHaveBeenCalledWith(
         'file:///test/A1.csv',
-        'A1,123456,5'
+        'A1,123456,5,1234'
       );
 
     });
@@ -224,13 +259,14 @@ describe('CsvProvider', () => {
         ubicacion: 'A1',
         articulo: '123456',
         cantidad: 20,
+        matricula: '1234',
       });
 
       expect(
         FileSystem.writeAsStringAsync
       ).toHaveBeenCalledWith(
         'file:///test/A1.csv',
-        'A1,123456,20\nA1,999999,10'
+        'A1,123456,20,1234\nA1,999999,10,'
       );
 
     });
@@ -252,13 +288,14 @@ describe('CsvProvider', () => {
         ubicacion: 'A1',
         articulo: '999999',
         cantidad: 10,
+        matricula: '5678',
       });
 
       expect(
         FileSystem.writeAsStringAsync
       ).toHaveBeenCalledWith(
         'file:///test/A1.csv',
-        'A1,123456,5\nA1,999999,10'
+        'A1,123456,5,\nA1,999999,10,5678'
       );
 
     });
@@ -293,7 +330,7 @@ describe('CsvProvider', () => {
         FileSystem.writeAsStringAsync
       ).toHaveBeenCalledWith(
         'file:///test/A1.csv',
-        'A1,999999,10'
+        'A1,999999,10,'
       );
 
     });
@@ -373,6 +410,7 @@ test('debe ignorar líneas vacías del CSV', async () => {
       ubicacion: 'A1',
       articulo: '123456',
       cantidad: 5,
+      matricula: '',
     },
   ]);
 

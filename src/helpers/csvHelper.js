@@ -14,19 +14,24 @@ const filePathForUbicacion = (ubicacion) =>
 /* ---------- PARSER ---------- */
 const parseCsv = (csv) => {
   if (!csv) return [];
-  return csv.split('\n').map(line => {
-    const [ubicacion, articulo, cantidad] = line.split(',');
-    return {
-      ubicacion,
-      articulo,
-      cantidad: Number(cantidad),
-    };
-  });
+  return csv
+    .split('\n')
+    .filter(line => line.trim() !== '')
+    .map(line => {
+      const [ubicacion, articulo, cantidad, matricula] = line.split(',');
+      return {
+        ubicacion,
+        articulo,
+        cantidad: Number(cantidad),
+        /* Los CSV antiguos no traen esta columna. */
+        matricula: matricula ?? '',
+      };
+    });
 };
 
 const toCsv = (rows) =>
   rows.map(r =>
-    `${r.ubicacion},${r.articulo},${r.cantidad}`
+    `${r.ubicacion},${r.articulo},${r.cantidad},${r.matricula ?? ''}`
   ).join('\n');
 
 /* ---------- LECTURA ---------- */
@@ -47,7 +52,12 @@ export const leerCsvUbicacion = async (ubicacion) => {
 };
 
 /* ---------- GUARDAR ---------- */
-export const guardarRegistro = async ({ ubicacion, articulo, cantidad }) => {
+export const guardarRegistro = async ({
+  ubicacion,
+  articulo,
+  cantidad,
+  matricula = '',
+}) => {
   const path = filePathForUbicacion(ubicacion);
 
   const registros = await leerCsvUbicacion(ubicacion);
@@ -55,9 +65,18 @@ export const guardarRegistro = async ({ ubicacion, articulo, cantidad }) => {
   const index = registros.findIndex(r => r.articulo === articulo);
 
   if (index >= 0) {
-    registros[index].cantidad = cantidad;
+    registros[index] = {
+      ...registros[index],
+      cantidad,
+      matricula,
+    };
   } else {
-    registros.push({ ubicacion, articulo, cantidad });
+    registros.push({
+      ubicacion,
+      articulo,
+      cantidad,
+      matricula,
+    });
   }
 
   await FileSystem.writeAsStringAsync(

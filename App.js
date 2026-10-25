@@ -1,4 +1,5 @@
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 
 import ErrorBoundary, { AvisoConfig } from './src/components/ErrorBoundary';
 import { configError } from './src/providers/supabase/supabaseClient';
@@ -14,6 +15,8 @@ export default function App() {
   return (
     <ErrorBoundary>
       <SafeAreaProvider>
+        <StatusBar style="dark" />
+
         {configError
           ? <AvisoConfig configError={configError} />
           : <Main />}

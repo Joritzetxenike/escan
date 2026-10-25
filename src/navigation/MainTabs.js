@@ -5,6 +5,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import HomeScreen from '../screens/HomeScreen';
 import ListaScreen from '../screens/ListaScreen';
 import EstadoScreen from '../screens/EstadoScreen';
+import HeaderTabs from '../components/HeaderTabs';
 import { colors } from '../styles/styles';
 
 const Tab = createBottomTabNavigator();
@@ -17,6 +18,9 @@ export default function MainTabs() {
     <Tab.Navigator
       screenOptions={{
         headerShown: true,
+        header: ({ options, route }) => (
+          <HeaderTabs titulo={options.title ?? route.name} />
+        ),
 
         /* Cabecera y tab bar en el celeste de marca, el mismo
            de los botones de escanear. El casi negro se queda
@@ -27,16 +31,6 @@ export default function MainTabs() {
              onPrimaryMuted    4.71:1  etiqueta e icono inactivos
            El inactivo no puede bajarse más: a 3.23:1 (un gris
            tipo #C3C9D1) se queda por debajo del mínimo 4.5:1. */
-
-        headerStyle: {
-          backgroundColor: colors.primary,
-        },
-        headerTintColor: colors.onPrimary,
-        headerTitleStyle: {
-          fontWeight: 'bold',
-          fontSize: 20,
-        },
-        headerTitleAlign: 'center',
 
         tabBarStyle: {
           backgroundColor: colors.primary,

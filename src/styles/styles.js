@@ -349,4 +349,92 @@ ultimosArticulosTitle: {
     fontSize: 15,
   },
 
+  /* ---------- IDENTIFICACIÓN ---------- */
+
+  identificacionSafeArea: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+
+  identificacionFlex: {
+    flex: 1,
+  },
+
+  identificacionBanners: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+  },
+
+  identificacionContenido: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 30,
+    paddingVertical: 24,
+  },
+
+  identificacionIcono: {
+    alignSelf: 'center',
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surfaceAlt,
+    marginBottom: 20,
+  },
+
+  identificacionTitulo: {
+    fontSize: 26,
+    fontWeight: 'bold',
+    color: colors.text,
+    textAlign: 'center',
+  },
+
+  identificacionSubtitulo: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: 8,
+    marginBottom: 35,
+  },
+
+  identificacionLabel: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginBottom: 8,
+  },
+
+  identificacionInput: {
+    width: '100%',
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    borderRadius: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 15,
+    fontSize: 20,
+    color: colors.text,
+    backgroundColor: '#FFFFFF',
+  },
+
+  identificacionInputError: {
+    borderColor: colors.danger,
+  },
+
+  identificacionError: {
+    color: colors.danger,
+    fontSize: 14,
+    marginTop: 8,
+  },
+
+  identificacionBoton: {
+    width: '100%',
+    marginTop: 20,
+    alignItems: 'center',
+  },
+
+  identificacionBotonDeshabilitado: {
+    opacity: 0.6,
+  },
+
 },);

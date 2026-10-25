@@ -7,7 +7,7 @@ import maestrosService from '../services/maestrosService';
  * =======================================================
  *
  * Devuelve el estado del `maestrosService` más las acciones
- * que consume el `EstadoBanner`:
+ * que consume el `MaestrosBanner`:
  *
  *   - `hayCopia`, `descargando`, `descargandoQue`
  *   - `pideActualizar`: la copia está vieja y toca decidir

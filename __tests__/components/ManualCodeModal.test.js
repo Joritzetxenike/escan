@@ -134,6 +134,23 @@ describe('ManualCodeModal', () => {
 
     });
 
+    test('abre el teclado alfanumérico completo', () => {
+
+      montar();
+
+      const input =
+        renderer.root.findByType(TextInput);
+
+      /* Los códigos pueden mezclar letras y números:
+         no debe abrirse un teclado solo numérico. */
+
+      expect(input.props.keyboardType).toBe('default');
+      expect(input.props.inputMode).toBe('text');
+      expect(input.props.autoCorrect).toBe(false);
+      expect(input.props.spellCheck).toBe(false);
+
+    });
+
   });
 
 

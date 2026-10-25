@@ -24,7 +24,7 @@ App móvil desarrollada con **React Native (Expo SDK 54)** para la gestión de i
 ```
 escan/
 ├── App.js                     # Entrada: SafeAreaProvider + Main
-├── Main.js                    # NavigationContainer + RootNavigator + UpdateModal + arranque de sync
+├── Main.js                    # AuthProvider + NavigationContainer + RootNavigator + UpdateModal + arranque de sync
 ├── index.js                   # registerRootComponent
 ├── app.json                   # Configuración Expo (versión, runtimeVersion, updates)
 ├── eas.json                   # Perfiles de build EAS (development/preview/production)
@@ -37,13 +37,14 @@ escan/
 │   └── tests.yml              # Tests en push/PR a master
 │
 └── src/
-    ├── screens/               # HomeScreen, ListaScreen, EstadoScreen, ScannerScreen
-    ├── views/                 # HomeView, ScannerView (presentacional, recibe state+actions)
-    ├── logic/                 # Hooks de negocio: useHomeLogic, useScannerLogic, useConectividad
+    ├── context/               # AuthContext (matrícula del operario en memoria)
+    ├── screens/               # IdentificacionScreen, HomeScreen, ListaScreen, EstadoScreen, ScannerScreen
+    ├── views/                 # IdentificacionView, HomeView, ScannerView (presentacional, recibe state+actions)
+    ├── logic/                 # Hooks de negocio: useIdentificacionLogic, useHomeLogic, useScannerLogic, useConectividad
     ├── hooks/                 # useScanner.js (alternativa al refactor de ScannerLogic)
-    ├── components/            # ArticulosModal, CantidadModal, ManualCodeModal, EstadoCard, UpdateModal, EstadoBanner, EstadoResumen
+    ├── components/            # HeaderSesion, HeaderTabs, ArticulosModal, CantidadModal, ManualCodeModal, EstadoCard, UpdateModal, EstadoBanner, MaestrosBanner, EstadoResumen
     ├── navigation/            # RootNavigator (stack), MainTabs (bottom-tabs)
-    ├── services/              # InventoryService, ScannerService, ubicacionesService, updateService, conectividadService, pendientesService, syncService
+    ├── services/              # authService, InventoryService, ScannerService, ubicacionesService, updateService, conectividadService, pendientesService, syncService
     ├── providers/             # Provider Pattern (estrategia de datos intercambiable)
     │   ├── DataSource.js      # Backend activo: 'supabase' (csv/api comentados)
     │   ├── DataProvider.js    # Router → SupabaseProvider | CsvProvider
@@ -68,9 +69,27 @@ escan/
 ### Capas
 
 1. **UI** — Screens + Views + Components. Reciben `state` y `actions` desde los hooks.
-2. **Lógica** — Custom hooks (`useHomeLogic`, `useScannerLogic`). Contienen todo el estado y las reglas de negocio.
-3. **Servicios** — Operaciones de dominio (inventario, escáner, ubicaciones, actualización).
+2. **Lógica** — Custom hooks (`useIdentificacionLogic`, `useHomeLogic`, `useScannerLogic`). Contienen todo el estado y las reglas de negocio.
+3. **Servicios** — Operaciones de dominio (sesión, inventario, escáner, ubicaciones, actualización).
 4. **Proveedores de datos** — Estrategia de persistencia intercambiable (Provider Pattern).
+
+### Sesión del operario
+
+Antes de montar las pestañas, la app pide una **matrícula**. La sesión vive
+**solo en memoria** (`authService` + `AuthContext`): al arrancar de nuevo se
+vuelve a pedir, no se guarda en el dispositivo.
+
+- `authService.validarMatricula()` es el único punto de validación; hoy acepta
+  cualquier número no vacío y deja preparado el cambio a una consulta a
+  Supabase.
+- `RootNavigator` muestra `IdentificacionScreen` mientras no hay matrícula y
+  `MainTabs` + `Scanner` en cuanto la hay.
+- La cabecera de las pestañas tiene dos filas: arriba la
+  `Matrícula: <número>` y el botón de **cerrar sesión** (pide confirmación);
+  debajo, el título de la pestaña. Al cerrar sesión se vuelve a la pantalla de
+  identificación sin borrar CSVs, maestros ni la cola de pendientes.
+- La matrícula se guarda en la **4ª columna del CSV** al guardar o editar una
+  cantidad. No se envía a Supabase ni se añade a `pending-operations.json`.
 
 ### Provider Pattern
 
@@ -95,6 +114,9 @@ El escáner requiere que un mismo código se lea **10 veces consecutivas en 1200
 
 ## Flujo de la app (conteo)
 
+0. **Arranque** → `IdentificacionScreen`: el operario teclea su matrícula (solo
+   dígitos). Al pulsar **Entrar** se guarda en memoria y se montan las pestañas.
+   La cabecera muestra la matrícula y permite cerrar sesión.
 1. **Home** → "Escanear ubicación" → `ScannerScreen` (tipo `ubicacion`) → el código vuelve por `onScan` → `cargarUbicacion()` guarda la ubicación actual y obtiene sus artículos (1 petición).
 2. **Home** → "Escanear artículo" (o botón `+` para introducción manual) → `procesarArticulo()`:
    - Si la ubicación actual está **terminada** (`Fin`), el aviso "Ubicación terminada" sale **al pulsar** el botón (antes de abrir la cámara o el modal); `procesarArticulo()` conserva la misma comprobación como red de seguridad.
@@ -112,12 +134,17 @@ El escáner requiere que un mismo código se lea **10 veces consecutivas en 1200
 
 ## Pantallas
 
-| Ruta      | Pantalla       | Descripción                                                                 |
-| --------- | -------------- | --------------------------------------------------------------------------- |
-| `Home`    | HomeScreen     | Escáner de ubicación, escaneo de artículos, últimos artículos de la sesión  |
-| `Lista`   | ListaScreen    | Abre el CSV de una ubicación escaneándola o tecleándola; lista de CSVs guardados. Exportar/borrar viven en el modal |
-| `Estado`  | EstadoScreen   | Resumen de estados por defecto y, tras el conmutador, el árbol sección → área → ubicación con artículos por ubicación |
-| `Scanner` | ScannerScreen  | Cámara con overlay para escanear códigos                                    |
+| Ruta             | Pantalla             | Descripción                                                                 |
+| ---------------- | -------------------- | --------------------------------------------------------------------------- |
+| `Identificacion` | IdentificacionScreen | Pide la matrícula del operario antes de entrar (se muestra en cada arranque) |
+| `Home`           | HomeScreen           | Escáner de ubicación, escaneo de artículos, últimos artículos de la sesión  |
+| `Lista`          | ListaScreen          | Abre el CSV de una ubicación escaneándola o tecleándola; lista de CSVs guardados. Exportar/borrar viven en el modal |
+| `Estado`         | EstadoScreen         | Resumen de estados por defecto y, tras el conmutador, el árbol sección → área → ubicación con artículos por ubicación |
+| `Scanner`        | ScannerScreen        | Cámara con overlay para escanear códigos                                    |
+
+Los modales de entrada manual de **artículo** y **ubicación** usan el teclado
+**alfanumérico completo**: letras y números, sin autocorrección ni corrección
+ortográfica.
 
 ### Abrir un CSV (pestaña Lista)
 
@@ -227,7 +254,7 @@ El estado se deduce de una sonda ligera a Supabase
 finalizar:
 
 ```
-1. CSV local            → fuente local de verdad (una fila: ubicacion,articulo,cantidad)
+1. CSV local            → fuente local de verdad (una fila: ubicacion,articulo,cantidad,matricula)
 2. Cola de pendientes  → solo si no hay conexión, o si la petición falla por red
 3. Supabase             → solo si hay conexión
 4. Confirmación         → la operación sale de la cola
@@ -238,6 +265,16 @@ finalizar:
 - Si no hay conexión, o la petición se cae, la operación **se encola** y la UI
   recibe `{ pendiente: true }`: nunca se muestra como guardada en Supabase.
 - Un error que no es de red (FK, RLS, código inexistente) se propaga a la UI.
+
+### Matrícula en el CSV
+
+- Formato de fila: `ubicacion,articulo,cantidad,matricula`.
+- La matrícula es la del operario identificado en ese momento; se actualiza al
+  guardar o editar la cantidad, de modo que queda constancia del último cambio.
+- Los CSV antiguos de 3 columnas se siguen leyendo: su matrícula se interpreta
+  como vacía. Al reescribir el fichero, las filas pasan a tener 4 columnas.
+- La matrícula **no** se incluye en la cola de pendientes ni en las peticiones
+  a Supabase: solo vive en el CSV local y en el fichero exportado.
 
 ### Cola de pendientes: `pending-operations.json`
 
@@ -337,43 +374,42 @@ molesta y deja al operario sin conexión, así que la decisión es suya:
 | Situación                        | Qué pasa                                       |
 | -------------------------------- | ---------------------------------------------- |
 | Sin copia (primer uso)           | Descarga obligatoria al abrir la app           |
-| Copia al día (< 24 h)            | Franja gris con la fecha y el botón           |
+| Copia al día (< 24 h)            | Franja verde con la antigüedad y el botón      |
 | Copia vieja (> 24 h)             | Aviso con `Actualizar` / `Ahora no`            |
 | Tras `Ahora no`                  | No se vuelve a preguntar en 12 h               |
 | Copia de más de 7 días           | El aviso avisa de que puede rechazar artículos nuevos |
 
-La franja sale siempre en Home y en Lista, también con la copia al día: sin ella,
-si el operario acaba de meter un artículo que el maestro todavía no conoce, se
-quedaba sin forma de forzar la descarga hasta que la copia cumplía 24 h. El botón
+El actualizador del maestro (`MaestrosBanner`) vive en la franja superior fija
+de la pantalla de identificación, antes del formulario. Así está disponible
+antes de empezar a contar, incluso si la copia acaba de caducar. El botón
 `Actualizar` está en todos los estados salvo mientras baja.
 
-### EstadoBanner: una sola franja
+### MaestrosBanner: copia local
 
-La conexión y el maestro se anuncian en **la misma** franja
-(`src/components/EstadoBanner.js`). Antes eran dos banners apilados y el que
-importaba se quedaba debajo del otro; además, justo después de descargar el
-maestro —cuando más falta hace ver la conexión— se veían los dos a la vez.
-
-Gana el problema más urgente:
+`src/components/MaestrosBanner.js` muestra el estado de la copia y permite
+forzar la descarga antes de entrar. Es el único banner de estado de la parte
+superior: si la copia está al día dice `Sincronizado`; si toca actualizarla,
+dice `Pendiente de actualizar`. Gana el problema más urgente:
 
 | Prioridad | Estado                                        | Fondo |
 | --------- | --------------------------------------------- | ----- |
 | 1 | Descargando el maestro                        | gris  |
 | 2 | Sin copia del maestro (bloquea la validación) | rojo  |
 | 3 | Error al bajar el maestro                     | rojo  |
-| 4 | Sin conexión · N cambios pendientes           | ámbar |
-| 5 | Error al sincronizar                          | rojo  |
-| 6 | Sincronizando                                 | gris  |
-| 7 | Maestro viejo: `Actualizar` / `Ahora no`      | ámbar |
-| 8 | Todo bien: `Sincronizado · HH:MM`             | verde |
-
-El botón cambia con el estado: **Reintentar** para la cola, **Actualizar** para
-el maestro. El 8º estado no lleva recuadro porque es el normal y el `Actualizar`
-sigue ahí para poder forzar la descarga.
+| 4 | Pendiente de actualizar: `Actualizar` / `Ahora no` | ámbar |
+| 5 | Copia al día: `Sincronizado · hace X`         | verde |
 
 Si la descarga falla se conserva la copia anterior intacta y el aviso muestra el
 error: nunca se descarta un maestro que ya funcionaba. Si la RPC devolviera un
 maestro vacío, la descarga se aborta antes de tocar los ficheros.
+
+### EstadoBanner: conexión y cola
+
+`src/components/EstadoBanner.js` se usa con `soloAvisos` en identificación,
+Home y Lista: el estado “todo bien” no ocupa espacio, pero siguen visibles los
+avisos de sin conexión, error, sincronización en curso y cambios pendientes. En
+identificación va debajo del banner de la copia del maestro. El botón
+**Reintentar** relanza la comprobación y la sincronización de la cola.
 
 Las operaciones que ya estaban en la cola como `provisional` (creadas por
 versiones anteriores del offline) siguen validándose contra Supabase al
@@ -725,7 +761,7 @@ npx jest __tests__/screens    # Solo pantallas
 npx jest --coverage           # Cobertura
 ```
 
-Cobertura actual: `ScannerService`, `InventoryService` (incl. `validarArticulo`, `eliminarMovimiento` y el comportamiento offline), `pendientesService`, `syncService`, `conectividadService`, `updateService`, `supabaseClient`, `SupabaseProvider` (incl. árbol por niveles), `CsvProvider` (incl. `eliminarMovimiento`), `ArticuloValidator`, `UbicacionValidator`, `useHomeLogic`, `useScannerLogic` y el comportamiento de `EstadoScreen` (carga por niveles, botón de recarga, artículos lazy).
+Cobertura actual: `authService`, `AuthContext`, `IdentificacionScreen`, `HeaderSesion`, `HeaderTabs`, `EstadoBanner`, `MaestrosBanner`, `ScannerService`, `InventoryService` (incl. `validarArticulo`, `eliminarMovimiento`, matrícula en CSV y el comportamiento offline), `pendientesService`, `syncService`, `conectividadService`, `updateService`, `supabaseClient`, `SupabaseProvider` (incl. árbol por niveles), `CsvProvider` (incl. `eliminarMovimiento` y lectura de matrícula), `ArticuloValidator`, `UbicacionValidator`, `useHomeLogic`, `useScannerLogic` y el comportamiento de `EstadoScreen` (carga por niveles, botón de recarga, artículos lazy).
 
 ---
 

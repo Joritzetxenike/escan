@@ -91,6 +91,10 @@ export default function ManualCodeModal({
         onChangeText={setCodigo}
         autoFocus
         autoCapitalize={autoCapitalize}
+        autoCorrect={false}
+        spellCheck={false}
+        keyboardType="default"
+        inputMode="text"
         testID={testID}
       />
 

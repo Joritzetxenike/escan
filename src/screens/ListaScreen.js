@@ -193,15 +193,9 @@ export default function ListaScreen() {
   /* ---------- ABRIR CSV ---------- */
   const abrirCsv = async (nombre) => {
     try {
-      const uri = FileSystem.documentDirectory + nombre;
-      const contenido = await FileSystem.readAsStringAsync(uri);
-      const filas = contenido
-        .split('\n')
-        .filter((line) => line.trim() !== '')
-        .map((line) => {
-          const [ubicacion, articulo, cantidad] = line.split(',');
-          return { ubicacion, articulo, cantidad };
-        });
+      const filas = await leerCsvUbicacion(
+        nombre.replace(/\.csv$/i, '')
+      );
       setCsvSeleccionado(nombre);
       setRegistros(filas);
       cerrarEdicion();
@@ -327,7 +321,7 @@ export default function ListaScreen() {
 
   return (
     <View style={[styles.container, { flex: 1, padding: 10 }]}>
-      <EstadoBanner />
+      <EstadoBanner soloAvisos />
 
       {/* ---------- ESCANEAR / ESCRIBIR UBICACIÓN ---------- */}
 

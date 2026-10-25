@@ -97,7 +97,8 @@ const InventoryDataProvider = {
    * ======================================================= */
 
   /**
-   * Guarda un movimiento.
+   * Guarda un movimiento. `matricula` es opcional y solo la
+   * usa el proveedor CSV para dejar constancia del operario.
    */
   async guardarMovimiento(movimiento) {
     throw new Error('guardarMovimiento() no implementado');

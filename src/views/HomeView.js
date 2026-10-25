@@ -26,9 +26,9 @@ export default function HomeView({
 
       <View style={styles.homeContent}>
 
-        {/* ---------- CONEXIÓN, COLA Y COPIA DEL MAESTRO ---------- */}
+        {/* ---------- AVISOS DE CONEXIÓN Y COLA ---------- */}
 
-        <EstadoBanner />
+        <EstadoBanner soloAvisos />
 
         {/* ---------- UBICACIÓN ---------- */}
 

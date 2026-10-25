@@ -20,19 +20,23 @@ const parseRegistros = (csv) => {
     .split('\n')
     .filter(line => line.trim() !== '')
     .map(line => {
-      const [ubicacion, articulo, cantidad] = line.split(',');
+      const [ubicacion, articulo, cantidad, matricula] = line.split(',');
 
       return {
         ubicacion,
         articulo,
         cantidad: Number(cantidad),
+        /* Los CSV antiguos no traen esta columna. */
+        matricula: matricula ?? '',
       };
     });
 };
 
 const serializeRegistros = (registros) =>
   registros
-    .map(r => `${r.ubicacion},${r.articulo},${r.cantidad}`)
+    .map(r =>
+      `${r.ubicacion},${r.articulo},${r.cantidad},${r.matricula ?? ''}`
+    )
     .join('\n');
 
 /* =======================================================
@@ -84,6 +88,7 @@ const CsvProvider = {
     ubicacion,
     articulo,
     cantidad,
+    matricula = '',
   }) {
 
     const path = getUbicacionPath(ubicacion);
@@ -95,12 +100,17 @@ const CsvProvider = {
     );
 
     if (index >= 0) {
-      registros[index].cantidad = cantidad;
+      registros[index] = {
+        ...registros[index],
+        cantidad,
+        matricula,
+      };
     } else {
       registros.push({
         ubicacion,
         articulo,
         cantidad,
+        matricula,
       });
     }
 

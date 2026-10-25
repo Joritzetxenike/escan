@@ -2,38 +2,24 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 
 import useConectividad from '../logic/useConectividad';
-import useMaestros from '../logic/useMaestros';
 import { colors } from '../styles/styles';
 
 /* =======================================================
- * ESTADO DE LA APP EN UNA FRANJA
+ * CONEXIÓN Y COLA DE PENDIENTES
  * =======================================================
  *
- * Antes eran dos banners apilados: el de conectividad y el
- * del maestro. Con dos, el que importa se quedaba debajo
- * del que no, y con el maestro recién descargado (que es
- * cuando más falta hace el de conectividad) se veían los
- * dos a la vez. Ahora es uno solo y gana el problema más
- * urgente.
+ * La copia del maestro se muestra aparte, en
+ * `MaestrosBanner`, dentro de la pantalla de identificación.
+ * Aquí queda solo lo que afecta al trabajo ya iniciado:
  *
- * Prioridad, de más a menos grave:
+ *   1. Sin conexión        → ámbar  la cola acumula
+ *   2. Error al sincronizar → rojo  una operación falló
+ *   3. Sincronizando       → gris   progreso
+ *   4. Todo bien           → verde  última sincronización
  *
- *   1. Descargando el maestro    → rojo   no se puede validar
- *   2. Sin copia del maestro     → rojo   bloquea todo
- *   3. Error al bajar el maestro → rojo   se conserva la copia
- *   4. Sin conexión              → ámbar  la cola acumula
- *   5. Error al sincronizar      → rojo   una operación falló
- *   6. Sincronizando             → gris   progreso
- *   7. Maestro viejo             → ámbar  actualizar o aplazar
- *   8. Todo bien                 → verde  con el botón siempre
- *
- * Los dos últimos estados incluyen el botón `Actualizar`
- * aunque no haya nada que actualizar: es la única forma de
- * forzar la descarga si un artículo sale rechazado y no
- * queremos esperar 24 h.
- *
- * Un fallo de red nunca muestra la operación como
- * guardada en Supabase: aparece como "pendiente".
+ * En Home y Lista se usa `soloAvisos`: el estado "todo bien"
+ * se oculta y solo quedan los problemas. En la pantalla de
+ * identificación se muestra completo, arriba del formulario.
  * ======================================================= */
 
 const formatHora = (timestamp) => {
@@ -82,7 +68,7 @@ const Boton = ({ onPress, testID, icono, texto, color }) => (
   </TouchableOpacity>
 );
 
-export default function EstadoBanner() {
+export default function EstadoBanner({ soloAvisos = false }) {
 
   const {
     online,
@@ -93,19 +79,6 @@ export default function EstadoBanner() {
     ultimoError,
     reintentar,
   } = useConectividad();
-
-  const {
-    hayCopia,
-    descargando,
-    descargandoQue,
-    pideActualizar,
-    error: errorMaestro,
-    viejo,
-    peligroso,
-    antiguedadTexto,
-    actualizar,
-    aplazar,
-  } = useMaestros();
 
   const pendienteTexto =
     pendientes === 1
@@ -118,16 +91,6 @@ export default function EstadoBanner() {
       testID="reintentar-sincronizacion"
       icono="refresh"
       texto="Reintentar"
-      color={color}
-    />
-  );
-
-  const actualizarBoton = (color) => (
-    <Boton
-      onPress={actualizar}
-      testID="maestros-actualizar"
-      icono="refresh"
-      texto="Actualizar"
       color={color}
     />
   );
@@ -167,63 +130,7 @@ export default function EstadoBanner() {
 
   );
 
-  /* ---------- 1. Descargando el maestro ---------- */
-
-  if (descargando) {
-
-    return franja(
-      'cloud-download',
-      colors.textSecondary,
-      descargandoQue === 'ubicaciones'
-        ? 'Descargando las ubicaciones…'
-        : 'Descargando el maestro de artículos…',
-      {
-        fondo: colors.surfaceAlt,
-        borde: colors.borderStrong,
-        color: colors.textSecondary,
-        hijos: null,
-      }
-    );
-
-  }
-
-  /* ---------- 2. Sin copia: bloquea la validación ---------- */
-
-  if (!hayCopia) {
-
-    return franja(
-      'inventory',
-      colors.danger,
-      'Sin copia del maestro: conéctate una vez para poder validar los códigos',
-      {
-        fondo: '#FEE2E2',
-        borde: colors.danger,
-        color: colors.danger,
-        hijos: actualizarBoton(colors.danger),
-      }
-    );
-
-  }
-
-  /* ---------- 3. Error al bajar el maestro ---------- */
-
-  if (errorMaestro) {
-
-    return franja(
-      'error-outline',
-      colors.danger,
-      `No se pudo actualizar el maestro: ${errorMaestro}`,
-      {
-        fondo: '#FEE2E2',
-        borde: colors.danger,
-        color: colors.danger,
-        hijos: actualizarBoton(colors.danger),
-      }
-    );
-
-  }
-
-  /* ---------- 4. Sin conexión ---------- */
+  /* ---------- 1. Sin conexión ---------- */
 
   if (online === false && !sincronizando) {
 
@@ -241,7 +148,7 @@ export default function EstadoBanner() {
 
   }
 
-  /* ---------- 5. Error al sincronizar ---------- */
+  /* ---------- 2. Error al sincronizar ---------- */
 
   if (ultimoError) {
 
@@ -259,7 +166,7 @@ export default function EstadoBanner() {
 
   }
 
-  /* ---------- 6. Sincronizando ---------- */
+  /* ---------- 3. Sincronizando ---------- */
 
   if (comprobando || sincronizando) {
 
@@ -277,77 +184,17 @@ export default function EstadoBanner() {
 
   }
 
-  /* ---------- 7. Maestro viejo: decide el operario ---------- */
+  /* ---------- 4. Todo bien ---------- */
 
-  if (pideActualizar) {
+  /* En las pantallas de trabajo no ocupamos sitio con el
+     estado normal; los avisos de arriba ya cubren problemas
+     y la cola pendiente. */
 
-    const color = peligroso ? colors.danger : colors.warning;
-
-    const texto = peligroso
-      ? `La copia del maestro (${antiguedadTexto}) puede estar rechazando artículos nuevos`
-      : `Actualizar el maestro · ${antiguedadTexto}`;
-
-    return franja(
-      'update',
-      color,
-      texto,
-      {
-        fondo: peligroso ? '#FEE2E2' : colors.warningBg,
-        borde: color,
-        color,
-        hijos: (
-
-          <View style={styles.acciones}>
-
-            <TouchableOpacity
-              onPress={aplazar}
-              testID="maestros-aplazar"
-              accessibilityRole="button"
-              accessibilityLabel="Aplazar la actualización del maestro"
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            >
-              <Text
-                style={[
-                  styles.accion,
-                  { color },
-                ]}
-              >
-                Ahora no
-              </Text>
-            </TouchableOpacity>
-
-            {actualizarBoton(color)}
-
-          </View>
-
-        ),
-      }
-    );
-
+  if (soloAvisos && pendientes === 0) {
+    return null;
   }
 
-  /* ---------- 8. Maestro viejo, ya decidido ---------- */
-
-  if (viejo) {
-
-    return franja(
-      'update',
-      colors.textSecondary,
-      `Copia del maestro · ${antiguedadTexto}`,
-      {
-        fondo: colors.surfaceAlt,
-        borde: colors.borderStrong,
-        color: colors.textSecondary,
-        hijos: actualizarBoton(colors.primary),
-      }
-    );
-
-  }
-
-  /* ---------- 9. Todo bien ---------- */
-
-  /* Sin recuadro: es el estado normal y no debe gritar.
-     El botón se queda para poder forzar la descarga. */
+  /* Sin recuadro: es el estado normal y no debe gritar. */
 
   return (
 
@@ -366,10 +213,8 @@ export default function EstadoBanner() {
               ultimoIntento
                 ? ` · ${formatHora(ultimoIntento)}`
                 : ''
-            } · Maestro al día`}
+            }`}
       </Text>
-
-      {actualizarBoton(colors.primary)}
 
     </View>
 
@@ -405,15 +250,6 @@ const styles = {
     flex: 1,
     fontSize: 12,
     color: colors.success,
-  },
-  acciones: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  accion: {
-    fontSize: 13,
-    fontWeight: '700',
   },
   boton: {
     flexDirection: 'row',
