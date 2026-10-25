@@ -30,13 +30,14 @@
   - **Pendiente manual**: verificar en dispositivo que el espacio de coordenadas de `bounds` coincide con el overlay (iOS/Android/web).
   - Prioridad: media.
 
-- [ ] **Unificar las constantes del escáner**: hay dos copias de los parámetros de lectura que se mantienen a mano y pueden divergir.
-  - Reales (en uso): `LECTURAS_NECESARIAS = 7` y `TIMEOUT = 1200` en `src/services/ScannerService.js:1-2`, y el `6` hardcodeado en `esCodigoValido` (línea 10).
-  - Fantasma: `src/constants/scannerConstants.js` — `REQUIRED_READS`, `BUFFER_TIMEOUT` y `MIN_CODE_LENGTH` **no las importa nadie**; `RESET_INTERVAL` solo la usa `src/hooks/useScanner.js` (código muerto).
-  - Hacer que `ScannerService` importe de `scannerConstants` y borrar las locales; `ScannerLogic.js:140` debería usar `RESET_INTERVAL` en vez del `500` inline.
-  - **Ojo**: ahora la UI del escáner también lee `REQUIRED_READS` para pintar el contador `n/7` (`ScannerView.js`), así que sincronizar a mano `REQUIRED_READS` y `LECTURAS_NECESARIAS` ya engaña a dos sitios.
-  - Arreglar el test `__tests__/services/ScannerService.test.js:105` ("después de 10 lecturas" cuando el valor es 7) usando `REQUIRED_READS`.
-  - Decidir si se borra `src/hooks/useScanner.js`.
+- [x] **Unificar las constantes del escáner** (HECHO): `ScannerService` importa
+  `MIN_CODE_LENGTH`, `REQUIRED_READS` y `BUFFER_TIMEOUT` de
+  `src/constants/scannerConstants.js`, y `ScannerLogic` usa `RESET_INTERVAL` en
+  vez del `500` inline. Ahora **3 lecturas** es el único valor que hay que
+  cambiar (`REQUIRED_READS`), y el contador de `ScannerView` lo lee de ahí.
+  - `LECTURAS_NECESARIAS`, `TIMEOUT` y el `6` local ya no existen.
+  - El test de `ScannerService` usa `REQUIRED_READS` en vez de un número fijo.
+  - Queda decidir si se borra `src/hooks/useScanner.js` (código muerto).
   - Prioridad: baja.
 
 ## Visualización de datos vía web

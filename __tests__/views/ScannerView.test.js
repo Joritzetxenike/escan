@@ -234,7 +234,7 @@ describe('ScannerView', () => {
   // INDICADOR DE PROGRESO
   // =====================================================
   //
-  // Debajo del hint se muestra "codigo · n/7" solo mientras
+  // Debajo del hint se muestra "codigo · n/3" solo mientras
   // se acumulan lecturas; sin lecturas no debe haber rastro.
 
   describe('indicador de progreso', () => {
@@ -245,10 +245,10 @@ describe('ScannerView', () => {
 
     test('muestra el código y el contador mientras acumula', () => {
       montar({
-        progreso: { codigo: '123456', count: 3 },
+        progreso: { codigo: '123456', count: 2 },
       });
 
-      expect(textos()).toContain('123456 · 3/7');
+      expect(textos()).toContain('123456 · 2/3');
     });
 
     test('cambia de código al reiniciarse el buffer', () => {
@@ -256,7 +256,7 @@ describe('ScannerView', () => {
         progreso: { codigo: '999999', count: 1 },
       });
 
-      expect(textos()).toContain('999999 · 1/7');
+      expect(textos()).toContain('999999 · 1/3');
     });
 
     test('no se muestra sin lecturas', () => {

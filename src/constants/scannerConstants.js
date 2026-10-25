@@ -1,6 +1,6 @@
 export const MIN_CODE_LENGTH = 6;
 
-export const REQUIRED_READS = 7;
+export const REQUIRED_READS = 3;
 
 export const BUFFER_TIMEOUT = 1200;
 

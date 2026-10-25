@@ -4,7 +4,10 @@ import { useCameraPermissions } from 'expo-camera';
 
 import ScannerService from '../services/ScannerService';
 import UbicacionValidator from '../validators/UbicacionValidator';
-import { TOLERANCIA_MARCO } from '../constants/scannerConstants';
+import {
+  TOLERANCIA_MARCO,
+  RESET_INTERVAL,
+} from '../constants/scannerConstants';
 
 export function useScannerLogic(navigation, route) {
 
@@ -162,7 +165,7 @@ export function useScannerLogic(navigation, route) {
 
       reflejarProgreso(scanBuffer.current);
 
-    }, 500);
+    }, RESET_INTERVAL);
 
     return () => clearInterval(interval);
 

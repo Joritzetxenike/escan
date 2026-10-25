@@ -1,5 +1,8 @@
-const LECTURAS_NECESARIAS = 7;
-const TIMEOUT = 1200;
+import {
+  MIN_CODE_LENGTH,
+  REQUIRED_READS,
+  BUFFER_TIMEOUT,
+} from '../constants/scannerConstants';
 
 const ScannerService = {
 
@@ -7,7 +10,7 @@ const ScannerService = {
 
     if (!data) return false;
 
-    if (data.length < 6) return false;
+    if (data.length < MIN_CODE_LENGTH) return false;
 
     return true;
   },
@@ -37,11 +40,11 @@ const ScannerService = {
     };
 
     console.log(
-      `VALIDACIÓN ${data}: ${nuevoBuffer.count}/${LECTURAS_NECESARIAS}`
+      `VALIDACIÓN ${data}: ${nuevoBuffer.count}/${REQUIRED_READS}`
     );
 
     // Ya es válido
-    if (nuevoBuffer.count >= LECTURAS_NECESARIAS) {
+    if (nuevoBuffer.count >= REQUIRED_READS) {
 
       return {
         validado: true,
@@ -66,7 +69,7 @@ const ScannerService = {
 
     const now = Date.now();
 
-    if (now - buffer.lastTime > TIMEOUT) {
+    if (now - buffer.lastTime > BUFFER_TIMEOUT) {
 
       return {
         value: '',

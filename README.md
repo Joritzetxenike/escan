@@ -108,7 +108,7 @@ Para cambiar de backend solo hay que modificar la constante en `DataSource.js`.
 
 ### Escáner — Multi-lectura
 
-El escáner requiere que un mismo código se lea **10 veces consecutivas en 1200ms** antes de darlo por válido. Esto evita lecturas parciales o incorrectas. El buffer se reinicia automáticamente tras 1200ms de inactividad. La lógica está en `ScannerService` y se orquesta en `useScannerLogic`.
+El escáner requiere que un mismo código se lea **3 veces consecutivas en 1200ms** antes de darlo por válido. Esto evita lecturas parciales o incorrectas. El buffer se reinicia automáticamente tras 1200ms de inactividad. La lógica está en `ScannerService` y se orquesta en `useScannerLogic`.
 
 ---
 

@@ -1,4 +1,5 @@
 import ScannerService from '../../src/services/ScannerService';
+import { REQUIRED_READS } from '../../src/constants/scannerConstants';
 
 describe('ScannerService', () => {
 
@@ -102,11 +103,11 @@ describe('ScannerService', () => {
     });
 
 
-    test('valida el código después de 10 lecturas', () => {
+    test(`valida el código después de ${REQUIRED_READS} lecturas`, () => {
 
       const buffer = {
         value: '123456',
-        count: 9,
+        count: REQUIRED_READS - 1,
         lastTime: Date.now(),
       };
 
