@@ -77,6 +77,36 @@ describe('ArticuloExistenteModal', () => {
 
     });
 
+    test('muestra descripción y unidad del artículo', () => {
+
+      act(() => {
+        renderer = create(
+          <ArticuloExistenteModal
+            {...props}
+            descripcion="Tornillo hexagonal"
+            unidad="UD"
+          />
+        );
+      });
+
+      const contenido = textos();
+
+      expect(contenido).toContain(
+        'Descripción: Tornillo hexagonal'
+      );
+      expect(contenido).toContain('Unidad: UD');
+    });
+
+    test('usa un guion si no hay descripción ni unidad', () => {
+
+      montar();
+
+      const contenido = textos();
+
+      expect(contenido).toContain('Descripción: —');
+      expect(contenido).toContain('Unidad: —');
+    });
+
   });
 
 

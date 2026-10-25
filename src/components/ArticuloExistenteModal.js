@@ -18,6 +18,8 @@ export default function ArticuloExistenteModal({
   articulo,
   ubicacion,
   cantidad,
+  descripcion = '',
+  unidad = '',
   onSumar,
   onSobrescribir,
   onCancelar,
@@ -41,6 +43,14 @@ export default function ArticuloExistenteModal({
 
           <Text style={styles.modalMensaje}>
             {`El artículo ${articulo} ya está en la ubicación ${ubicacion} con cantidad ${cantidad}. ¿Qué quieres hacer?`}
+          </Text>
+
+          <Text style={styles.modalFila}>
+            Descripción: {descripcion || '—'}
+          </Text>
+
+          <Text style={styles.modalFila}>
+            Unidad: {unidad || '—'}
           </Text>
 
           {/* ---------- ACCIONES ---------- */}

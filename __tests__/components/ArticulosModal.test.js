@@ -189,6 +189,37 @@ describe('ArticulosModal', () => {
     expect(existeTexto('xyz789')).toBe(true);
   });
 
+  test('muestra descripción y unidad de cada artículo', async () => {
+    InventoryService.estaUbicacionFinalizada.mockResolvedValue(false);
+
+    await montar({
+      articulos: [
+        {
+          articulo: 'ABC123',
+          cantidad: 1,
+          dsca: 'Tornillo hexagonal',
+          unidad: 'UD',
+        },
+        {
+          articulo: 'XYZ789',
+          cantidad: 2,
+          dsca: '',
+          unidad: '',
+        },
+      ],
+    });
+
+    expect(existeTexto('Descripción')).toBe(true);
+    expect(existeTexto('Unidad')).toBe(true);
+    expect(existeTexto('Tornillo hexagonal')).toBe(true);
+    expect(existeTexto('UD')).toBe(true);
+    expect(
+      renderer.root
+        .findAllByType(Text)
+        .filter((t) => textoDe(t) === '—')
+    ).toHaveLength(2);
+  });
+
   test('avisa cuando el filtro no encuentra ningún código', async () => {
     InventoryService.estaUbicacionFinalizada.mockResolvedValue(false);
 

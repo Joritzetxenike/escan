@@ -101,7 +101,8 @@ export default function ArticulosModal({
 
               <View style={styles.headerRow}>
                 <Text style={[styles.headerCell, { flex: 2 }]}>Artículo</Text>
-                <Text style={[styles.headerCell, { flex: 1, textAlign: 'center' }]}>Descripción</Text>
+                <Text style={[styles.headerCell, { flex: 1.3, textAlign: 'center' }]}>Descripción</Text>
+                <Text style={[styles.headerCell, { flex: 0.5, textAlign: 'center' }]}>Unidad</Text>
                 <Text style={[styles.headerCell, { flex: 0.8, textAlign: 'center' }]}>Cantidad</Text>
                 {onEliminar && (
                   <Text style={[styles.headerCell, { flex: 0.6, textAlign: 'center' }]}>Eliminar</Text>
@@ -119,8 +120,11 @@ export default function ArticulosModal({
                     <Text style={[styles.cell, { flex: 2 }]} numberOfLines={1}>
                       {item.articulo}
                     </Text>
-                    <Text style={[styles.cell, { flex: 1, textAlign: 'center', color: colors.textSecondary, fontSize: 12 }]} numberOfLines={1}>
+                    <Text style={[styles.cell, { flex: 1.3, textAlign: 'center', color: colors.textSecondary, fontSize: 12 }]} numberOfLines={1}>
                       {item.dsca || '—'}
+                    </Text>
+                    <Text style={[styles.cell, { flex: 0.5, textAlign: 'center', color: colors.textSecondary, fontSize: 12 }]} numberOfLines={1}>
+                      {item.unidad || '—'}
                     </Text>
 
                     {editandoIndex === index ? (

@@ -4,6 +4,7 @@ import { Text, TouchableOpacity, Alert } from 'react-native';
 
 import ListaScreen from '../../src/screens/ListaScreen';
 import InventoryService from '../../src/services/InventoryService';
+import ubicacionActivaService from '../../src/services/ubicacionActivaService';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -98,6 +99,11 @@ jest.mock('../../src/services/InventoryService', () => ({
   finalizarUbicacion: jest.fn(),
   eliminarMovimiento: jest.fn(),
   actualizarMovimiento: jest.fn(),
+  completarDetalle: jest.fn((articulos) => articulos),
+}));
+
+jest.mock('../../src/services/ubicacionActivaService', () => ({
+  limpiarSiCoincide: jest.fn(),
 }));
 
 
@@ -202,6 +208,9 @@ describe('ListaScreen', () => {
     expect(InventoryService.finalizarUbicacion)
       .not.toHaveBeenCalled();
 
+    expect(ubicacionActivaService.limpiarSiCoincide)
+      .toHaveBeenCalledWith(UBICACION);
+
     expect(Alert.alert).not.toHaveBeenCalledWith(
       'Ubicación terminada',
       expect.any(String)
@@ -232,6 +241,9 @@ describe('ListaScreen', () => {
     expect(InventoryService.finalizarUbicacion)
       .toHaveBeenCalledWith(UBICACION);
 
+    expect(ubicacionActivaService.limpiarSiCoincide)
+      .toHaveBeenCalledWith(UBICACION);
+
     expect(Alert.alert).toHaveBeenCalledWith(
       'Ubicación terminada',
       expect.stringContaining(UBICACION)
@@ -259,6 +271,9 @@ describe('ListaScreen', () => {
     expect(InventoryService.finalizarUbicacion)
       .not.toHaveBeenCalled();
 
+    expect(ubicacionActivaService.limpiarSiCoincide)
+      .not.toHaveBeenCalled();
+
     expect(Sharing.shareAsync).toHaveBeenCalled();
   });
 
@@ -283,6 +298,9 @@ describe('ListaScreen', () => {
       'Aviso',
       expect.any(String)
     );
+
+    expect(ubicacionActivaService.limpiarSiCoincide)
+      .not.toHaveBeenCalled();
 
     expect(Sharing.shareAsync).toHaveBeenCalled();
   });

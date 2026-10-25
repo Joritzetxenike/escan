@@ -55,6 +55,7 @@ jest.mock('../../src/services/maestrosService', () => ({
   existeArticulo: jest.fn(),
   esSIC: jest.fn(),
   esGenerico: jest.fn(),
+  obtenerDetalleArticulo: jest.fn(),
   sugerirArticulos: jest.fn(() => []),
   existeUbicacion: jest.fn(),
   obtenerEstado: jest.fn(() => ({ error: null })),
@@ -101,6 +102,10 @@ describe('InventoryService', () => {
     maestrosService.existeArticulo.mockReturnValue(true);
     maestrosService.esSIC.mockReturnValue(false);
     maestrosService.esGenerico.mockReturnValue(false);
+    maestrosService.obtenerDetalleArticulo.mockReturnValue({
+      descripcion: '',
+      unidad: '',
+    });
     maestrosService.existeUbicacion.mockReturnValue(true);
   });
 
@@ -133,7 +138,13 @@ describe('InventoryService', () => {
       expect(conectividadService.marcarConexion)
         .toHaveBeenCalled();
 
-      expect(resultado).toEqual(articulos);
+      expect(resultado).toEqual([
+        {
+          ...articulos[0],
+          dsca: '',
+          unidad: '',
+        },
+      ]);
     });
 
     test('sin conexión lee los artículos del CSV local', async () => {
@@ -151,8 +162,8 @@ describe('InventoryService', () => {
       ).not.toHaveBeenCalled();
 
       expect(resultado).toEqual([
-        { ubicacion: 'A1', articulo: '123456', cantidad: 5, matricula: '' },
-        { ubicacion: 'A1', articulo: '999999', cantidad: 10, matricula: '' },
+        { ubicacion: 'A1', articulo: '123456', cantidad: 5, matricula: '', dsca: '', unidad: '' },
+        { ubicacion: 'A1', articulo: '999999', cantidad: 10, matricula: '', dsca: '', unidad: '' },
       ]);
     });
 
@@ -172,8 +183,56 @@ describe('InventoryService', () => {
         .toHaveBeenCalled();
 
       expect(resultado).toEqual([
-        { ubicacion: 'A1', articulo: '123456', cantidad: 5, matricula: '' },
+        { ubicacion: 'A1', articulo: '123456', cantidad: 5, matricula: '', dsca: '', unidad: '' },
       ]);
+    });
+
+    test('completa descripción y unidad desde el maestro', async () => {
+
+      conectividadService.estaOnline.mockResolvedValue(false);
+
+      mockArchivos['file:///test/A1.csv'] =
+        'A1,123456,5';
+
+      maestrosService.obtenerDetalleArticulo.mockReturnValue({
+        descripcion: 'Tornillo hexagonal',
+        unidad: 'UD',
+      });
+
+      const resultado =
+        await InventoryService.cargarUbicacion('A1');
+
+      expect(resultado[0].dsca).toBe(
+        'Tornillo hexagonal'
+      );
+      expect(resultado[0].unidad).toBe('UD');
+    });
+
+    test('conserva la descripción que ya llega de Supabase', async () => {
+
+      DataProvider.obtenerArticulosUbicacion
+        .mockResolvedValue([
+          {
+            ubicacion: 'A1',
+            articulo: '123456',
+            cantidad: 5,
+            dsca: 'Descripción remota',
+            unidad: 'CA',
+          },
+        ]);
+
+      maestrosService.obtenerDetalleArticulo.mockReturnValue({
+        descripcion: 'Descripción local',
+        unidad: 'UD',
+      });
+
+      const resultado =
+        await InventoryService.cargarUbicacion('A1');
+
+      expect(resultado[0].dsca).toBe(
+        'Descripción remota'
+      );
+      expect(resultado[0].unidad).toBe('CA');
     });
 
   });
@@ -827,6 +886,29 @@ describe('InventoryService', () => {
       ).toHaveBeenCalledWith('123', undefined);
 
       expect(resultado).toEqual(['123456', '123999']);
+    });
+
+    test('añade descripción y unidad a las sugerencias', () => {
+
+      maestrosService.sugerirArticulos.mockReturnValue([
+        '123456',
+      ]);
+
+      maestrosService.obtenerDetalleArticulo.mockReturnValue({
+        descripcion: 'Tornillo hexagonal',
+        unidad: 'UD',
+      });
+
+      const resultado =
+        InventoryService.sugerirArticulosConDetalle('123');
+
+      expect(resultado).toEqual([
+        {
+          codigo: '123456',
+          descripcion: 'Tornillo hexagonal',
+          unidad: 'UD',
+        },
+      ]);
     });
 
   });

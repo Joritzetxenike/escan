@@ -44,7 +44,7 @@ escan/
     ├── hooks/                 # useScanner.js (alternativa al refactor de ScannerLogic)
     ├── components/            # HeaderSesion, HeaderTabs, ArticulosModal, CantidadModal, ManualCodeModal, EstadoCard, UpdateModal, EstadoBanner, MaestrosBanner, EstadoResumen
     ├── navigation/            # RootNavigator (stack), MainTabs (bottom-tabs)
-    ├── services/              # authService, InventoryService, ScannerService, ubicacionesService, updateService, conectividadService, pendientesService, syncService
+    ├── services/              # authService, InventoryService, ScannerService, ubicacionesService, updateService, conectividadService, pendientesService, ubicacionActivaService, syncService
     ├── providers/             # Provider Pattern (estrategia de datos intercambiable)
     │   ├── DataSource.js      # Backend activo: 'supabase' (csv/api comentados)
     │   ├── DataProvider.js    # Router → SupabaseProvider | CsvProvider
@@ -54,7 +54,7 @@ escan/
     │   └── api/               # apiProvider (stub, no implementado)
     ├── validators/            # ArticuloValidator, UbicacionValidator
     ├── constants/             # scannerConstants.js
-    ├── helpers/               # csvHelper.js, estadosResumenHelper.js, redHelper.js
+    ├── helpers/               # archivoHelper.js, csvHelper.js, estadosResumenHelper.js, redHelper.js
     ├── styles/                # styles.js (estilos globales)
     ├── data/                  # ubicacionesMock.js (mock, no usado)
     ├── domain/models/         # (vacío — planificado)
@@ -118,6 +118,11 @@ El escáner requiere que un mismo código se lea **10 veces consecutivas en 1200
    dígitos). Al pulsar **Entrar** se guarda en memoria y se montan las pestañas.
    La cabecera muestra la matrícula y permite cerrar sesión.
 1. **Home** → "Escanear ubicación" → `ScannerScreen` (tipo `ubicacion`) → el código vuelve por `onScan` → `cargarUbicacion()` guarda la ubicación actual y obtiene sus artículos (1 petición).
+   - El dispositivo solo puede tener **una ubicación activa**. Si ya hay una
+     abierta, se permite volver a cargar la misma, pero se rechaza cualquier
+     otra hasta terminarla. El bloqueo cubre cámara y entrada manual.
+   - La ubicación activa se guarda en `ubicacion-activa.json`; al arrancar se
+     consulta la nube para saber si ya está en `Fin`. Si lo está, se libera.
 2. **Home** → "Escanear artículo" (o botón `+` para introducción manual) → `procesarArticulo()`:
    - Si la ubicación actual está **terminada** (`Fin`), el aviso "Ubicación terminada" sale **al pulsar** el botón (antes de abrir la cámara o el modal); `procesarArticulo()` conserva la misma comprobación como red de seguridad.
    - `validarArticulo()` comprueba contra la copia local: existe ubicación escaneada → existe en `maestroArticulo` (y no es genérico).
@@ -172,6 +177,12 @@ el botón **×** limpia el filtro. El filtro se reinicia al cerrar el modal.
 No busca por descripción (los CSV no la guardan) ni por cantidad, y no altera
 las filas: editar o eliminar una fila filtrada sigue actuando sobre el artículo
 correcto (se conserva su posición real en el CSV).
+
+Desde la lista de artículos, el modal de cantidad, el aviso de artículo repetido
+y los **últimos artículos escaneados** se muestran **Descripción** y **Unidad**
+cuando el maestro local las conoce. El CSV sigue teniendo el mismo formato
+(`ubicacion,articulo,cantidad,matricula`): esos datos se enriquecen en memoria
+por código y, si faltan, se muestran como `—`.
 
 ### EstadoScreen (resumen + lista)
 
@@ -276,6 +287,23 @@ finalizar:
 - La matrícula **no** se incluye en la cola de pendientes ni en las peticiones
   a Supabase: solo vive en el CSV local y en el fichero exportado.
 
+### Ubicación activa: `ubicacion-activa.json`
+
+Vive en `documentDirectory` y guarda solo el código de la ubicación que el
+dispositivo tiene abierta. Es un estado del **dispositivo**, no de la sesión:
+no se borra al cerrar sesión ni al reiniciar la app.
+
+- Al arrancar, `HomeLogic` recupera el código y consulta la nube con
+  `InventoryService.estaUbicacionFinalizada()`.
+- Si la ubicación sigue abierta, queda restaurada y no se puede escanear otra
+  distinta. Volver a escanear la misma sí se permite.
+- Si la nube la devuelve en `Fin`, se borra el fichero y queda libre.
+- Sin conexión manda la cola de finalizaciones pendientes, igual que en el
+  resto de comprobaciones de estado.
+- Al exportar/compartir el CSV desde Lista se finaliza la ubicación y se borra
+  el marcador. Si el cierre falla, el bloqueo continúa.
+- Abrir un CSV desde Lista no cambia la ubicación activa.
+
 ### Cola de pendientes: `pending-operations.json`
 
 Vive en `documentDirectory`, junto a los CSV. Es un `.json`, así que **no
@@ -339,17 +367,19 @@ plano y el botón **Reintentar** de `EstadoBanner`.
 
 `src/services/maestrosService.js` mantiene una copia local de los maestros para
 poder validar artículos y ubicaciones **sin red**. En memoria son tres `Set`
-(códigos, SIC y genéricos) más uno de ubicaciones, cargados desde dos ficheros:
+(códigos, SIC y genéricos), un `Set` de ubicaciones y dos mapas opcionales
+(`descripciones` y `unidades`), cargados desde dos ficheros:
 
 | Fichero                | Contenido                                             |
 | ---------------------- | ----------------------------------------------------- |
-| `maestro-articulos.json` | `version`, `actualizado_at`, `total`, `codigos`, `sic`, `genericos` |
+| `maestro-articulos.json` | `version`, `actualizado_at`, `total`, `codigos`, `sic`, `genericos`, `descripciones`, `unidades` |
 | `maestro-ubicaciones.json` | `version`, `actualizado_at`, `ubicaciones` (`seccion-area-subzona`) |
 | `maestros-meta.json`   | Fechas de descarga y `rechazada_hasta` (aplazamiento) |
 
-Solo se guardan los **códigos**, no las descripciones: 211.578 filas en unos 3 MB
-en lugar de los ~9 MB que ocuparía el catálogo completo. La descripción no se usa
-en la app.
+`descripciones` y `unidades` son mapas **código → valor** opcionales, pensados
+para enriquecer la UI sin tocar el CSV. De momento se guardan **vacíos** porque
+la RPC `descargar_maestro_articulos()` no devuelve esos datos; los maestros
+antiguos siguen siendo válidos y los campos se muestran como `—` cuando faltan.
 
 El maestro de artículos se baja con una única llamada a la RPC
 `descargar_maestro_articulos()` (PostgREST limita a 1.000 filas por respuesta, así
@@ -425,8 +455,8 @@ se rechaza con un aviso explícito en vez de aceptar códigos sin comprobar.
 
 Al teclear un artículo a mano (`+` de Home), el modal sugiere códigos de la
 copia local **que empiezan por lo tecleado**. Funciona sin conexión (usa la
-misma copia que la validación) y solo muestra **códigos** (la copia local no
-guarda descripciones).
+misma copia que la validación) y muestra el **código** y, si está disponible en
+el maestro local, su **descripción** y **unidad**.
 
 - Se compara **ignorando mayúsculas/minúsculas** (`bxc05` sugiere `-BXC05…`),
   pero al elegir se escribe el código **real**.
@@ -436,9 +466,10 @@ guarda descripciones).
   confirma (puede seguir editándolo).
 - Sin copia local no hay sugerencias, igual que no hay validación.
 
-La lógica vive en `maestrosService.sugerirArticulos()` (expuesta por
-`InventoryService` y `HomeLogic`), y el desplegable en `ManualCodeModal` a
-través del prop opcional `sugerencias`.
+La lógica vive en `maestrosService.sugerirArticulos()` y
+`maestrosService.obtenerDetalleArticulo()` (expuestas por `InventoryService` y
+`HomeLogic`), y el desplegable en `ManualCodeModal` a través del prop opcional
+`sugerencias`; el detalle del código tecleado se pide con `obtenerDetalle`.
 
 ### Artículo ya contado: sumar o sobrescribir
 
@@ -502,10 +533,12 @@ sí distinguen mayúsculas y minúsculas (`-BXC05.4010 -SUB`).
 1. `guardarMovimiento` en Supabase son 4 peticiones: si la red se cae a mitad,
    el `conteo` puede quedar guardado y los `stat` no. El reintento lo converge,
    pero la solución definitiva es la RPC transaccional (ver `TODO.md`).
-2. La copia local del maestro solo guarda los **códigos**, no las descripciones.
-   Sin conexión, un artículo se acepta o se rechaza por el código y no se muestra
-   su descripción (la app no la usa). El riesgo real es que un código nuevo se
-   rechace porque la copia tiene más de 24 h: de ahí el aviso de refresco.
+2. La copia local del maestro guarda los **códigos** y, opcionalmente,
+   `descripciones`/`unidades`; ahora mismo esos mapas están vacíos porque la RPC
+   no los devuelve. Sin conexión, un artículo se acepta o se rechaza por el
+   código; la descripción y la unidad solo se muestran si están en la copia. El
+   riesgo real es que un código nuevo se rechace porque la copia tiene más de
+   24 h: de ahí el aviso de refresco.
 3. Validar una ubicación **exige** la copia de ubicaciones, sin excepción. Antes,
    si ese fichero faltaba, se aceptaba cualquier código con formato correcto
    como provisional; con la entrada manual abierta eso habría dejado pasar

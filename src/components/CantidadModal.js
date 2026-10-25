@@ -10,7 +10,9 @@ export default function CantidadModal({
   onConfirm, 
   onCancel, 
   articulo, 
-  ubicacion 
+  ubicacion,
+  descripcion = '',
+  unidad = '',
 }) {
   const [cantidad, setCantidad] = useState('');
 
@@ -45,6 +47,14 @@ export default function CantidadModal({
 
       <Text style={styles.modalFila}>
         Artículo: {articulo}
+      </Text>
+
+      <Text style={styles.modalFila}>
+        Descripción: {descripcion || '—'}
+      </Text>
+
+      <Text style={styles.modalFila}>
+        Unidad: {unidad || '—'}
       </Text>
 
       <TextInput

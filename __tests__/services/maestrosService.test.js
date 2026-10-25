@@ -78,6 +78,14 @@ const MAESTRO = {
   ],
   sic: ['789012'],
   genericos: ['555555'],
+  descripciones: {
+    '123456': 'Tornillo hexagonal',
+    '123999': 'Arandela',
+  },
+  unidades: {
+    '123456': 'UD',
+    '123999': 'KG',
+  },
 };
 
 const escribirArticulos = (actualizadoAt) => {
@@ -88,6 +96,8 @@ const escribirArticulos = (actualizadoAt) => {
     codigos: MAESTRO.codigos,
     sic: MAESTRO.sic,
     genericos: MAESTRO.genericos,
+    descripciones: MAESTRO.descripciones,
+    unidades: MAESTRO.unidades,
   });
 };
 
@@ -191,6 +201,24 @@ describe('maestrosService', () => {
       expect(maestrosService.esGenerico('000000')).toBe(false);
     });
 
+    test('devuelve descripción y unidad por código', () => {
+      expect(
+        maestrosService.obtenerDetalleArticulo('123456')
+      ).toEqual({
+        descripcion: 'Tornillo hexagonal',
+        unidad: 'UD',
+      });
+    });
+
+    test('deja descripción y unidad vacías si no existen', () => {
+      expect(
+        maestrosService.obtenerDetalleArticulo('000000')
+      ).toEqual({
+        descripcion: '',
+        unidad: '',
+      });
+    });
+
     test('sugiere los códigos que empiezan por lo tecleado', () => {
       expect(
         maestrosService.sugerirArticulos('123')
@@ -259,6 +287,34 @@ describe('maestrosService', () => {
       ).toBe(true);
     });
 
+    test('un maestro antiguo sin detalle sigue siendo válido', async () => {
+
+      mockArchivos[ARTICULOS] = JSON.stringify({
+        version: 1,
+        actualizado_at: new Date().toISOString(),
+        total: 1,
+        codigos: ['123456'],
+        sic: [],
+        genericos: [],
+      });
+
+      jest.resetModules();
+
+      const suelto =
+        require('../../src/services/maestrosService').default;
+
+      await suelto.asegurarListo();
+
+      expect(suelto.existeArticulo('123456')).toBe(true);
+
+      expect(
+        suelto.obtenerDetalleArticulo('123456')
+      ).toEqual({
+        descripcion: '',
+        unidad: '',
+      });
+    });
+
     test('no vuelve a pedir la copia a Supabase', async () => {
       await maestrosService.asegurarListo();
 
@@ -290,6 +346,10 @@ describe('maestrosService', () => {
       expect(articulos.codigos).toEqual(MAESTRO.codigos);
       expect(articulos.sic).toEqual(MAESTRO.sic);
       expect(articulos.genericos).toEqual(MAESTRO.genericos);
+      expect(articulos.descripciones).toEqual(
+        MAESTRO.descripciones
+      );
+      expect(articulos.unidades).toEqual(MAESTRO.unidades);
       expect(articulos.total).toBe(MAESTRO.codigos.length);
 
       /* El árbol se aplana a códigos seccion-area-subzona */
@@ -305,6 +365,23 @@ describe('maestrosService', () => {
       expect(
         maestrosService.esSIC('789012')
       ).toBe(true);
+    });
+
+    test('guarda descripciones y unidades vacías si no vienen', async () => {
+
+      DataProvider.obtenerMaestroArticulos
+        .mockResolvedValue({
+          codigos: MAESTRO.codigos,
+          sic: MAESTRO.sic,
+          genericos: MAESTRO.genericos,
+        });
+
+      await maestrosService.descargar();
+
+      const articulos = JSON.parse(mockArchivos[ARTICULOS]);
+
+      expect(articulos.descripciones).toEqual({});
+      expect(articulos.unidades).toEqual({});
     });
 
     test('escribe de forma atómica (tmp + renombrado)', async () => {

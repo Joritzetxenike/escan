@@ -242,6 +242,13 @@ ultimosArticulosTitle: {
     marginBottom: 10,
   },
 
+  detalleArticulo: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: 8,
+  },
+
   modalAcciones: {
     flexDirection: 'row',
     justifyContent: 'space-between',

@@ -14,6 +14,7 @@ jest.mock('../../src/services/maestrosService', () => ({
   existeArticulo: jest.fn(),
   esSIC: jest.fn(),
   esGenerico: jest.fn(),
+  obtenerDetalleArticulo: jest.fn(),
   obtenerEstado: jest.fn(() => ({ error: null })),
 }));
 
@@ -26,6 +27,10 @@ describe('ArticuloValidator', () => {
     maestrosService.existeArticulo.mockReturnValue(true);
     maestrosService.esSIC.mockReturnValue(false);
     maestrosService.esGenerico.mockReturnValue(false);
+    maestrosService.obtenerDetalleArticulo.mockReturnValue({
+      descripcion: '',
+      unidad: '',
+    });
     maestrosService.obtenerEstado.mockReturnValue({
       error: null,
     });
@@ -101,6 +106,24 @@ describe('ArticuloValidator', () => {
 
       expect(resultado.ok).toBe(true);
       expect(resultado.esSIC).toBe(true);
+    });
+
+    test('devuelve la descripción y la unidad del maestro', async () => {
+      maestrosService.obtenerDetalleArticulo.mockReturnValue({
+        descripcion: 'Tornillo hexagonal',
+        unidad: 'UD',
+      });
+
+      const resultado =
+        await ArticuloValidator.validar(
+          '123456',
+          'A1'
+        );
+
+      expect(resultado.descripcion).toBe(
+        'Tornillo hexagonal'
+      );
+      expect(resultado.unidad).toBe('UD');
     });
 
     test('rechaza un artículo genérico indicando el motivo', async () => {

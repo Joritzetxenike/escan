@@ -156,14 +156,25 @@ export default function HomeView({
             {state.ultimosArticulos.map(
               (item, index) => (
 
-                <Text
-                  key={index}
-                  style={styles.itemArticulo}
-                >
-                  {`${item.articulo} — Cantidad: ${item.cantidad}${
-                    item.pendiente ? ' (pendiente)' : ''
-                  }`}
-                </Text>
+                <View key={index}>
+
+                  <Text style={styles.itemArticulo}>
+                    {`${item.articulo} — Cantidad: ${item.cantidad}${
+                      item.pendiente ? ' (pendiente)' : ''
+                    }`}
+                  </Text>
+
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      color: '#6B7280',
+                      marginBottom: 6,
+                    }}
+                  >
+                    {`${item.descripcion || '—'} · ${item.unidad || '—'}`}
+                  </Text>
+
+                </View>
 
               )
             )}
@@ -183,6 +194,8 @@ export default function HomeView({
         visible={state.mostrarManual}
 
         sugerencias={actions.sugerirArticulos}
+
+        obtenerDetalle={actions.obtenerDetalleArticulo}
 
         onConfirm={async (codigo) => {
 
@@ -259,6 +272,10 @@ export default function HomeView({
 
         cantidad={state.cantidadExistente}
 
+        descripcion={state.detalleArticulo?.descripcion}
+
+        unidad={state.detalleArticulo?.unidad}
+
         onSumar={actions.elegirSumar}
 
         onSobrescribir={actions.elegirSobrescribir}
@@ -277,6 +294,10 @@ export default function HomeView({
         ubicacion={state.ubicacion}
 
         articulo={state.articuloTemp}
+
+        descripcion={state.detalleArticulo?.descripcion}
+
+        unidad={state.detalleArticulo?.unidad}
 
         onConfirm={actions.confirmarCantidad}
 

@@ -309,6 +309,48 @@ describe('ManualCodeModal', () => {
       expect(valorDelCampo()).toBe('123456');
     });
 
+    test('muestra descripción y unidad en las sugerencias', async () => {
+      montar({
+        sugerencias: () => [
+          {
+            codigo: '123456',
+            descripcion: 'Tornillo hexagonal',
+            unidad: 'UD',
+          },
+        ],
+      });
+
+      escribirCodigo('12');
+      await esperarDebounce();
+
+      const contenido =
+        JSON.stringify(renderer.toJSON());
+
+      expect(contenido).toContain('123456');
+      expect(contenido).toContain('Tornillo hexagonal');
+      expect(contenido).toContain('UD');
+    });
+
+    test('muestra el detalle del código tecleado', async () => {
+      montar({
+        obtenerDetalle: () => ({
+          descripcion: 'Tornillo hexagonal',
+          unidad: 'UD',
+        }),
+      });
+
+      escribirCodigo('123456');
+      await esperarDebounce();
+
+      const contenido =
+        JSON.stringify(renderer.toJSON());
+
+      expect(contenido).toContain(
+        'Descripción: Tornillo hexagonal'
+      );
+      expect(contenido).toContain('Unidad: UD');
+    });
+
     test('no muestra lista si no se le pasa la función', async () => {
       montar();
 

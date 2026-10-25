@@ -16,6 +16,7 @@ import ArticulosModal from '../components/ArticulosModal';
 import ManualCodeModal from '../components/ManualCodeModal';
 import EstadoBanner from '../components/EstadoBanner';
 import InventoryService from '../services/InventoryService';
+import ubicacionActivaService from '../services/ubicacionActivaService';
 import UbicacionValidator from '../validators/UbicacionValidator';
 import { nombreCsvUbicacion, leerCsvUbicacion } from '../helpers/csvHelper';
 
@@ -80,7 +81,9 @@ export default function ListaScreen() {
       return false;
     }
 
-    const filas = await leerCsvUbicacion(ubicacion);
+    const filas = InventoryService.completarDetalle(
+      await leerCsvUbicacion(ubicacion)
+    );
 
     if (filas.length === 0) {
       Alert.alert(
@@ -122,11 +125,13 @@ export default function ListaScreen() {
        se sigue al borrar un registro. */
 
     let sigueAbierta = true;
+    let puedeLiberarActiva = false;
 
     try {
       sigueAbierta = !(await InventoryService.estaUbicacionFinalizada(
         ubicacion
       ));
+      puedeLiberarActiva = !sigueAbierta;
     } catch (e) {
       /* Sin poder comprobarlo no se cierra: cerrar a ciegas es
          justo lo que duplica la cola. Compartir no tiene efectos
@@ -140,6 +145,8 @@ export default function ListaScreen() {
       try {
         const resultado =
           await InventoryService.finalizarUbicacion(ubicacion);
+
+        puedeLiberarActiva = true;
 
         if (resultado?.pendiente) {
           Alert.alert(
@@ -158,6 +165,14 @@ export default function ListaScreen() {
           'Aviso',
           `No se pudo marcar la ubicación ${ubicacion} como terminada`
         );
+      }
+    }
+
+    if (puedeLiberarActiva) {
+      try {
+        await ubicacionActivaService.limpiarSiCoincide(ubicacion);
+      } catch (e) {
+        console.error('No se pudo limpiar la ubicación activa:', e);
       }
     }
 
@@ -193,8 +208,10 @@ export default function ListaScreen() {
   /* ---------- ABRIR CSV ---------- */
   const abrirCsv = async (nombre) => {
     try {
-      const filas = await leerCsvUbicacion(
-        nombre.replace(/\.csv$/i, '')
+      const filas = InventoryService.completarDetalle(
+        await leerCsvUbicacion(
+          nombre.replace(/\.csv$/i, '')
+        )
       );
       setCsvSeleccionado(nombre);
       setRegistros(filas);

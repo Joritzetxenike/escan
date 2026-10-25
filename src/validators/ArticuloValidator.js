@@ -105,10 +105,15 @@ class ArticuloValidator {
       return this.esGenerico(codigoArticulo);
     }
 
+    const detalle =
+      maestrosService.obtenerDetalleArticulo(codigoArticulo);
+
     return {
       ok: true,
       provisional: false,
       esSIC: maestrosService.esSIC(codigoArticulo),
+      descripcion: detalle.descripcion,
+      unidad: detalle.unidad,
     };
 
   }

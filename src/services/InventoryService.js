@@ -115,6 +115,25 @@ const InventoryService = {
    * LECTURA
    * ===================================================== */
 
+  completarDetalle(articulos) {
+
+    return (articulos ?? []).map((item) => {
+
+      const detalle =
+        maestrosService.obtenerDetalleArticulo(
+          item.articulo
+        );
+
+      return {
+        ...item,
+        dsca: item.dsca || detalle.descripcion,
+        unidad: item.unidad || detalle.unidad,
+      };
+
+    });
+
+  },
+
   async cargarUbicacion(codigoUbicacion) {
 
     if (await conectividadService.estaOnline()) {
@@ -128,7 +147,7 @@ const InventoryService = {
 
         conectividadService.marcarConexion();
 
-        return articulos;
+        return this.completarDetalle(articulos);
 
       } catch (e) {
 
@@ -140,9 +159,12 @@ const InventoryService = {
 
     /* ---------- Sin conexión: CSV local ---------- */
 
-    return await CsvProvider.obtenerArticulosUbicacion(
-      codigoUbicacion
-    );
+    const articulos =
+      await CsvProvider.obtenerArticulosUbicacion(
+        codigoUbicacion
+      );
+
+    return this.completarDetalle(articulos);
   },
 
   /**
@@ -335,6 +357,19 @@ const InventoryService = {
      de la copia local que empiezan por lo tecleado. */
   sugerirArticulos(texto, limite) {
     return maestrosService.sugerirArticulos(texto, limite);
+  },
+
+  sugerirArticulosConDetalle(texto, limite) {
+    return this.sugerirArticulos(texto, limite).map(
+      (codigo) => ({
+        codigo,
+        ...this.obtenerDetalleArticulo(codigo),
+      })
+    );
+  },
+
+  obtenerDetalleArticulo(codigo) {
+    return maestrosService.obtenerDetalleArticulo(codigo);
   },
 };
 

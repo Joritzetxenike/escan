@@ -1,8 +1,9 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 
 import InventoryService from '../services/InventoryService';
+import ubicacionActivaService from '../services/ubicacionActivaService';
 import useConectividad from './useConectividad';
 
 export function useHomeLogic(navigation) {
@@ -12,6 +13,15 @@ export function useHomeLogic(navigation) {
    * ===================================================== */
 
   const [ubicacion, setUbicacion] = useState(null);
+
+  /* Ubicación que este dispositivo tiene abierta. Se guarda en
+     disco para que un reinicio no permita escanear otra. */
+
+  const [ubicacionActiva, setUbicacionActiva] =
+    useState(null);
+
+  const [cargandoUbicacionActiva, setCargandoUbicacionActiva] =
+    useState(true);
 
   const [ubicacionFinalizada, setUbicacionFinalizada] =
     useState(false);
@@ -31,6 +41,9 @@ export function useHomeLogic(navigation) {
     useState(false);
 
   const [articuloTemp, setArticuloTemp] = useState(null);
+
+  const [detalleArticulo, setDetalleArticulo] =
+    useState(null);
 
   const [mostrarCantidad, setMostrarCantidad] = useState(false);
 
@@ -64,10 +77,131 @@ export function useHomeLogic(navigation) {
 
 
   /* =====================================================
+   * RESTAURAR UBICACIÓN ACTIVA DEL DISPOSITIVO
+   * =====================================================
+   *
+   * El código se guarda localmente, pero su estado real se
+   * consulta a la nube: si ya está en `Fin`, el dispositivo
+   * queda libre para escanear otra ubicación. Sin conexión,
+   * `InventoryService` usa la cola de finalizaciones.
+   * ===================================================== */
+
+  useEffect(() => {
+
+    let montado = true;
+
+    (async () => {
+
+      try {
+
+        const guardada =
+          await ubicacionActivaService.obtener();
+
+        if (!montado || !guardada) return;
+
+        let finalizada = false;
+
+        try {
+
+          finalizada =
+            await InventoryService.estaUbicacionFinalizada(
+              guardada
+            );
+
+        } catch (e) {
+
+          /* Ante la duda se conserva el bloqueo: liberar una
+             ubicación sin confirmar que está cerrada permitiría
+             abrir otra por error. */
+
+          console.error(
+            'No se pudo comprobar la ubicación activa:',
+            e
+          );
+
+        }
+
+        if (!montado) return;
+
+        if (finalizada) {
+
+          try {
+
+            await ubicacionActivaService.limpiarSiCoincide(
+              guardada
+            );
+
+          } catch (e) {
+
+            console.error(
+              'No se pudo limpiar la ubicación activa:',
+              e
+            );
+
+          }
+
+          return;
+
+        }
+
+        setUbicacion(guardada);
+        setUbicacionActiva(guardada);
+        setUbicacionFinalizada(false);
+
+      } catch (e) {
+
+        console.error(
+          'Error restaurando la ubicación activa:',
+          e
+        );
+
+      } finally {
+
+        if (montado) {
+          setCargandoUbicacionActiva(false);
+        }
+
+      }
+
+    })();
+
+    return () => {
+      montado = false;
+    };
+
+  }, []);
+
+
+  /* =====================================================
    * NAVEGACIÓN AL SCANNER
    * ===================================================== */
 
+  const avisoUbicacionActiva = () => {
+
+    Alert.alert(
+      'Ubicación activa',
+      `La ubicación ${ubicacionActiva} sigue abierta. Termínala para poder escanear otra.`
+    );
+
+  };
+
+
+  const avisoCargandoUbicacionActiva = () => {
+
+    Alert.alert(
+      'Espera',
+      'Todavía se está comprobando la ubicación activa.'
+    );
+
+  };
+
+
   const abrirScannerUbicacion = () => {
+
+    if (cargandoUbicacionActiva) {
+      avisoCargandoUbicacionActiva();
+      return;
+    }
 
     navigation.navigate('Scanner', {
 
@@ -162,6 +296,11 @@ export function useHomeLogic(navigation) {
 
   const abrirModalManualUbicacion = () => {
 
+    if (cargandoUbicacionActiva) {
+      avisoCargandoUbicacionActiva();
+      return;
+    }
+
     /* No se exige ubicación previa: la ubicación es
        precisamente lo que se está introduciendo. */
 
@@ -184,10 +323,99 @@ export function useHomeLogic(navigation) {
   const normalizarUbicacion = (codigo) =>
     String(codigo ?? '').trim().toUpperCase();
 
+
+  const liberarUbicacionActiva = async (codigo) => {
+
+    try {
+
+      await ubicacionActivaService.limpiarSiCoincide(
+        codigo
+      );
+
+    } catch (e) {
+
+      console.error(
+        'No se pudo limpiar la ubicación activa:',
+        e
+      );
+
+    }
+
+    setUbicacionActiva((actual) =>
+      actual === codigo ? null : actual
+    );
+
+  };
+
+
+  /**
+   * Devuelve `false` si hay otra ubicación abierta en el
+   * dispositivo. Antes de bloquear se reconsulta su estado:
+   * si ya está en `Fin`, se libera y se permite la nueva.
+   */
+  const comprobarBloqueoUbicacion = async (
+    codigoNormalizado
+  ) => {
+
+    if (!ubicacionActiva) return true;
+
+    if (codigoNormalizado === ubicacionActiva) {
+      return true;
+    }
+
+    let finalizada = false;
+
+    try {
+
+      finalizada =
+        await InventoryService.estaUbicacionFinalizada(
+          ubicacionActiva
+        );
+
+    } catch (e) {
+
+      console.error(
+        'No se pudo comprobar la ubicación activa:',
+        e
+      );
+
+    }
+
+    if (!finalizada) {
+
+      avisoUbicacionActiva();
+
+      return false;
+    }
+
+    await liberarUbicacionActiva(ubicacionActiva);
+
+    setUbicacionFinalizada(true);
+
+    return true;
+
+  };
+
+
   const cargarUbicacion = async (codigo) => {
+
+    if (cargandoUbicacionActiva) {
+
+      avisoCargandoUbicacionActiva();
+
+      return false;
+
+    }
 
     const codigoNormalizado =
       normalizarUbicacion(codigo);
+
+    const puedeCargar =
+      await comprobarBloqueoUbicacion(
+        codigoNormalizado
+      );
+
+    if (!puedeCargar) return false;
 
     try {
 
@@ -206,15 +434,43 @@ export function useHomeLogic(navigation) {
         return false;
       }
 
+      const finalizada =
+        resultado.ubicacion?.stat === 'Fin';
+
       setUbicacion(codigoNormalizado);
 
-      setUbicacionFinalizada(
-        resultado.ubicacion?.stat === 'Fin'
-      );
+      setUbicacionFinalizada(finalizada);
 
       setUbicacionSinValidar(
         resultado.ubicacionProvisional === true
       );
+
+      if (finalizada) {
+
+        await liberarUbicacionActiva(
+          codigoNormalizado
+        );
+
+      } else {
+
+        try {
+
+          await ubicacionActivaService.guardar(
+            codigoNormalizado
+          );
+
+        } catch (e) {
+
+          console.error(
+            'No se pudo guardar la ubicación activa:',
+            e
+          );
+
+        }
+
+        setUbicacionActiva(codigoNormalizado);
+
+      }
 
       await InventoryService.cargarUbicacion(
         codigoNormalizado
@@ -296,6 +552,11 @@ export function useHomeLogic(navigation) {
     );
 
     setArticuloTemp(codigo);
+
+    setDetalleArticulo({
+      descripcion: resultado.descripcion ?? '',
+      unidad: resultado.unidad ?? '',
+    });
 
 
     /* ---------- ¿YA CONTADO EN EL CSV? ---------- */
@@ -416,6 +677,31 @@ export function useHomeLogic(navigation) {
           if (activo) {
             setUbicacionFinalizada(finalizada);
           }
+
+          if (finalizada) {
+
+            try {
+
+              await ubicacionActivaService.limpiarSiCoincide(
+                ubicacion
+              );
+
+            } catch (e) {
+
+              console.error(
+                'No se pudo limpiar la ubicación activa:',
+                e
+              );
+
+            }
+
+            if (activo) {
+              setUbicacionActiva((actual) =>
+                actual === ubicacion ? null : actual
+              );
+            }
+
+          }
         } catch (e) {
           console.error(
             'Error revalidando ubicación:',
@@ -452,7 +738,14 @@ export function useHomeLogic(navigation) {
    * modal no se dispare en cada render.
    */
   const sugerirArticulos = useCallback(
-    (texto) => InventoryService.sugerirArticulos(texto),
+    (texto) =>
+      InventoryService.sugerirArticulosConDetalle(texto),
+    []
+  );
+
+  const obtenerDetalleArticulo = useCallback(
+    (codigo) =>
+      InventoryService.obtenerDetalleArticulo(codigo),
     []
   );
 
@@ -476,6 +769,8 @@ export function useHomeLogic(navigation) {
     setArticuloTemp(null);
 
     setArticuloSinValidar(false);
+
+    setDetalleArticulo(null);
 
     setCantidadExistente(null);
 
@@ -591,6 +886,8 @@ InventoryService.crearMovimiento(
         prev => [
           {
             ...movimiento,
+            descripcion: detalleArticulo?.descripcion ?? '',
+            unidad: detalleArticulo?.unidad ?? '',
             pendiente: resultado?.pendiente === true,
           },
           ...prev,
@@ -626,6 +923,10 @@ InventoryService.crearMovimiento(
 
     ubicacion,
 
+    ubicacionActiva,
+
+    cargandoUbicacionActiva,
+
     ubicacionFinalizada,
 
     ubicacionSinValidar,
@@ -633,6 +934,8 @@ InventoryService.crearMovimiento(
     articuloTemp,
 
     articuloSinValidar,
+
+    detalleArticulo,
 
     mostrarCantidad,
 
@@ -658,6 +961,8 @@ InventoryService.crearMovimiento(
     onManualCode,
 
     sugerirArticulos,
+
+    obtenerDetalleArticulo,
 
     onManualUbicacion,
 

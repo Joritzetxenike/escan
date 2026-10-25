@@ -5,6 +5,7 @@ import { useFocusEffect } from '@react-navigation/native';
 
 import { useHomeLogic } from '../../src/logic/HomeLogic';
 import InventoryService from '../../src/services/InventoryService';
+import ubicacionActivaService from '../../src/services/ubicacionActivaService';
 
 jest.mock('react-native', () => ({
   Alert: {
@@ -30,6 +31,11 @@ jest.mock('../../src/services/InventoryService', () => ({
   estaOnline: jest.fn(),
   sincronizarPendientes: jest.fn(),
   sugerirArticulos: jest.fn(() => []),
+  sugerirArticulosConDetalle: jest.fn(() => []),
+  obtenerDetalleArticulo: jest.fn(() => ({
+    descripcion: '',
+    unidad: '',
+  })),
 }));
 
 // Estado de conexión que devuelve el hook
@@ -38,6 +44,13 @@ let mockEstadoConexion = { online: true };
 jest.mock('../../src/logic/useConectividad', () => ({
   __esModule: true,
   default: () => mockEstadoConexion,
+}));
+
+jest.mock('../../src/services/ubicacionActivaService', () => ({
+  obtener: jest.fn(),
+  guardar: jest.fn(),
+  limpiar: jest.fn(),
+  limpiarSiCoincide: jest.fn(),
 }));
 
 // Harness: ejecuta el hook y expone su resultado en `current`.
@@ -57,7 +70,17 @@ describe('useHomeLogic', () => {
 
   let renderer;
 
-  beforeEach(() => {
+  const remontar = async () => {
+    act(() => {
+      renderer.unmount();
+    });
+
+    await act(async () => {
+      renderer = create(<Harness navigation={navigation} />);
+    });
+  };
+
+  beforeEach(async () => {
     jest.clearAllMocks();
 
     mockEstadoConexion = { online: true };
@@ -69,7 +92,14 @@ describe('useHomeLogic', () => {
     InventoryService.obtenerCantidadGuardada
       .mockResolvedValue(null);
 
-    act(() => {
+    ubicacionActivaService.obtener
+      .mockResolvedValue(null);
+    ubicacionActivaService.guardar
+      .mockImplementation(async (codigo) => codigo);
+    ubicacionActivaService.limpiarSiCoincide
+      .mockResolvedValue(null);
+
+    await act(async () => {
       renderer = create(<Harness navigation={navigation} />);
     });
   });
@@ -177,17 +207,40 @@ describe('useHomeLogic', () => {
 
     test('delega en el servicio de inventario', () => {
 
-      InventoryService.sugerirArticulos.mockReturnValue([
-        '123456',
-      ]);
+      const sugerencias = [
+        {
+          codigo: '123456',
+          descripcion: 'Tornillo hexagonal',
+          unidad: 'UD',
+        },
+      ];
+
+      InventoryService.sugerirArticulosConDetalle
+        .mockReturnValue(sugerencias);
 
       const resultado = current.sugerirArticulos('123');
 
       expect(
-        InventoryService.sugerirArticulos
+        InventoryService.sugerirArticulosConDetalle
       ).toHaveBeenCalledWith('123');
 
-      expect(resultado).toEqual(['123456']);
+      expect(resultado).toEqual(sugerencias);
+    });
+
+    test('expone el detalle de un código', () => {
+
+      InventoryService.obtenerDetalleArticulo
+        .mockReturnValue({
+          descripcion: 'Tornillo hexagonal',
+          unidad: 'UD',
+        });
+
+      expect(
+        current.obtenerDetalleArticulo('123456')
+      ).toEqual({
+        descripcion: 'Tornillo hexagonal',
+        unidad: 'UD',
+      });
     });
 
   });
@@ -481,7 +534,7 @@ describe('useHomeLogic', () => {
       expect(current.ubicacion).toBeNull();
     });
 
-    test('no toca la ubicación anterior si la nueva es inválida', async () => {
+    test('bloquea otra ubicación y conserva la anterior', async () => {
 
       await act(async () => {
         await current.onManualUbicacion(
@@ -489,20 +542,27 @@ describe('useHomeLogic', () => {
         );
       });
 
-      InventoryService.validarUbicacion.mockResolvedValue({
-        ok: false,
-        titulo: 'Ubicación no encontrada',
-        mensaje: 'no está en la copia local del maestro',
-      });
+      InventoryService.estaUbicacionFinalizada
+        .mockResolvedValue(false);
+
+      let valida;
 
       await act(async () => {
-        await current.onManualUbicacion(
+        valida = await current.onManualUbicacion(
           'LIN2-A99-Z99'
         );
       });
 
+      expect(valida).toBe(false);
+
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'Ubicación activa',
+        expect.stringContaining('LIN2-A01-Z01')
+      );
+
       /* La que estaba sigue puesta */
       expect(current.ubicacion).toBe('LIN2-A01-Z01');
+      expect(current.ubicacionActiva).toBe('LIN2-A01-Z01');
     });
 
     test('funciona sin conexión', async () => {
@@ -514,6 +574,277 @@ describe('useHomeLogic', () => {
       });
 
       expect(current.mostrarManualUbicacion).toBe(true);
+    });
+
+  });
+
+  // =====================================================
+  // Ubicación activa del dispositivo
+  // =====================================================
+
+  describe('ubicación activa del dispositivo', () => {
+
+    const ACTIVA = 'LIN2-A01-Z01';
+
+    test('restaura la activa y bloquea otra si la nube la mantiene abierta', async () => {
+
+      ubicacionActivaService.obtener
+        .mockResolvedValue(ACTIVA);
+
+      InventoryService.estaUbicacionFinalizada
+        .mockResolvedValue(false);
+
+      await remontar();
+
+      expect(current.ubicacion).toBe(ACTIVA);
+      expect(current.ubicacionActiva).toBe(ACTIVA);
+      expect(current.cargandoUbicacionActiva).toBe(false);
+
+      InventoryService.validarUbicacion.mockResolvedValue({
+        ok: true,
+        ubicacion: {
+          seccion: 'LIN2',
+          area: 'A02',
+          subzona: 'Z02',
+        },
+      });
+
+      let valida;
+
+      await act(async () => {
+        valida = await current.procesarEscaneo(
+          'ubicacion',
+          'LIN2-A02-Z02'
+        );
+      });
+
+      expect(valida).toBe(false);
+
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'Ubicación activa',
+        expect.stringContaining(ACTIVA)
+      );
+
+      /* No se valida ni se guarda la nueva */
+      expect(InventoryService.validarUbicacion)
+        .not.toHaveBeenCalled();
+      expect(ubicacionActivaService.guardar)
+        .not.toHaveBeenCalled();
+
+      expect(current.ubicacion).toBe(ACTIVA);
+      expect(current.ubicacionActiva).toBe(ACTIVA);
+
+    });
+
+    test('libera la activa si la nube ya la da por terminada', async () => {
+
+      ubicacionActivaService.obtener
+        .mockResolvedValue(ACTIVA);
+
+      InventoryService.estaUbicacionFinalizada
+        .mockResolvedValue(true);
+
+      await remontar();
+
+      expect(current.ubicacion).toBeNull();
+      expect(current.ubicacionActiva).toBeNull();
+      expect(ubicacionActivaService.limpiarSiCoincide)
+        .toHaveBeenCalledWith(ACTIVA);
+
+    });
+
+    test('mantiene el bloqueo si no se puede consultar el estado', async () => {
+
+      ubicacionActivaService.obtener
+        .mockResolvedValue(ACTIVA);
+
+      InventoryService.estaUbicacionFinalizada
+        .mockRejectedValue(new Error('fallo'));
+
+      await remontar();
+
+      expect(current.ubicacion).toBe(ACTIVA);
+      expect(current.ubicacionActiva).toBe(ACTIVA);
+      expect(ubicacionActivaService.limpiarSiCoincide)
+        .not.toHaveBeenCalled();
+
+    });
+
+    test('permite volver a cargar la misma ubicación activa', async () => {
+
+      ubicacionActivaService.obtener
+        .mockResolvedValue(ACTIVA);
+
+      InventoryService.estaUbicacionFinalizada
+        .mockResolvedValue(false);
+
+      await remontar();
+
+      InventoryService.validarUbicacion.mockResolvedValue({
+        ok: true,
+        ubicacion: {
+          seccion: 'LIN2',
+          area: 'A01',
+          subzona: 'Z01',
+        },
+      });
+
+      InventoryService.cargarUbicacion
+        .mockResolvedValue([]);
+
+      let valida;
+
+      await act(async () => {
+        valida = await current.procesarEscaneo(
+          'ubicacion',
+          ACTIVA
+        );
+      });
+
+      expect(valida).toBe(true);
+      expect(InventoryService.validarUbicacion)
+        .toHaveBeenCalledWith(ACTIVA);
+      expect(current.ubicacion).toBe(ACTIVA);
+      expect(current.ubicacionActiva).toBe(ACTIVA);
+
+    });
+
+    test('permite otra ubicación si la activa pasó a Fin', async () => {
+
+      ubicacionActivaService.obtener
+        .mockResolvedValue(ACTIVA);
+
+      InventoryService.estaUbicacionFinalizada
+        .mockResolvedValueOnce(false)
+        .mockResolvedValueOnce(true);
+
+      await remontar();
+
+      InventoryService.validarUbicacion.mockResolvedValue({
+        ok: true,
+        ubicacion: {
+          seccion: 'LIN2',
+          area: 'A02',
+          subzona: 'Z02',
+        },
+      });
+
+      InventoryService.cargarUbicacion
+        .mockResolvedValue([]);
+
+      let valida;
+
+      await act(async () => {
+        valida = await current.procesarEscaneo(
+          'ubicacion',
+          'LIN2-A02-Z02'
+        );
+      });
+
+      expect(valida).toBe(true);
+      expect(ubicacionActivaService.limpiarSiCoincide)
+        .toHaveBeenCalledWith(ACTIVA);
+      expect(current.ubicacion).toBe('LIN2-A02-Z02');
+      expect(current.ubicacionActiva).toBe('LIN2-A02-Z02');
+
+    });
+
+    test('guarda una ubicación nueva como activa', async () => {
+
+      InventoryService.validarUbicacion.mockResolvedValue({
+        ok: true,
+        ubicacion: {
+          seccion: 'LIN2',
+          area: 'A01',
+          subzona: 'Z01',
+        },
+      });
+
+      InventoryService.cargarUbicacion
+        .mockResolvedValue([]);
+
+      await act(async () => {
+        await current.procesarEscaneo(
+          'ubicacion',
+          ACTIVA
+        );
+      });
+
+      expect(ubicacionActivaService.guardar)
+        .toHaveBeenCalledWith(ACTIVA);
+      expect(current.ubicacionActiva).toBe(ACTIVA);
+
+    });
+
+    test('no guarda una ubicación que ya está en Fin', async () => {
+
+      InventoryService.validarUbicacion.mockResolvedValue({
+        ok: true,
+        ubicacion: {
+          seccion: 'LIN2',
+          area: 'A01',
+          subzona: 'Z01',
+          stat: 'Fin',
+        },
+      });
+
+      InventoryService.cargarUbicacion
+        .mockResolvedValue([]);
+
+      await act(async () => {
+        await current.procesarEscaneo(
+          'ubicacion',
+          ACTIVA
+        );
+      });
+
+      expect(ubicacionActivaService.guardar)
+        .not.toHaveBeenCalled();
+      expect(ubicacionActivaService.limpiarSiCoincide)
+        .toHaveBeenCalledWith(ACTIVA);
+      expect(current.ubicacionActiva).toBeNull();
+      expect(current.ubicacionFinalizada).toBe(true);
+
+    });
+
+    test('libera la activa al revalidar en foco si ya está cerrada', async () => {
+
+      InventoryService.validarUbicacion.mockResolvedValue({
+        ok: true,
+        ubicacion: {
+          seccion: 'LIN2',
+          area: 'A01',
+          subzona: 'Z01',
+        },
+      });
+
+      InventoryService.cargarUbicacion
+        .mockResolvedValue([]);
+
+      await act(async () => {
+        await current.procesarEscaneo(
+          'ubicacion',
+          ACTIVA
+        );
+      });
+
+      expect(current.ubicacionActiva).toBe(ACTIVA);
+
+      InventoryService.estaUbicacionFinalizada
+        .mockResolvedValue(true);
+
+      const alEnfocar =
+        useFocusEffect.mock.calls.at(-1)[0];
+
+      await act(async () => {
+        await alEnfocar();
+      });
+
+      expect(ubicacionActivaService.limpiarSiCoincide)
+        .toHaveBeenCalledWith(ACTIVA);
+      expect(current.ubicacionActiva).toBeNull();
+      expect(current.ubicacionFinalizada).toBe(true);
+
     });
 
   });
@@ -692,6 +1023,8 @@ describe('useHomeLogic', () => {
         ok: true,
         esSIC: false,
         articulo: { item: '123456', tipo: 'Normal' },
+        descripcion: 'Tornillo hexagonal',
+        unidad: 'UD',
       });
 
       await act(async () => {
@@ -700,6 +1033,10 @@ describe('useHomeLogic', () => {
 
       expect(current.articuloTemp).toBe('123456');
       expect(current.mostrarCantidad).toBe(true);
+      expect(current.detalleArticulo).toEqual({
+        descripcion: 'Tornillo hexagonal',
+        unidad: 'UD',
+      });
     });
 
     test('devuelve false si el artículo no existe, para que el modal siga abierto', async () => {
@@ -825,6 +1162,8 @@ describe('useHomeLogic', () => {
           ubicacion: 'A1',
           articulo: '123456',
           cantidad: 5,
+          descripcion: '',
+          unidad: '',
           pendiente: false,
         },
       ]);
@@ -884,6 +1223,8 @@ describe('useHomeLogic', () => {
           ubicacion: 'A1',
           articulo: '123456',
           cantidad: 2,
+          descripcion: '',
+          unidad: '',
           pendiente: true,
         },
       ]);

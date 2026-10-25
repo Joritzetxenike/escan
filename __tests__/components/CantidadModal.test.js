@@ -95,7 +95,29 @@ describe('CantidadModal', () => {
       expect(textos)
         .toContain('Artículo: 123456');
       expect(textos)
+        .toContain('Descripción: —');
+      expect(textos)
+        .toContain('Unidad: —');
+      expect(textos)
         .toContain('Introduce cantidad');
+    });
+
+    test('muestra descripción y unidad si se pasan', () => {
+
+      montar({
+        descripcion: 'Tornillo hexagonal',
+        unidad: 'UD',
+      });
+
+      const textos =
+        renderer.root
+          .findAllByType(Text)
+          .map((t) => String(textoDe(t)));
+
+      expect(textos)
+        .toContain('Descripción: Tornillo hexagonal');
+      expect(textos)
+        .toContain('Unidad: UD');
     });
 
 

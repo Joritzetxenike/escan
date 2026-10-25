@@ -193,6 +193,16 @@ const guardarMeta = async (cambios) => {
  * LECTURA DE LA COPIA
  * ======================================================= */
 
+const normalizarMapa = (valor) =>
+  valor &&
+  typeof valor === 'object' &&
+  !Array.isArray(valor)
+    ? valor
+    : {};
+
+const crearMapa = (valor) =>
+  new Map(Object.entries(normalizarMapa(valor)));
+
 const construirCache = (articulos, ubicaciones) => {
 
   if (!Array.isArray(articulos?.codigos)) {
@@ -203,6 +213,8 @@ const construirCache = (articulos, ubicaciones) => {
     codigos: new Set(articulos.codigos),
     sic: new Set(articulos.sic ?? []),
     genericos: new Set(articulos.genericos ?? []),
+    descripciones: crearMapa(articulos.descripciones),
+    unidades: crearMapa(articulos.unidades),
     ubicaciones: Array.isArray(ubicaciones?.ubicaciones)
       ? new Set(ubicaciones.ubicaciones)
       : null,
@@ -382,6 +394,12 @@ const descargar = async () => {
       ? maestro.genericos
       : [];
 
+    const descripciones =
+      normalizarMapa(maestro?.descripciones);
+
+    const unidades =
+      normalizarMapa(maestro?.unidades);
+
     /* Igual que con las ubicaciones: un maestro vacío en
        disco rechazaría todos los artículos del almacén. */
 
@@ -400,6 +418,8 @@ const descargar = async () => {
       codigos,
       sic,
       genericos,
+      descripciones,
+      unidades,
     });
 
     await guardarMeta({
@@ -413,6 +433,8 @@ const descargar = async () => {
       codigos: new Set(codigos),
       sic: new Set(sic),
       genericos: new Set(genericos),
+      descripciones: crearMapa(descripciones),
+      unidades: crearMapa(unidades),
       ubicaciones: new Set(ubicaciones),
       actualizadoAt: Date.parse(actualizado),
     };
@@ -549,6 +571,11 @@ const esSIC = (codigo) =>
 
 const esGenerico = (codigo) =>
   cache?.genericos.has(codigo) ?? false;
+
+const obtenerDetalleArticulo = (codigo) => ({
+  descripcion: cache?.descripciones.get(codigo) ?? '',
+  unidad: cache?.unidades.get(codigo) ?? '',
+});
 
 /* =======================================================
  * SUGERENCIAS (ENTRADA MANUAL)
@@ -760,6 +787,7 @@ const maestrosService = {
   existeArticulo,
   esSIC,
   esGenerico,
+  obtenerDetalleArticulo,
   sugerirArticulos,
   existeUbicacion,
 

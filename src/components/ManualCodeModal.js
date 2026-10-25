@@ -8,11 +8,24 @@ import {
 
 import ModalFormulario from './ModalFormulario';
 
-import { styles } from '../styles/styles';
+import { styles, colors } from '../styles/styles';
 
 /* Retardo antes de pedir sugerencias: evita filtrar la copia
    local en cada pulsación mientras se teclea. */
 const DEBOUNCE_SUGERENCIAS = 200;
+
+const normalizarSugerencia = (sugerido) =>
+  typeof sugerido === 'string'
+    ? {
+        codigo: sugerido,
+        descripcion: '',
+        unidad: '',
+      }
+    : {
+        codigo: sugerido?.codigo ?? '',
+        descripcion: sugerido?.descripcion ?? '',
+        unidad: sugerido?.unidad ?? '',
+      };
 
 export default function ManualCodeModal({
   visible,
@@ -27,13 +40,19 @@ export default function ManualCodeModal({
   /* Opcional: `(texto) => string[]` con los códigos que
      empiezan por lo tecleado. Sin ella no hay sugerencias. */
   sugerencias,
+  obtenerDetalle,
 }) {
   const [codigo, setCodigo] = useState('');
 
   const [sugs, setSugs] = useState([]);
 
+  const [detalle, setDetalle] = useState(null);
+
   useEffect(() => {
-    if (!visible) setCodigo('');
+    if (!visible) {
+      setCodigo('');
+      setDetalle(null);
+    }
   }, [visible]);
 
   /* Al teclear, se piden sugerencias con un pequeño retardo
@@ -52,12 +71,37 @@ export default function ManualCodeModal({
     }
 
     const temporizador = setTimeout(() => {
-      setSugs(sugerencias(codigo) ?? []);
+      setSugs(
+        (sugerencias(codigo) ?? []).map(
+          normalizarSugerencia
+        )
+      );
     }, DEBOUNCE_SUGERENCIAS);
 
     return () => clearTimeout(temporizador);
 
   }, [codigo, sugerencias, visible]);
+
+  useEffect(() => {
+
+    if (
+      !obtenerDetalle ||
+      !visible ||
+      codigo.trim().length < 2
+    ) {
+      setDetalle(null);
+      return undefined;
+    }
+
+    setDetalle(null);
+
+    const temporizador = setTimeout(() => {
+      setDetalle(obtenerDetalle(codigo.trim()));
+    }, DEBOUNCE_SUGERENCIAS);
+
+    return () => clearTimeout(temporizador);
+
+  }, [codigo, obtenerDetalle, visible]);
 
   /* El campo solo se vacía si el llamador confirma que el
      código se ha aceptado. Si vuelve a decir que no, el modal
@@ -73,8 +117,9 @@ export default function ManualCodeModal({
   /* Al elegir una sugerencia solo se rellena el campo: el
      operario revisa y confirma (puede seguir editándolo). */
   const elegirSugerencia = (sugerido) => {
-    setCodigo(sugerido);
+    setCodigo(sugerido.codigo);
     setSugs([]);
+    setDetalle(sugerido);
   };
 
   return (
@@ -98,6 +143,12 @@ export default function ManualCodeModal({
         testID={testID}
       />
 
+      {detalle && (
+        <Text style={styles.detalleArticulo}>
+          {`Descripción: ${detalle.descripcion || '—'} · Unidad: ${detalle.unidad || '—'}`}
+        </Text>
+      )}
+
       {sugs.length > 0 && (
         <ScrollView
           style={styles.sugerencias}
@@ -105,17 +156,31 @@ export default function ManualCodeModal({
         >
           {sugs.map((sugerido) => (
             <TouchableOpacity
-              key={sugerido}
+              key={sugerido.codigo}
               style={styles.sugerencia}
-              testID={`sugerencia-articulo-${sugerido}`}
+              testID={`sugerencia-articulo-${sugerido.codigo}`}
               onPress={() => elegirSugerencia(sugerido)}
             >
               <Text
                 style={styles.sugerenciaTexto}
                 numberOfLines={1}
               >
-                {sugerido}
+                {sugerido.codigo}
               </Text>
+
+              {(sugerido.descripcion || sugerido.unidad) && (
+                <Text
+                  style={{
+                    fontSize: 12,
+                    color: colors.textSecondary,
+                  }}
+                  numberOfLines={1}
+                >
+                  {[sugerido.descripcion, sugerido.unidad]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </Text>
+              )}
             </TouchableOpacity>
           ))}
         </ScrollView>

@@ -295,6 +295,8 @@ const SupabaseProvider = {
       codigos: data?.codigos ?? [],
       sic: data?.sic ?? [],
       genericos: data?.genericos ?? [],
+      descripciones: data?.descripciones ?? {},
+      unidades: data?.unidades ?? {},
     };
   },
 
