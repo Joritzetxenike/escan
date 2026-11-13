@@ -5,6 +5,7 @@ import conectividadService from './conectividadService';
 import { esErrorDeRed } from '../helpers/redHelper';
 import {
   asegurarArchivoOperarios,
+  buscarOperario,
 } from '../helpers/operariosHelper';
 import {
   escribirJson,
@@ -677,7 +678,24 @@ const existeUbicacion = (codigo) =>
 const estaHabilitadaImportacionEmergencia = () =>
   Boolean(estado.importacionEmergenciaHabilitada);
 
-const habilitarImportacionEmergencia = async () => {
+const puedeHabilitarImportacionEmergencia = async (matricula) => {
+
+  const operario = await buscarOperario(matricula);
+
+  return operario ? Boolean(operario.esAdminEmergencia) : false;
+
+};
+
+const habilitarImportacionEmergencia = async (matricula) => {
+
+  const puede = await puedeHabilitarImportacionEmergencia(matricula);
+
+  if (!puede) {
+    throw new Error(
+      'No tiene permiso para activar la importación de emergencia. '
+      + 'Solo un administrador de emergencia puede hacerlo.'
+    );
+  }
 
   const meta = await leerMeta();
 
@@ -694,7 +712,16 @@ const habilitarImportacionEmergencia = async () => {
 
 };
 
-const deshabilitarImportacionEmergencia = async () => {
+const deshabilitarImportacionEmergencia = async (matricula) => {
+
+  const puede = await puedeHabilitarImportacionEmergencia(matricula);
+
+  if (!puede) {
+    throw new Error(
+      'No tiene permiso para desactivar la importación de emergencia. '
+      + 'Solo un administrador de emergencia puede hacerlo.'
+    );
+  }
 
   const meta = await leerMeta();
 
@@ -903,6 +930,7 @@ const maestrosService = {
   rechazarRefresco,
 
   estaHabilitadaImportacionEmergencia,
+  puedeHabilitarImportacionEmergencia,
   habilitarImportacionEmergencia,
   deshabilitarImportacionEmergencia,
 };

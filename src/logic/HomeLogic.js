@@ -5,6 +5,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import InventoryService from '../services/InventoryService';
 import ubicacionActivaService from '../services/ubicacionActivaService';
 import maestrosService from '../services/maestrosService';
+import { useAuth } from '../context/AuthContext';
 import useConectividad from './useConectividad';
 
 export function useHomeLogic(navigation) {
@@ -80,6 +81,11 @@ export function useHomeLogic(navigation) {
   const [importResult, setImportResult] = useState(null);
 
   const conectividad = useConectividad();
+
+
+  /* ---------- PERMISO DE EMERGENCIA ---------- */
+
+  const { matricula, esAdminEmergencia } = useAuth();
 
 
   /* =====================================================
@@ -327,6 +333,14 @@ export function useHomeLogic(navigation) {
 
     if (!ubicacion) {
       avisoSinUbicacion();
+      return;
+    }
+
+    if (!esAdminEmergencia) {
+      Alert.alert(
+        'Sin permiso',
+        'Solo un administrador de emergencia puede activar la importación desde la nube.'
+      );
       return;
     }
 
@@ -1075,7 +1089,10 @@ InventoryService.crearMovimiento(
 
     puedeImportarEmergencia:
 
+      esAdminEmergencia &&
       maestrosService.estaHabilitadaImportacionEmergencia(),
+
+    esAdminEmergencia,
 
     importarDesdeNube,
 

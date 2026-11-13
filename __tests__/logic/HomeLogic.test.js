@@ -55,8 +55,31 @@ jest.mock('../../src/services/ubicacionActivaService', () => ({
 
 jest.mock('../../src/services/maestrosService', () => ({
   estaHabilitadaImportacionEmergencia: jest.fn(() => false),
+  puedeHabilitarImportacionEmergencia: jest.fn(() => false),
   habilitarImportacionEmergencia: jest.fn(),
   deshabilitarImportacionEmergencia: jest.fn(),
+}));
+
+jest.mock('expo-file-system/legacy', () => ({
+  documentDirectory: 'file:///data/user/0/com.test/files/',
+  getInfoAsync: jest.fn().mockResolvedValue({ exists: false }),
+  writeAsStringAsync: jest.fn().mockResolvedValue(null),
+  readAsStringAsync: jest.fn().mockResolvedValue(''),
+}));
+
+jest.mock('../../src/helpers/operariosHelper', () => ({
+  buscarOperario: jest.fn().mockResolvedValue(null),
+}));
+
+jest.mock('../../src/context/AuthContext', () => ({
+  useAuth: jest.fn(() => ({
+    matricula: '00123',
+    nombre: 'Usuario Test',
+    esAdminEmergencia: false,
+    identificado: true,
+    identificar: jest.fn(),
+    cerrarSesion: jest.fn(),
+  })),
 }));
 
 // Harness: ejecuta el hook y expone su resultado en `current`.

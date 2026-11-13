@@ -16,6 +16,7 @@ create table if not exists public."operarios" (
   matricula character varying primary key,
   nombre character varying not null,
   activo boolean not null default true,
+  es_admin_emergencia boolean not null default false,
   created_at timestamp with time zone default now()
 );
 
@@ -23,6 +24,7 @@ comment on table public."operarios" is 'Catálogo de operarios de almacén';
 comment on column public."operarios".matricula is 'Matrícula del operario (identificador de login)';
 comment on column public."operarios".nombre is 'Nombre completo del operario';
 comment on column public."operarios".activo is 'Si el operario puede acceder a la app';
+comment on column public."operarios".es_admin_emergencia is 'Si el operario puede activar la importación de emergencia';
 
 -- RLS: lectura para autenticados, escritura solo para admin
 alter table public."operarios" enable row level security;
@@ -52,7 +54,7 @@ grant select on public."operarios" to anon, authenticated;
 grant insert, update, delete on public."operarios" to authenticated;
 
 -- Datos de ejemplo (opcional, borrar en producci�n real)
-insert into public."operarios" (matricula, nombre, activo) values
-  ('00123', 'Juan Pérez', true),
-  ('00456', 'María García', true)
+insert into public."operarios" (matricula, nombre, activo, es_admin_emergencia) values
+  ('00123', 'Juan Pérez', true, false),
+  ('00456', 'María García', true, true)
 on conflict (matricula) do nothing;

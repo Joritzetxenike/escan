@@ -42,6 +42,7 @@ describe('authService', () => {
       matricula: '00123',
       nombre: 'Juan Pérez',
       activo: true,
+      esAdminEmergencia: false,
     });
 
     const resultado = await authService.validarMatricula('00123');
@@ -50,6 +51,7 @@ describe('authService', () => {
       valida: true,
       matricula: '00123',
       nombre: 'Juan Pérez',
+      esAdminEmergencia: false,
       error: null,
     });
   });
@@ -70,6 +72,7 @@ describe('authService', () => {
       matricula: '00456',
       nombre: 'María García',
       activo: false,
+      esAdminEmergencia: true,
     });
 
     const resultado = await authService.validarMatricula('00456');
@@ -77,25 +80,33 @@ describe('authService', () => {
     expect(resultado.valida).toBe(false);
     expect(resultado.matricula).toBeNull();
     expect(resultado.nombre).toBe('María García');
+    expect(resultado.esAdminEmergencia).toBe(true);
     expect(resultado.error).toContain('desactivada');
   });
 
-  test('guarda y cierra la sesión en memoria con nombre', () => {
+  test('guarda y cierra la sesión en memoria con nombre y esAdminEmergencia', () => {
     expect(authService.haySesion()).toBe(false);
 
-    const sesion = authService.iniciarSesion('0042', 'Operario Prueba');
+    const sesion = authService.iniciarSesion(
+      '0042',
+      'Operario Prueba',
+      true
+    );
 
     expect(sesion.matricula).toBe('0042');
     expect(sesion.nombre).toBe('Operario Prueba');
+    expect(sesion.esAdminEmergencia).toBe(true);
     expect(authService.haySesion()).toBe(true);
     expect(authService.obtenerMatricula()).toBe('0042');
     expect(authService.obtenerNombre()).toBe('Operario Prueba');
+    expect(authService.obtenerEsAdminEmergencia()).toBe(true);
 
     authService.cerrarSesion();
 
     expect(authService.haySesion()).toBe(false);
     expect(authService.obtenerMatricula()).toBeNull();
     expect(authService.obtenerNombre()).toBeNull();
+    expect(authService.obtenerEsAdminEmergencia()).toBe(false);
   });
 
 });
