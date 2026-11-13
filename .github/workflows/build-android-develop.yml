@@ -1,0 +1,65 @@
+name: Build Android APK (develop)
+
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  build:
+    name: Build and Publish APK for Develop
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Descargar código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Ejecutar tests
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_KEY }}
+        run: npm test
+
+      - name: Instalar EAS CLI
+        run: npm install -g eas-cli
+
+      - name: Construir APK con EAS
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          eas build \
+            --platform android \
+            --profile development-apk \
+            --non-interactive \
+            --json > /tmp/build.json
+
+      - name: Descargar APK
+        run: |
+          APK_URL=$(node -e "const fs=require('fs'); const d=JSON.parse(fs.readFileSync('/tmp/build.json')); console.log(d[0].artifacts.buildUrl)")
+          curl -L "$APK_URL" -o "InventoryScanner-develop.apk"
+
+      - name: Verificar bundle del APK
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: ${{ vars.EXPO_PUBLIC_SUPABASE_URL }}
+        run: |
+          chmod +x scripts/verificar-bundle-apk.sh
+          ./scripts/verificar-bundle-apk.sh "InventoryScanner-develop.apk"
+
+      - name: Subir APK como artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: InventoryScanner-develop-apk
+          path: InventoryScanner-develop.apk
+          retention-days: 7

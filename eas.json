@@ -13,6 +13,19 @@
         "EXPO_PUBLIC_APP_ENV": "development"
       }
     },
+    "development-apk": {
+      "distribution": "internal",
+      "channel": "develop",
+      "android": {
+        "buildType": "apk"
+      },
+      "appVersionSource": "local",
+      "env": {
+        "EXPO_PUBLIC_APP_ENV": "development",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://mxspzxddunufwdchsowt.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_KEY": "sb_publishable_hXYJ2DLMl8ZqCE6zCGGGrQ_iEZpJUIu"
+      }
+    },
     "preview": {
       "autoIncrement": true,
       "distribution": "internal",
