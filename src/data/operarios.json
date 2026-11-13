@@ -1,0 +1,4 @@
+[
+  { "matricula": "00123", "nombre": "Juan Pérez", "activo": true },
+  { "matricula": "00456", "nombre": "María García", "activo": true }
+]

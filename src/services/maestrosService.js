@@ -280,6 +280,31 @@ const escribirUbicaciones = async () => {
 
 };
 
+/**
+ * Obtiene las ubicaciones en memoria sin escribir en disco.
+ * Se usa para la descarga atomica: primero se obtienen ambos
+ * maestros en memoria, se validan, y solo entonces se escriben
+ * los ficheros para evitar inconsistencia si falla alguno.
+ */
+const obtenerUbicacionesEnMemoria = async () => {
+
+  const arbol =
+    await DataProvider.obtenerEstadoUbicaciones();
+
+  const ubicaciones = aplanarUbicaciones(arbol);
+
+  if (ubicaciones.length === 0) {
+    throw new Error(
+      'La consulta de ubicaciones no devolvió ninguna fila'
+    );
+  }
+
+  const ahora = new Date().toISOString();
+
+  return { ubicaciones, actualizado: ahora };
+
+};
+
 
 /**
  * Descarga SOLO las ubicaciones (199 filas).
@@ -369,13 +394,12 @@ const descargar = async () => {
 
   try {
 
-/* ---------- 1. UBICACIONES (pequeño) ---------- */
+    /* ---------- 1. UBICACIONES EN MEMORIA ---------- */
 
-    const { ubicaciones } =
-      await escribirUbicaciones();
+    const { ubicaciones, actualizado: ubicacionesActualizado } =
+      await obtenerUbicacionesEnMemoria();
 
-
-    /* ---------- 2. ARTÍCULOS (211.000 filas) ---------- */
+    /* ---------- 2. ARTÍCULOS EN MEMORIA ---------- */
 
     setEstado({ descargandoQue: 'articulos' });
 
@@ -400,8 +424,9 @@ const descargar = async () => {
     const unidades =
       normalizarMapa(maestro?.unidades);
 
-    /* Igual que con las ubicaciones: un maestro vacío en
-       disco rechazaría todos los artículos del almacén. */
+    /* Validar que ambos maestros tengan datos antes de
+       escribir cualquier fichero en disco. Si falla
+       cualquiera de los dos, no se escribe nada. */
 
     if (codigos.length === 0) {
       throw new Error(
@@ -410,6 +435,14 @@ const descargar = async () => {
     }
 
     const actualizado = new Date().toISOString();
+
+    /* ---------- 3. ESCRITURA ATÓMICA EN DISCO ---------- */
+
+    await escribirJson(ARCHIVO_UBICACIONES, {
+      version: VERSION,
+      actualizado_at: ubicacionesActualizado,
+      ubicaciones,
+    });
 
     await escribirJson(ARCHIVO_ARTICULOS, {
       version: VERSION,
@@ -423,11 +456,12 @@ const descargar = async () => {
     });
 
     await guardarMeta({
+      ubicaciones_at: ubicacionesActualizado,
       articulos_at: actualizado,
       rechazada_hasta: null,
     });
 
-    /* ---------- Copia en memoria ---------- */
+    /* ---------- 4. COPIA EN MEMORIA ---------- */
 
     cache = {
       codigos: new Set(codigos),
@@ -457,9 +491,9 @@ const descargar = async () => {
 
     console.error('Error descargando los maestros:', e);
 
-    /* La copia anterior se conserva intacta: la escritura es
-       atómica y solo se llega a `cache` cuando el fichero
-       bueno ya está en disco. */
+    /* Si falla en cualquier punto, ningún fichero se ha
+       escrito en disco (o solo los que ya estaban buenos).
+       La copia anterior en memoria se conserva intacta. */
 
     if (esErrorDeRed(e)) {
       conectividadService.marcarSinConexion(e);

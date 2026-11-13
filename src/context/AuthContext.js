@@ -14,6 +14,9 @@ export function AuthProvider({ children }) {
   const [matricula, setMatricula] = useState(
     () => authService.obtenerMatricula()
   );
+  const [nombre, setNombre] = useState(
+    () => authService.obtenerNombre()
+  );
 
   const identificar = useCallback(async (valor) => {
     const resultado = await authService.validarMatricula(valor);
@@ -22,8 +25,9 @@ export function AuthProvider({ children }) {
       return resultado;
     }
 
-    authService.iniciarSesion(resultado.matricula);
+    authService.iniciarSesion(resultado.matricula, resultado.nombre);
     setMatricula(resultado.matricula);
+    setNombre(resultado.nombre);
 
     return resultado;
   }, []);
@@ -31,16 +35,18 @@ export function AuthProvider({ children }) {
   const cerrarSesion = useCallback(() => {
     authService.cerrarSesion();
     setMatricula(null);
+    setNombre(null);
   }, []);
 
   const value = useMemo(
     () => ({
       matricula,
+      nombre,
       identificado: matricula !== null,
       identificar,
       cerrarSesion,
     }),
-    [matricula, identificar, cerrarSesion]
+    [matricula, nombre, identificar, cerrarSesion]
   );
 
   return (

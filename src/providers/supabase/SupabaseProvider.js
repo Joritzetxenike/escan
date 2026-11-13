@@ -17,11 +17,9 @@ import supabase from './supabaseClient';
  *    tabla `conteo` las columnas reales se llamen `item` y `cant`.
  *    Así ambos providers son intercambiables sin tocar el resto de la app.
  *
- * 4. `conteo` no tiene columna de fecha/hora, así que
- *    `obtenerUltimosMovimientos` no puede ordenar por fecha real.
- *    Se ordena por `ubicacion, item` como aproximación. Si necesitas
- *    orden cronológico real, habría que añadir una columna
- *    `updated_at timestamp default now()` a la tabla `conteo`.
+ * 4. `conteo` tiene columna `updated_at timestamp default now()`.
+ *    `obtenerUltimosMovimientos` ordena por ella para obtener el
+ *    orden cronológico real de los movimientos.
  */
 
 // ---------- Helpers de formato de ubicación ----------
@@ -91,83 +89,23 @@ const SupabaseProvider = {
       throw new Error('Código de ubicación inválido');
     }
 
-    // ==========================================
-    // 1. UBICACIÓN => Fin
-    // ==========================================
+    const { data, error } = await supabase.rpc(
+      'finalizar_ubicacion',
+      {
+        p_seccion: seccion,
+        p_area: area,
+        p_subzona: subzona,
+      }
+    );
 
-    const { error: errorUbicacion } = await supabase
-      .from('maestroUbicacion')
-      .update({ stat: 'Fin' })
-      .eq('seccion', seccion)
-      .eq('area', area)
-      .eq('subzona', subzona)
-      .select();
+    if (error) throw error;
 
-    if (errorUbicacion) throw errorUbicacion;
-
-    // ==========================================
-    // 2. Comprobar si todas las ubicaciones
-    //    del área están en 'Fin'
-    // ==========================================
-
-    const { data: ubicaciones, error: errorUbicaciones } = await supabase
-      .from('maestroUbicacion')
-      .select('subzona, stat')
-      .eq('seccion', seccion)
-      .eq('area', area);
-
-    if (errorUbicaciones) throw errorUbicaciones;
-
-    const todasUbicacionesEnFin =
-      ubicaciones.length > 0 &&
-      ubicaciones.every((u) => u.stat === 'Fin');
-
-    if (!todasUbicacionesEnFin) return true;
-
-    // ==========================================
-    // 3. ÁREA => Fin
-    // ==========================================
-
-    const { error: errorArea } = await supabase
-      .from('maestroArea')
-      .update({ stat: 'Fin' })
-      .eq('seccion', seccion)
-      .eq('area', area)
-      .select();
-
-    if (errorArea) throw errorArea;
-
-    // ==========================================
-    // 4. Comprobar si todas las áreas
-    //    de la sección están en 'Fin'
-    // ==========================================
-
-    const { data: areas, error: errorAreas } = await supabase
-      .from('maestroArea')
-      .select('area, stat')
-      .eq('seccion', seccion);
-
-    if (errorAreas) throw errorAreas;
-
-    const todasAreasEnFin =
-      areas.length > 0 &&
-      areas.every((a) => a.stat === 'Fin');
-
-    if (!todasAreasEnFin) return true;
-
-    // ==========================================
-    // 5. SECCIÓN => Fin
-    // ==========================================
-
-    const { error: errorSeccion } = await supabase
-      .from('maestroSeccion')
-      .update({ stat: 'Fin' })
-      .eq('seccion', seccion)
-      .select();
-
-    if (errorSeccion) throw errorSeccion;
-
-    return true;
+    return {
+      seccion: data?.seccion ?? seccion,
+      area: data?.area ?? area,
+      subzona: data?.subzona ?? subzona,
+      stat: data?.stat ?? 'Fin',
+    };
   },
 
   async obtenerEstadoUbicaciones() {
@@ -304,103 +242,27 @@ const SupabaseProvider = {
    * MOVIMIENTOS (tabla `conteo`)
    * ======================================================= */
 
-  async guardarMovimiento({ ubicacion, articulo, cantidad }) {
+  async guardarMovimiento({ ubicacion, articulo, cantidad, matricula }) {
 
-  console.log('=== GUARDAR MOVIMIENTO ===');
-  console.log('Ubicación:', ubicacion);
-  console.log('Artículo:', articulo);
-  console.log('Cantidad:', cantidad);
-
-  // ==========================================
-  // 1. GUARDAR CONTEO
-  // ==========================================
-
-  const { data, error } = await supabase
-    .from('conteo')
-    .upsert(
+    const { data, error } = await supabase.rpc(
+      'guardar_movimiento',
       {
-        ubicacion,
-        item: articulo,
-        cant: cantidad,
-      },
-      {
-        onConflict: 'ubicacion,item',
+        p_ubicacion: ubicacion,
+        p_articulo: articulo,
+        p_cantidad: cantidad,
+        p_matricula: matricula ?? null,
       }
-    )
-    .select()
-    .single();
+    );
 
-  console.log('CONTEO:', data);
-  console.log('ERROR CONTEO:', error);
+    if (error) throw error;
 
-  if (error) throw error;
-
-
-  const [seccion, area, subzona] = ubicacion.split('-');
-
-  // ==========================================
-  // 2. UBICACIÓN
-  // ==========================================
-
-  console.log('Actualizando maestroUbicacion...');
-
-  const { data: ubicacionData, error: ubicacionError } = await supabase
-    .from('maestroUbicacion')
-    .update({ stat: 'Proceso' })
-    .eq('seccion', seccion)
-    .eq('area', area)
-    .eq('subzona', subzona)
-    .select();
-
-  console.log('UBICACION DATA:', ubicacionData);
-  console.log('UBICACION ERROR:', ubicacionError);
-
-  if (ubicacionError) throw ubicacionError;
-
-
-  // ==========================================
-  // 3. ÁREA
-  // ==========================================
-
-  console.log('Actualizando maestroArea...');
-
-  const { data: areaData, error: areaError } = await supabase
-    .from('maestroArea')
-    .update({ stat: 'Proceso' })
-    .eq('seccion', seccion)
-    .eq('area', area)
-    .select();
-
-  console.log('AREA DATA:', areaData);
-  console.log('AREA ERROR:', areaError);
-
-  if (areaError) throw areaError;
-
-
-  // ==========================================
-  // 4. SECCIÓN
-  // ==========================================
-
-  console.log('Actualizando maestroSeccion...');
-
-  const { data: seccionData, error: seccionError } = await supabase
-    .from('maestroSeccion')
-    .update({ stat: 'Proceso' })
-    .eq('seccion', seccion)
-    .select();
-
-  console.log('SECCION DATA:', seccionData);
-  console.log('SECCION ERROR:', seccionError);
-
-  if (seccionError) throw seccionError;
-
-
-  return {
-    ubicacion: data.ubicacion,
-    articulo: data.item,
-    cantidad: data.cant,
-  };
-},
+    return {
+      ubicacion: data?.ubicacion ?? ubicacion,
+      articulo: data?.articulo ?? articulo,
+      cantidad: data?.cantidad ?? cantidad,
+      matricula: data?.matricula ?? matricula ?? null,
+    };
+  },
 
   async actualizarMovimiento({ ubicacion, articulo, cantidad }) {
     const { data, error } = await supabase
@@ -432,8 +294,6 @@ const SupabaseProvider = {
   },
 
   async obtenerUltimosMovimientos(limite = 20) {
-    // No hay columna de fecha en `conteo`; se ordena por ubicacion/item
-    // como aproximación. Ver nota al inicio del archivo.
     const { data, error } = await supabase
       .from('conteo')
       .select(
@@ -441,14 +301,15 @@ const SupabaseProvider = {
         ubicacion,
         item,
         cant,
+        matricula,
+        updated_at,
         maestroArticulo (
           dsca,
           tipo
         )
       `
       )
-      .order('ubicacion', { ascending: false })
-      .order('item', { ascending: false })
+      .order('updated_at', { ascending: false })
       .limit(limite);
 
     if (error) throw error;
@@ -457,6 +318,8 @@ const SupabaseProvider = {
       ubicacion: row.ubicacion,
       articulo: row.item,
       cantidad: row.cant,
+      matricula: row.matricula ?? null,
+      updated_at: row.updated_at ?? null,
       dsca: row.maestroArticulo?.dsca ?? null,
       tipo: row.maestroArticulo?.tipo ?? null,
     }));

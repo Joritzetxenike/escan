@@ -259,7 +259,10 @@ describe('InventoryService', () => {
 
       expect(
         DataProvider.guardarMovimiento
-      ).toHaveBeenCalledWith(movimiento);
+      ).toHaveBeenCalledWith({
+        ...movimiento,
+        matricula: '1234',
+      });
 
       expect(
         FileSystem.writeAsStringAsync
@@ -299,6 +302,7 @@ describe('InventoryService', () => {
         ubicacion: 'A1',
         articulo: '123456',
         cantidad: 10,
+        matricula: '1234',
         provisional: false,
         ubicacionProvisional: false,
       });

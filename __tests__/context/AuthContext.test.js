@@ -5,6 +5,14 @@ import { create, act } from 'react-test-renderer';
 import { AuthProvider, useAuth } from '../../src/context/AuthContext';
 import authService from '../../src/services/authService';
 
+import {
+  buscarOperario,
+} from '../../src/helpers/operariosHelper';
+
+jest.mock('../../src/helpers/operariosHelper', () => ({
+  buscarOperario: jest.fn(),
+}));
+
 describe('AuthContext', () => {
 
   let api;
@@ -35,6 +43,7 @@ describe('AuthContext', () => {
       .props.children;
 
   afterEach(() => {
+    jest.clearAllMocks();
     authService.cerrarSesion();
   });
 
@@ -43,9 +52,16 @@ describe('AuthContext', () => {
 
     expect(texto()).toBe('sin-sesion');
     expect(api.identificado).toBe(false);
+    expect(api.nombre).toBeNull();
   });
 
-  test('identifica con una matrícula numérica', async () => {
+  test('identifica con una matrícula numérica y expone el nombre', async () => {
+    buscarOperario.mockResolvedValue({
+      matricula: '00123',
+      nombre: 'Juan Pérez',
+      activo: true,
+    });
+
     await montar();
 
     await act(async () => {
@@ -54,7 +70,9 @@ describe('AuthContext', () => {
 
     expect(texto()).toBe('00123');
     expect(api.identificado).toBe(true);
+    expect(api.nombre).toBe('Juan Pérez');
     expect(authService.obtenerMatricula()).toBe('00123');
+    expect(authService.obtenerNombre()).toBe('Juan Pérez');
   });
 
   test('no identifica con una matrícula vacía', async () => {
@@ -72,6 +90,12 @@ describe('AuthContext', () => {
   });
 
   test('cerrar sesión vuelve al estado inicial', async () => {
+    buscarOperario.mockResolvedValue({
+      matricula: '1234',
+      nombre: 'Operario Test',
+      activo: true,
+    });
+
     await montar();
 
     await act(async () => {
@@ -84,7 +108,9 @@ describe('AuthContext', () => {
 
     expect(texto()).toBe('sin-sesion');
     expect(api.identificado).toBe(false);
+    expect(api.nombre).toBeNull();
     expect(authService.obtenerMatricula()).toBeNull();
+    expect(authService.obtenerNombre()).toBeNull();
   });
 
 });

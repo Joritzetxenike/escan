@@ -38,6 +38,7 @@ const aplicar = {
       ubicacion: op.ubicacion,
       articulo: op.articulo,
       cantidad: op.cantidad,
+      matricula: op.matricula ?? null,
     }),
 
   [pendientesService.TIPOS.ACTUALIZAR]: (op) =>

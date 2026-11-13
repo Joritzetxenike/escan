@@ -43,6 +43,17 @@ describe('HeaderSesion', () => {
     expect(texto).toContain('00123');
   });
 
+  test('muestra el nombre y la matrícula de la sesión', async () => {
+    authService.iniciarSesion('00123', 'Juan Pérez');
+
+    await montar();
+
+    const texto = JSON.stringify(renderer.toJSON());
+
+    expect(texto).toContain('Juan Pérez');
+    expect(texto).toContain('00123');
+  });
+
   test('pide confirmación antes de cerrar sesión', async () => {
     await montar();
 

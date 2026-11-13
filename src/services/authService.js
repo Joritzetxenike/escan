@@ -5,10 +5,16 @@
  * La matrícula vive solo en memoria: al arrancar la app
  * siempre se pide de nuevo. No se persiste a propósito.
  *
- * `validarMatricula` es el único punto que habrá que tocar
- * cuando la matrícula tenga que existir en Supabase. Hoy
- * acepta cualquier número no vacío.
+ * La validación se hace contra el archivo local
+ * documentDirectory/operarios.json (lista de operarios con
+ * matrícula y nombre). Si la matrícula no existe o no está
+ * activa, se rechaza el acceso.
  * ======================================================= */
+
+import {
+  buscarOperario,
+  esOperarioValido,
+} from '../helpers/operariosHelper';
 
 const MAX_LONGITUD = 20;
 
@@ -27,26 +33,46 @@ const validarMatricula = async (valor) => {
     return {
       valida: false,
       matricula: null,
+      nombre: null,
       error: 'Introduce tu matrícula',
     };
   }
 
-  /* TODO: validar contra Supabase cuando exista la tabla
-     de operarios. La firma no cambiará. */
+  const operario = await buscarOperario(matricula);
+
+  if (!operario) {
+    return {
+      valida: false,
+      matricula: null,
+      nombre: null,
+      error: `La matrícula ${matricula} no está registrada`,
+    };
+  }
+
+  if (!operario.activo) {
+    return {
+      valida: false,
+      matricula: null,
+      nombre: operario.nombre,
+      error: `La matrícula ${matricula} está desactivada`,
+    };
+  }
 
   return {
     valida: true,
     matricula,
+    nombre: operario.nombre,
     error: null,
   };
 };
 
-const iniciarSesion = (matricula) => {
+const iniciarSesion = (matricula, nombre) => {
   const normalizada = normalizarMatricula(matricula);
 
   sesion = normalizada
     ? {
         matricula: normalizada,
+        nombre: nombre ?? null,
         iniciadaAt: new Date().toISOString(),
       }
     : null;
@@ -63,6 +89,9 @@ const obtenerSesion = () => sesion;
 const obtenerMatricula = () =>
   sesion?.matricula ?? null;
 
+const obtenerNombre = () =>
+  sesion?.nombre ?? null;
+
 const haySesion = () => sesion !== null;
 
 const authService = {
@@ -73,6 +102,7 @@ const authService = {
   cerrarSesion,
   obtenerSesion,
   obtenerMatricula,
+  obtenerNombre,
   haySesion,
 };
 

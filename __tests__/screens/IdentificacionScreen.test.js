@@ -5,6 +5,8 @@ import IdentificacionScreen from '../../src/screens/IdentificacionScreen';
 import { AuthProvider } from '../../src/context/AuthContext';
 import authService from '../../src/services/authService';
 
+import { buscarOperario } from '../../src/helpers/operariosHelper';
+
 jest.mock('@expo/vector-icons', () => ({
   MaterialIcons: () => null,
 }));
@@ -35,6 +37,10 @@ jest.mock('../../src/components/MaestrosBanner', () => {
     'Maestros'
   );
 });
+
+jest.mock('../../src/helpers/operariosHelper', () => ({
+  buscarOperario: jest.fn(),
+}));
 
 describe('IdentificacionScreen', () => {
 
@@ -95,12 +101,19 @@ describe('IdentificacionScreen', () => {
   });
 
   test('inicia sesión con una matrícula válida', async () => {
+    buscarOperario.mockResolvedValue({
+      matricula: '00123',
+      nombre: 'Juan Pérez',
+      activo: true,
+    });
+
     await montar();
 
     await escribir('00123');
     await entrar();
 
     expect(authService.obtenerMatricula()).toBe('00123');
+    expect(authService.obtenerNombre()).toBe('Juan Pérez');
     expect(
       renderer.root.findAllByProps({ testID: 'error-matricula' })
     ).toHaveLength(0);

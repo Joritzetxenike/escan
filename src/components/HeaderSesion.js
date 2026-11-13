@@ -11,7 +11,7 @@ import { useAuth } from '../context/AuthContext';
 import { colors } from '../styles/styles';
 
 export default function HeaderSesion() {
-  const { matricula, cerrarSesion } = useAuth();
+  const { matricula, nombre, cerrarSesion } = useAuth();
 
   if (!matricula) {
     return null;
@@ -20,7 +20,7 @@ export default function HeaderSesion() {
   const confirmarCierre = () => {
     Alert.alert(
       'Cerrar sesión',
-      `¿Salir de la sesión de la matrícula ${matricula}?`,
+      `¿Salir de la sesión de ${nombre ?? ''} (${matricula})?`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -37,9 +37,9 @@ export default function HeaderSesion() {
       <Text
         style={styles.matricula}
         numberOfLines={1}
-        accessibilityLabel={`Matrícula ${matricula}`}
+        accessibilityLabel={`Matrícula ${matricula} ${nombre ?? ''}`}
       >
-        Matrícula: {matricula}
+        {nombre ?? ''} ({matricula})
       </Text>
 
       <TouchableOpacity

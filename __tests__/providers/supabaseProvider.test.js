@@ -3,6 +3,7 @@ import supabase from '../../src/providers/supabase/supabaseClient';
 
 jest.mock('../../src/providers/supabase/supabaseClient', () => ({
   from: jest.fn(),
+  rpc: jest.fn(),
 }));
 
 describe('SupabaseProvider', () => {
@@ -287,119 +288,55 @@ describe('SupabaseProvider', () => {
         error: null,
       }),
     });
+    test('finaliza la ubicación y propaga a área y sección vía RPC', async () => {
 
-    test('marca la ubicación y propaga a área y sección si todo está en Fin', async () => {
-
-      const qUbiUpdate = cadenaActualizacion();
-      const qUbiSelect = cadenaUbicaciones([
-        { subzona: 'Z101', stat: 'Fin' },
-      ]);
-      const qAreaUpdate = cadenaActualizacion();
-      const qAreaSelect = cadenaAreas([
-        { area: '111', stat: 'Fin' },
-      ]);
-      const qSeccionUpdate = cadenaActualizacion();
-
-      supabase.from
-        .mockReturnValueOnce(qUbiUpdate)
-        .mockReturnValueOnce(qUbiSelect)
-        .mockReturnValueOnce(qAreaUpdate)
-        .mockReturnValueOnce(qAreaSelect)
-        .mockReturnValueOnce(qSeccionUpdate);
-
-      const resultado =
-        await SupabaseProvider.finalizarUbicacion(
-          '50100-111-Z101'
-        );
-
-      expect(resultado).toBe(true);
-
-      expect(supabase.from)
-        .toHaveBeenNthCalledWith(1, 'maestroUbicacion');
-      expect(supabase.from)
-        .toHaveBeenNthCalledWith(2, 'maestroUbicacion');
-      expect(supabase.from)
-        .toHaveBeenNthCalledWith(3, 'maestroArea');
-      expect(supabase.from)
-        .toHaveBeenNthCalledWith(4, 'maestroArea');
-      expect(supabase.from)
-        .toHaveBeenNthCalledWith(5, 'maestroSeccion');
-
-      expect(qUbiUpdate.update)
-        .toHaveBeenCalledWith({ stat: 'Fin' });
-      expect(qUbiUpdate.eq)
-        .toHaveBeenCalledWith('subzona', 'Z101');
-
-      expect(qAreaUpdate.update)
-        .toHaveBeenCalledWith({ stat: 'Fin' });
-
-      expect(qSeccionUpdate.update)
-        .toHaveBeenCalledWith({ stat: 'Fin' });
-    });
-
-    test('no propaga al área si queda una ubicación sin terminar', async () => {
-
-      const qUbiUpdate = cadenaActualizacion();
-      const qUbiSelect = cadenaUbicaciones([
-        { subzona: 'Z101', stat: 'Fin' },
-        { subzona: 'Z102', stat: 'Inicio' },
-      ]);
-
-      supabase.from
-        .mockReturnValueOnce(qUbiUpdate)
-        .mockReturnValueOnce(qUbiSelect);
-
-      const resultado =
-        await SupabaseProvider.finalizarUbicacion(
-          '50100-111-Z101'
-        );
-
-      expect(resultado).toBe(true);
-      expect(supabase.from).toHaveBeenCalledTimes(2);
-      expect(supabase.from).not.toHaveBeenCalledWith('maestroArea');
-    });
-
-    test('no marca la sección si queda un área sin terminar', async () => {
-
-      const qUbiUpdate = cadenaActualizacion();
-      const qUbiSelect = cadenaUbicaciones([
-        { subzona: 'Z101', stat: 'Fin' },
-      ]);
-      const qAreaUpdate = cadenaActualizacion();
-      const qAreaSelect = cadenaAreas([
-        { area: '111', stat: 'Fin' },
-        { area: '112', stat: 'Inicio' },
-      ]);
-
-      supabase.from
-        .mockReturnValueOnce(qUbiUpdate)
-        .mockReturnValueOnce(qUbiSelect)
-        .mockReturnValueOnce(qAreaUpdate)
-        .mockReturnValueOnce(qAreaSelect);
-
-      const resultado =
-        await SupabaseProvider.finalizarUbicacion(
-          '50100-111-Z101'
-        );
-
-      expect(resultado).toBe(true);
-      expect(supabase.from).toHaveBeenCalledTimes(4);
-      expect(supabase.from).not.toHaveBeenCalledWith('maestroSeccion');
-    });
-
-    test('lanza error si falla al marcar la ubicación', async () => {
-
-      const qUbiUpdate = cadenaActualizacion({
-        error: new Error('Error actualizando ubicación'),
+      supabase.rpc.mockResolvedValue({
+        data: {
+          seccion: '50100',
+          area: '111',
+          subzona: 'Z101',
+          ubicacion: '50100-111-Z101',
+          stat: 'Fin',
+          area_stat: 'Fin',
+          seccion_stat: 'Fin',
+        },
+        error: null,
       });
 
-      supabase.from.mockReturnValue(qUbiUpdate);
+      const resultado =
+        await SupabaseProvider.finalizarUbicacion(
+          '50100-111-Z101'
+        );
+
+      expect(supabase.rpc).toHaveBeenCalledWith(
+        'finalizar_ubicacion',
+        {
+          p_seccion: '50100',
+          p_area: '111',
+          p_subzona: 'Z101',
+        }
+      );
+
+      expect(resultado).toEqual({
+        seccion: '50100',
+        area: '111',
+        subzona: 'Z101',
+        stat: 'Fin',
+      });
+    });
+
+    test('lanza error si la RPC falla', async () => {
+
+      supabase.rpc.mockResolvedValue({
+        data: null,
+        error: new Error('Error finalizando ubicación'),
+      });
 
       await expect(
         SupabaseProvider.finalizarUbicacion('50100-111-Z101')
-      ).rejects.toThrow('Error actualizando ubicación');
+      ).rejects.toThrow('Error finalizando ubicación');
 
-      expect(supabase.from).toHaveBeenCalledTimes(1);
+      expect(supabase.rpc).toHaveBeenCalledTimes(1);
     });
 
     test('lanza error si el código no es seccion-area-subzona', async () => {
@@ -408,7 +345,7 @@ describe('SupabaseProvider', () => {
         SupabaseProvider.finalizarUbicacion('50100')
       ).rejects.toThrow('Código de ubicación inválido');
 
-      expect(supabase.from).not.toHaveBeenCalled();
+      expect(supabase.rpc).not.toHaveBeenCalled();
     });
 
   });

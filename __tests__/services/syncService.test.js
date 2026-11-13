@@ -110,6 +110,7 @@ describe('syncService', () => {
         ubicacion: 'A1',
         articulo: '123456',
         cantidad: 5,
+        matricula: null,
       });
 
       expect(pendientesService.quitar)

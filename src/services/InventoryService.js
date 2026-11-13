@@ -225,9 +225,11 @@ const InventoryService = {
 
     /* ---------- 1. CSV local (siempre) ---------- */
 
+    const matricula = authService.obtenerMatricula();
+
     const movimientoLocal = {
       ...movimiento,
-      matricula: authService.obtenerMatricula(),
+      matricula,
     };
 
     await CsvProvider.guardarMovimiento(movimientoLocal)
@@ -243,10 +245,16 @@ const InventoryService = {
         ubicacion: movimiento.ubicacion,
         articulo: movimiento.articulo,
         cantidad: movimiento.cantidad,
+        matricula,
       },
       opciones,
       () =>
-        DataProvider.guardarMovimiento(movimiento)
+        DataProvider.guardarMovimiento({
+          ubicacion: movimiento.ubicacion,
+          articulo: movimiento.articulo,
+          cantidad: movimiento.cantidad,
+          matricula,
+        })
     );
   },
 
