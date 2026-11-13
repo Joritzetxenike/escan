@@ -10,6 +10,10 @@
     "test": "jest",
     "import": "node scripts/importExcel.js",
     "import:template": "node scripts/importExcel.js --template",
+    "import:articulos": "node scripts/importArticulos.js",
+    "import:ubicaciones": "node scripts/importUbicaciones.js",
+    "import:operarios": "node scripts/importOperarios.js",
+    "import:todos": "node scripts/importTodos.js",
     "update:preview": "cross-env EXPO_PUBLIC_APP_ENV=production npx eas-cli update --channel preview --platform android",
     "build:preview": "cross-env EXPO_PUBLIC_APP_ENV=production npx eas-cli build --profile preview --platform android"
   },
