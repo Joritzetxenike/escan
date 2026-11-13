@@ -306,7 +306,10 @@ const pendientesService = {
    */
   async vaciar() {
 
-    await Persistencia.escribir([]);
+    await Persistencia.escribir({
+      version: VERSION,
+      operaciones: [],
+    });
 
     return true;
 
