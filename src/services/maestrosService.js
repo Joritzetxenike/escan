@@ -4,6 +4,9 @@ import DataProvider from '../providers/DataProvider';
 import conectividadService from './conectividadService';
 import { esErrorDeRed } from '../helpers/redHelper';
 import {
+  asegurarArchivoOperarios,
+} from '../helpers/operariosHelper';
+import {
   escribirJson,
   leerJson,
 } from '../helpers/archivoHelper';
@@ -767,11 +770,15 @@ const rechazarRefresco = async () => {
  * ARRANQUE
  * ======================================================= */
 
-const iniciar = () => {
+const iniciar = async () => {
 
   if (iniciado) return estado;
 
   iniciado = true;
+
+  /* Asegurar que existe el archivo de operarios local para
+     validar el login desde el primer arranque. */
+  await asegurarArchivoOperarios();
 
   /* Cuando vuelve la conexión puede tocar refrescar. Se
      suscribe aquí (y no al revés) para no crear un ciclo de
