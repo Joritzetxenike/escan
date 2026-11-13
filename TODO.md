@@ -313,3 +313,29 @@
 
 - [ ] **Scripts y tests**: adaptar `scripts/importExcel.js` para insertar/mapear ids (o mantener la composición string si la FK usa la PK compuesta), actualizar los `__tests__` que mockean el provider (fixtures, queries anidadas de `obtenerEstadoUbicaciones`) y documentar en README el nuevo esquema + nota de migración para instalaciones existentes.
   - Prioridad: baja.
+
+## Pendiente actual
+
+- [x] **Import masivo por CSV**: crear y probar los 4 scripts en `scripts/`:
+  - [x] `scripts/importArticulos.js` (ITEM,DSCA,TIPO,UNIDAD → maestroArticulo)
+  - [x] `scripts/importUbicaciones.js` (SECCION,AREA,SUBZONA,CODIGO → maestroSeccion, maestroArea, maestroUbicacion)
+  - [x] `scripts/importOperarios.js` (MATRICULA,NOMBRE,ACTIVO → operarios)
+  - [x] `scripts/importTodos.js` (llama a los 3 anteriores, sin orden predefinido)
+- [x] **Importación de emergencia desde la nube**: botón oculto en Home, bloqueado por bandera, sobrescribe CSV local, muestra resumen
+  - [x] `src/components/ImportEmergenciaModal.js` — resumen de importación
+  - [x] `src/services/InventoryService.js` — `importarUbicacionDesdeNube()`
+  - [x] `src/providers/supabase/SupabaseProvider.js` — `obtenerConteoUbicacion()`
+  - [x] `src/services/maestrosService.js` — bandera de habilitación
+  - [x] `src/logic/HomeLogic.js` — lógica de importación
+  - [x] `src/views/HomeView.js` — botón oculto condicional
+- [ ] **Prueba total de la app en dispositivo**:
+  - [ ] Login con matrícula válida (muestra nombre en encabezado)
+  - [ ] Login con matrícula inexistente (rechaza acceso)
+  - [ ] Login con matrícula desactivada (rechaza acceso)
+  - [ ] Escanear ubicación y validar contra maestro local
+  - [ ] Escanear artículo y guardar movimiento (con matrícula)
+  - [ ] Guardar sin conexión (cola de pendientes)
+  - [ ] Recuperar conexión y sincronizar cola de pendientes
+  - [ ] Marcar ubicación como Fin (propagación automática a área y sección)
+  - [ ] Ver encabezado con `Nombre (matrícula)` y botón de cerrar sesión
+  - [ ] Importar ubicación desde nube (requiere bandera habilitada)
