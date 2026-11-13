@@ -326,6 +326,40 @@ const SupabaseProvider = {
   },
 
   /* =======================================================
+   * IMPORTACIÓN DE EMERGENCIA
+   * =======================================================
+   *
+   * Lee todo el conteo de una ubicación desde la nube para
+   * sobrescribir el CSV local. Solo se usa en situaciones
+   * específicas: el administrador debe habilitarla primero.
+   */
+
+  async obtenerConteoUbicacion(ubicacion) {
+    const { data, error } = await supabase
+      .from('conteo')
+      .select(
+        `
+        ubicacion,
+        item,
+        cant,
+        matricula,
+        updated_at
+      `
+      )
+      .eq('ubicacion', ubicacion);
+
+    if (error) throw error;
+
+    return (data || []).map((row) => ({
+      ubicacion: row.ubicacion,
+      articulo: row.item,
+      cantidad: row.cant,
+      matricula: row.matricula ?? null,
+      updated_at: row.updated_at ?? null,
+    }));
+  },
+
+  /* =======================================================
    * SINCRONIZACIÓN
    * ======================================================= */
 

@@ -169,6 +169,20 @@ const CsvProvider = {
     return true;
   },
 
+  async eliminarUbicacion(ubicacion) {
+    const path = getUbicacionPath(ubicacion);
+
+    const exists = await FileSystem.getInfoAsync(path);
+
+    if (!exists.exists) {
+      return true;
+    }
+
+    await FileSystem.writeAsStringAsync(path, '');
+
+    return true;
+  },
+
   async obtenerUltimosMovimientos() {
     throw new Error('No implementado');
   },

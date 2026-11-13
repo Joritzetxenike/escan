@@ -53,6 +53,12 @@ jest.mock('../../src/services/ubicacionActivaService', () => ({
   limpiarSiCoincide: jest.fn(),
 }));
 
+jest.mock('../../src/services/maestrosService', () => ({
+  estaHabilitadaImportacionEmergencia: jest.fn(() => false),
+  habilitarImportacionEmergencia: jest.fn(),
+  deshabilitarImportacionEmergencia: jest.fn(),
+}));
+
 // Harness: ejecuta el hook y expone su resultado en `current`.
 let current = null;
 

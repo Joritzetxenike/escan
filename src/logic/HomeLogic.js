@@ -4,6 +4,7 @@ import { useFocusEffect } from '@react-navigation/native';
 
 import InventoryService from '../services/InventoryService';
 import ubicacionActivaService from '../services/ubicacionActivaService';
+import maestrosService from '../services/maestrosService';
 import useConectividad from './useConectividad';
 
 export function useHomeLogic(navigation) {
@@ -72,6 +73,11 @@ export function useHomeLogic(navigation) {
 
   const [mostrarManualUbicacion, setMostrarManualUbicacion] =
     useState(false);
+
+  const [mostrarImportEmergencia, setMostrarImportEmergencia] =
+    useState(false);
+
+  const [importResult, setImportResult] = useState(null);
 
   const conectividad = useConectividad();
 
@@ -305,6 +311,60 @@ export function useHomeLogic(navigation) {
        precisamente lo que se está introduciendo. */
 
     setMostrarManualUbicacion(true);
+
+  };
+
+  /* =====================================================
+   * IMPORTACIÓN DE EMERGENCIA DESDE LA NUBE
+   * =====================================================
+   *
+   * Solo se habilita si la bandera está activa y hay una
+   * ubicación seleccionada. Sobrescribe el CSV local con los
+   * datos de Supabase.
+   */
+
+  const importarDesdeNube = async () => {
+
+    if (!ubicacion) {
+      avisoSinUbicacion();
+      return;
+    }
+
+    const confirmar = await new Promise((resolve) => {
+      Alert.alert(
+        'Importación de emergencia',
+        `¿Sobreescribir el conteo local de "${ubicacion}" con los datos de la nube? Esta acción borrará el conteo actual del dispositivo.`,
+        [
+          { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
+          { text: 'Sí, sobrescribir', onPress: () => resolve(true) },
+        ]
+      );
+    });
+
+    if (!confirmar) return;
+
+    try {
+
+      const resultado =
+        await InventoryService.importarUbicacionDesdeNube(ubicacion);
+
+      setImportResult({
+        ...resultado,
+        ubicacion,
+      });
+
+      setMostrarImportEmergencia(true);
+
+    } catch (e) {
+
+      console.error('Error importando desde nube:', e);
+
+      Alert.alert(
+        'Error',
+        e.message || 'No se pudo importar desde la nube'
+      );
+
+    }
 
   };
 
@@ -1009,6 +1069,21 @@ InventoryService.crearMovimiento(
     abrirModalManualUbicacion,
 
     setMostrarManualUbicacion,
+
+
+    /* ---------- IMPORTACIÓN DE EMERGENCIA ---------- */
+
+    puedeImportarEmergencia:
+
+      maestrosService.estaHabilitadaImportacionEmergencia(),
+
+    importarDesdeNube,
+
+    mostrarImportEmergencia,
+
+    importResult,
+
+    setMostrarImportEmergencia,
 
   };
 

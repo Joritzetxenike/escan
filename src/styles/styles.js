@@ -444,4 +444,20 @@ ultimosArticulosTitle: {
     opacity: 0.6,
   },
 
+  /* ---------- IMPORTACIÓN DE EMERGENCIA ---------- */
+
+  botonEmergencia: {
+    backgroundColor: '#B45309', /* ámbar, diferente del celeste normal */
+    flex: 1,
+    marginRight: 8,
+    marginTop: 15,
+  },
+
+  botonEmergenciaTexto: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+
 },);

@@ -665,6 +665,52 @@ const sugerirArticulos = (texto, limite = 8) => {
 const existeUbicacion = (codigo) =>
   cache?.ubicaciones?.has(codigo) ?? null;
 
+/* =======================================================
+ * BANDERA DE IMPORTACIÓN DE EMERGENCIA
+ * =======================================================
+ *
+ * La importación desde la nube está bloqueada por defecto.
+ * Solo se activa si el administrador lo permite explícitamente
+ * en `maestros-meta.json`. Nunca se activa sola.
+ */
+
+const estaHabilitadaImportacionEmergencia = () =>
+  Boolean(estado.importacionEmergenciaHabilitada);
+
+const habilitarImportacionEmergencia = async () => {
+
+  const meta = await leerMeta();
+
+  await guardarMeta({
+    importacionEmergenciaHabilitada: true,
+    importacionEmergenciaHabilitadaDesde: new Date().toISOString(),
+  });
+
+  setEstado({
+    importacionEmergenciaHabilitada: true,
+  });
+
+  return true;
+
+};
+
+const deshabilitarImportacionEmergencia = async () => {
+
+  const meta = await leerMeta();
+
+  await guardarMeta({
+    importacionEmergenciaHabilitada: false,
+    importacionEmergenciaHabilitadaDesde: null,
+  });
+
+  setEstado({
+    importacionEmergenciaHabilitada: false,
+  });
+
+  return true;
+
+};
+
 const antiguedadHoras = () => {
   if (!estado.actualizadoAt) return null;
 
@@ -780,6 +826,22 @@ const iniciar = async () => {
      validar el login desde el primer arranque. */
   await asegurarArchivoOperarios();
 
+  /* Leer la bandera de importación de emergencia del meta.
+     Nunca se activa sola: solo si el administrador lo permite. */
+  try {
+    const meta = await leerMeta();
+    setEstado({
+      importacionEmergenciaHabilitada: Boolean(
+        meta.importacionEmergenciaHabilitada
+      ),
+    });
+  } catch (e) {
+    console.error(
+      'No se pudo leer la bandera de importación de emergencia:',
+      e
+    );
+  }
+
   /* Cuando vuelve la conexión puede tocar refrescar. Se
      suscribe aquí (y no al revés) para no crear un ciclo de
      importaciones entre los dos servicios. */
@@ -839,6 +901,10 @@ const maestrosService = {
   descargarUbicaciones,
   evaluarRefresco,
   rechazarRefresco,
+
+  estaHabilitadaImportacionEmergencia,
+  habilitarImportacionEmergencia,
+  deshabilitarImportacionEmergencia,
 };
 
 export default maestrosService;

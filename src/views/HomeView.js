@@ -4,6 +4,7 @@ import CantidadModal from '../components/CantidadModal';
 import ArticuloExistenteModal from '../components/ArticuloExistenteModal';
 import ManualCodeModal from '../components/ManualCodeModal';
 import EstadoBanner from '../components/EstadoBanner';
+import ImportEmergenciaModal from '../components/ImportEmergenciaModal';
 
 import { styles } from '../styles/styles';
 
@@ -86,6 +87,27 @@ export default function HomeView({
         <Text style={styles.ubicacionText}>
           Ubicación actual: {state.ubicacion ?? '—'}
         </Text>
+
+        {/* ---------- IMPORTACIÓN DE EMERGENCIA ---------- */}
+        {/* Solo visible si el administrador habilitó la bandera y
+            hay una ubicación activa seleccionada. Sobrescribe el
+            CSV local con los datos de Supabase. */}
+        {state.puedeImportarEmergencia && state.ubicacion && (
+          <TouchableOpacity
+            style={[
+              styles.customButton,
+              styles.botonEmergencia,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Importar desde nube (emergencia)"
+            testID="btn-importar-emergencia"
+            onPress={actions.importarDesdeNube}
+          >
+            <Text style={styles.botonEmergenciaTexto}>
+              Importar desde nube (emergencia)
+            </Text>
+          </TouchableOpacity>
+        )}
 
 
         {/* =================================================
@@ -302,6 +324,18 @@ export default function HomeView({
         onConfirm={actions.confirmarCantidad}
 
         onCancel={actions.descartarArticulo}
+      />
+
+      {/* =====================================================
+          MODAL IMPORTACIÓN DE EMERGENCIA
+      ===================================================== */}
+
+      <ImportEmergenciaModal
+        visible={state.mostrarImportEmergencia}
+
+        resumen={state.importResult}
+
+        onCerrar={() => actions.setMostrarImportEmergencia(false)}
       />
 
     </View>
