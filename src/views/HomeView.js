@@ -25,7 +25,7 @@ export default function HomeView({
           CONTENIDO
       ===================================================== */}
 
-      <View style={styles.homeContent}>
+      <View style={styles.container}>
 
         {/* ---------- AVISOS DE CONEXIÓN Y COLA ---------- */}
 
