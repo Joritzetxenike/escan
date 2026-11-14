@@ -24,18 +24,20 @@ export default function MainTabs() {
   };
 
   return (
-    <Tab.Navigator
-      screenOptions={{
-        headerShown: true,
-        header: ({ options, route }) => (
-          <HeaderTabs
-            titulo={options.title ?? route.name}
-            esAdminEmergencia={
-              route.name === 'Lista' ? esAdminEmergencia : false
-            }
-            onImportarEmergencia={onImportarEmergencia}
-          />
-        ),
+    <>
+      <Tab.Navigator
+        screenOptions={{
+          headerShown: true,
+          header: ({ options, route }) => (
+            <HeaderTabs
+              titulo={options.title ?? route.name}
+              esAdminEmergencia={
+                route.name === 'Lista' ? esAdminEmergencia : false
+              }
+              onImportarEmergencia={onImportarEmergencia}
+            />
+          ),
+        },
 
         tabBarStyle: {
           backgroundColor: colors.primary,
@@ -46,49 +48,50 @@ export default function MainTabs() {
         tabBarActiveTintColor: colors.onPrimary,
         tabBarInactiveTintColor: colors.onPrimaryMuted,
       }}
-    >
-      <Tab.Screen
-        name="Home"
-        component={HomeScreen}
-        options={{
-          title: 'Inicio',
-          tabBarIcon: ({ color, size }) => (
-            <MaterialIcons name="home" size={size} color={color} />
-          ),
-        }}
-      />
+      >
+        <Tab.Screen
+          name="Home"
+          component={HomeScreen}
+          options={{
+            title: 'Inicio',
+            tabBarIcon: ({ color, size }) => (
+              <MaterialIcons name="home" size={size} color={color} />
+            ),
+          }}
+        />
 
-      <Tab.Screen
-        name="Lista"
-        component={ListaScreen}
-        options={{
-          title: 'Lista de escaneos',
-          tabBarIcon: ({ color, size }) => (
-            <MaterialIcons name="list-alt" size={size} color={color} />
-          ),
-        }}
-      />
+        <Tab.Screen
+          name="Lista"
+          component={ListaScreen}
+          options={{
+            title: 'Lista de escaneos',
+            tabBarIcon: ({ color, size }) => (
+              <MaterialIcons name="list-alt" size={size} color={color} />
+            ),
+          }}
+        />
 
-      <Tab.Screen
-        name="Estado"
-        component={EstadoScreen}
-        options={{
-          title: 'Estado',
-          tabBarIcon: ({ color, size }) => (
-            <MaterialIcons name="assessment" size={size} color={color} />
-          ),
-        }}
-      />
-    </Tab.Navigator>
+        <Tab.Screen
+          name="Estado"
+          component={EstadoScreen}
+          options={{
+            title: 'Estado',
+            tabBarIcon: ({ color, size }) => (
+              <MaterialIcons name="assessment" size={size} color={color} />
+            ),
+          }}
+        />
+      </Tab.Navigator>
 
-    {mostrarImportModal && (
-      <ImportarArchivoModal
-        visible={mostrarImportModal}
-        onCerrar={() => setMostrarImportModal(false)}
-        onArchivoSeleccionado={(resultado) => {
-          setMostrarImportModal(false);
-        }}
-      />
-    )}
+      {mostrarImportModal && (
+        <ImportarArchivoModal
+          visible={mostrarImportModal}
+          onCerrar={() => setMostrarImportModal(false)}
+          onArchivoSeleccionado={(resultado) => {
+            setMostrarImportModal(false);
+          }}
+        />
+      )}
+    </>
   );
 }
