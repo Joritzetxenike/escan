@@ -9,6 +9,10 @@ jest.mock('@expo/vector-icons', () => ({
   MaterialIcons: () => null,
 }));
 
+jest.mock('../../src/helpers/operariosHelper', () => ({
+  buscarOperario: jest.fn(),
+}));
+
 jest.mock('expo-status-bar', () => ({
   StatusBar: () => null,
 }));

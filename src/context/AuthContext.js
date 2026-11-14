@@ -17,9 +17,6 @@ export function AuthProvider({ children }) {
   const [nombre, setNombre] = useState(
     () => authService.obtenerNombre()
   );
-  const [esAdminEmergencia, setEsAdminEmergencia] = useState(
-    () => authService.obtenerEsAdminEmergencia()
-  );
 
   const identificar = useCallback(async (valor) => {
     const resultado = await authService.validarMatricula(valor);
@@ -28,14 +25,9 @@ export function AuthProvider({ children }) {
       return resultado;
     }
 
-    authService.iniciarSesion(
-      resultado.matricula,
-      resultado.nombre,
-      resultado.esAdminEmergencia
-    );
+    authService.iniciarSesion(resultado.matricula, resultado.nombre);
     setMatricula(resultado.matricula);
     setNombre(resultado.nombre);
-    setEsAdminEmergencia(resultado.esAdminEmergencia);
 
     return resultado;
   }, []);
@@ -44,19 +36,17 @@ export function AuthProvider({ children }) {
     authService.cerrarSesion();
     setMatricula(null);
     setNombre(null);
-    setEsAdminEmergencia(false);
   }, []);
 
   const value = useMemo(
     () => ({
       matricula,
       nombre,
-      esAdminEmergencia,
       identificado: matricula !== null,
       identificar,
       cerrarSesion,
     }),
-    [matricula, nombre, esAdminEmergencia, identificar, cerrarSesion]
+    [matricula, nombre, identificar, cerrarSesion]
   );
 
   return (

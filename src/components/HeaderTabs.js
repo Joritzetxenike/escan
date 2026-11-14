@@ -2,20 +2,14 @@ import {
   StyleSheet,
   Text,
   View,
-  TouchableOpacity,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MaterialIcons } from '@expo/vector-icons';
 
 import HeaderSesion from './HeaderSesion';
 import { colors } from '../styles/styles';
 
-export default function HeaderTabs({
-  titulo,
-  esAdminEmergencia,
-  onImportarEmergencia,
-}) {
+export default function HeaderTabs({ titulo }) {
   const insets = useSafeAreaInsets();
 
   return (
@@ -34,22 +28,6 @@ export default function HeaderTabs({
         >
           {titulo}
         </Text>
-
-        {esAdminEmergencia && (
-          <TouchableOpacity
-            style={styles.botonEmergencia}
-            onPress={onImportarEmergencia}
-            accessibilityRole="button"
-            accessibilityLabel="Importación de emergencia"
-            testID="btn-toggle-emergencia"
-          >
-            <MaterialIcons
-              name="flash_on"
-              size={20}
-              color={colors.warningBg}
-            />
-          </TouchableOpacity>
-        )}
       </View>
     </View>
   );
@@ -62,10 +40,8 @@ const styles = StyleSheet.create({
   },
 
   filaTitulo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     minHeight: 48,
+    justifyContent: 'center',
     paddingHorizontal: 16,
   },
 
@@ -73,10 +49,6 @@ const styles = StyleSheet.create({
     color: colors.onPrimary,
     fontSize: 20,
     fontWeight: 'bold',
-  },
-
-  botonEmergencia: {
-    marginLeft: 12,
-    padding: 4,
+    textAlign: 'center',
   },
 });

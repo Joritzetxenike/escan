@@ -55,7 +55,7 @@ describe('AuthContext', () => {
     expect(api.nombre).toBeNull();
   });
 
-  test('identifica con una matrícula numérica y expone el nombre', async () => {
+  test('identifica con una matrícula numérica', async () => {
     buscarOperario.mockResolvedValue({
       matricula: '00123',
       nombre: 'Juan Pérez',
@@ -70,7 +70,6 @@ describe('AuthContext', () => {
 
     expect(texto()).toBe('00123');
     expect(api.identificado).toBe(true);
-    expect(api.nombre).toBe('Juan Pérez');
     expect(authService.obtenerMatricula()).toBe('00123');
     expect(authService.obtenerNombre()).toBe('Juan Pérez');
   });

@@ -169,6 +169,7 @@ const CsvProvider = {
     return true;
   },
 
+  /*
   async eliminarUbicacion(ubicacion) {
     const path = getUbicacionPath(ubicacion);
 
@@ -182,6 +183,7 @@ const CsvProvider = {
 
     return true;
   },
+  */
 
   async obtenerUltimosMovimientos() {
     throw new Error('No implementado');

@@ -4,10 +4,6 @@ import DataProvider from '../providers/DataProvider';
 import conectividadService from './conectividadService';
 import { esErrorDeRed } from '../helpers/redHelper';
 import {
-  asegurarArchivoOperarios,
-  buscarOperario,
-} from '../helpers/operariosHelper';
-import {
   escribirJson,
   leerJson,
 } from '../helpers/archivoHelper';
@@ -667,14 +663,16 @@ const existeUbicacion = (codigo) =>
   cache?.ubicaciones?.has(codigo) ?? null;
 
 /* =======================================================
- * BANDERA DE IMPORTACIÓN DE EMERGENCIA
+ * BANDERA DE IMPORTACIÓN DE EMERGENCIA — COMENTADO
  * =======================================================
  *
  * La importación desde la nube está bloqueada por defecto.
- * Solo se activa si el administrador lo permite explícitamente
- * en `maestros-meta.json`. Nunca se activa sola.
+ * Toda esta funcionalidad está comentada temporalmente.
+ * Para reactivar, descomentar los bloques abajo y restaurar
+ * las importaciones de `buscarOperario` y las exportaciones.
  */
 
+/*
 const estaHabilitadaImportacionEmergencia = () =>
   Boolean(estado.importacionEmergenciaHabilitada);
 
@@ -737,6 +735,7 @@ const deshabilitarImportacionEmergencia = async (matricula) => {
   return true;
 
 };
+*/
 
 const antiguedadHoras = () => {
   if (!estado.actualizadoAt) return null;
@@ -849,26 +848,6 @@ const iniciar = async () => {
 
   iniciado = true;
 
-  /* Asegurar que existe el archivo de operarios local para
-     validar el login desde el primer arranque. */
-  await asegurarArchivoOperarios();
-
-  /* Leer la bandera de importación de emergencia del meta.
-     Nunca se activa sola: solo si el administrador lo permite. */
-  try {
-    const meta = await leerMeta();
-    setEstado({
-      importacionEmergenciaHabilitada: Boolean(
-        meta.importacionEmergenciaHabilitada
-      ),
-    });
-  } catch (e) {
-    console.error(
-      'No se pudo leer la bandera de importación de emergencia:',
-      e
-    );
-  }
-
   /* Cuando vuelve la conexión puede tocar refrescar. Se
      suscribe aquí (y no al revés) para no crear un ciclo de
      importaciones entre los dos servicios. */
@@ -929,10 +908,10 @@ const maestrosService = {
   evaluarRefresco,
   rechazarRefresco,
 
-  estaHabilitadaImportacionEmergencia,
-  puedeHabilitarImportacionEmergencia,
-  habilitarImportacionEmergencia,
-  deshabilitarImportacionEmergencia,
+  // estaHabilitadaImportacionEmergencia, // COMENTADO - emergencia
+  // puedeHabilitarImportacionEmergencia, // COMENTADO - emergencia
+  // habilitarImportacionEmergencia, // COMENTADO - emergencia
+  // deshabilitarImportacionEmergencia, // COMENTADO - emergencia
 };
 
 export default maestrosService;

@@ -4,8 +4,7 @@ import { useFocusEffect } from '@react-navigation/native';
 
 import InventoryService from '../services/InventoryService';
 import ubicacionActivaService from '../services/ubicacionActivaService';
-import maestrosService from '../services/maestrosService';
-import { useAuth } from '../context/AuthContext';
+// import maestrosService from '../services/maestrosService'; // COMENTADO - emergencia
 import useConectividad from './useConectividad';
 
 export function useHomeLogic(navigation) {
@@ -78,14 +77,9 @@ export function useHomeLogic(navigation) {
   const [mostrarImportEmergencia, setMostrarImportEmergencia] =
     useState(false);
 
-  const [importResult, setImportResult] = useState(null);
+// const [importResult, setImportResult] = useState(null); // COMENTADO - emergencia
 
   const conectividad = useConectividad();
-
-
-  /* ---------- PERMISO DE EMERGENCIA ---------- */
-
-  const { matricula, esAdminEmergencia } = useAuth();
 
 
   /* =====================================================
@@ -329,18 +323,11 @@ export function useHomeLogic(navigation) {
    * datos de Supabase.
    */
 
+  /*
   const importarDesdeNube = async () => {
 
     if (!ubicacion) {
       avisoSinUbicacion();
-      return;
-    }
-
-    if (!esAdminEmergencia) {
-      Alert.alert(
-        'Sin permiso',
-        'Solo un administrador de emergencia puede activar la importación desde la nube.'
-      );
       return;
     }
 
@@ -381,7 +368,7 @@ export function useHomeLogic(navigation) {
     }
 
   };
-
+  */
 
   /* =====================================================
    * UBICACIÓN
@@ -1085,22 +1072,18 @@ InventoryService.crearMovimiento(
     setMostrarManualUbicacion,
 
 
-    /* ---------- IMPORTACIÓN DE EMERGENCIA ---------- */
+    /* ---------- IMPORTACIÓN DE EMERGENCIA — COMENTADO ---------- */
 
-    puedeImportarEmergencia:
+    // puedeImportarEmergencia:
+    //   maestrosService.estaHabilitadaImportacionEmergencia(),
 
-      esAdminEmergencia &&
-      maestrosService.estaHabilitadaImportacionEmergencia(),
+    // importarDesdeNube,
 
-    esAdminEmergencia,
+    // mostrarImportEmergencia,
 
-    importarDesdeNube,
+    // importResult,
 
-    mostrarImportEmergencia,
-
-    importResult,
-
-    setMostrarImportEmergencia,
+    // setMostrarImportEmergencia,
 
   };
 

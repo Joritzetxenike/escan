@@ -326,14 +326,16 @@ const SupabaseProvider = {
   },
 
   /* =======================================================
-   * IMPORTACIÓN DE EMERGENCIA
+   * IMPORTACIÓN DE EMERGENCIA — COMENTADO
    * =======================================================
    *
    * Lee todo el conteo de una ubicación desde la nube para
    * sobrescribir el CSV local. Solo se usa en situaciones
    * específicas: el administrador debe habilitarla primero.
+   * TODO: Reactivar cuando sea necesario.
    */
 
+/*
   async obtenerConteoUbicacion(ubicacion) {
     const { data, error } = await supabase
       .from('conteo')
@@ -358,6 +360,7 @@ const SupabaseProvider = {
       updated_at: row.updated_at ?? null,
     }));
   },
+*/
 
   /* =======================================================
    * SINCRONIZACIÓN

@@ -316,18 +316,19 @@ const InventoryService = {
   },
 
   /* =====================================================
-   * IMPORTACIÓN DE EMERGENCIA DESDE LA NUBE
+   * IMPORTACIÓN DE EMERGENCIA DESDE LA NUBE — COMENTADO
    * =====================================================
    *
    * Sobrescribe el CSV local de una ubicación con los datos
    * de Supabase. Solo se permite si la bandera de emergencia
    * está habilitada (maestros-meta.json). El operario puede
    * seguir escaneando después y sincronizar luego.
+   *
+   * TODO: Reactivar cuando sea necesario.
    */
 
+/*
   async importarUbicacionDesdeNube(codigoUbicacion) {
-
-    /* ---------- Bandera de emergencia ---------- */
 
     const habilitada =
       await maestrosService.estaHabilitadaImportacionEmergencia();
@@ -339,8 +340,6 @@ const InventoryService = {
       );
     }
 
-    /* ---------- Conexión ---------- */
-
     const online = await conectividadService.estaOnline();
 
     if (!online) {
@@ -349,42 +348,31 @@ const InventoryService = {
       );
     }
 
-    /* ---------- Leer conteo de la nube ---------- */
-
     const registrosNube =
       await DataProvider.obtenerConteoUbicacion(codigoUbicacion);
 
-    /* ---------- Borrar CSV local (sobrescribir) ---------- */
-
     await CsvProvider.eliminarUbicacion(codigoUbicacion);
-
-    /* ---------- Escribir cada fila en el CSV local ---------- */
 
     const importados = [];
     const errores = [];
 
     for (const fila of registrosNube) {
       try {
-
         await CsvProvider.guardarMovimiento({
           ubicacion: codigoUbicacion,
           articulo: fila.articulo,
           cantidad: fila.cantidad,
           matricula: fila.matricula ?? '',
         });
-
         importados.push({
           articulo: fila.articulo,
           cantidad: fila.cantidad,
         });
-
       } catch (e) {
-
         errores.push({
           articulo: fila.articulo,
           mensaje: e.message,
         });
-
       }
     }
 
@@ -400,6 +388,7 @@ const InventoryService = {
     };
 
   },
+*/
 
   /* =====================================================
    * VALIDACIÓN

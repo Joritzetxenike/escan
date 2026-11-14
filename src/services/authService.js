@@ -9,11 +9,13 @@
  * documentDirectory/operarios.json (lista de operarios con
  * matrícula y nombre). Si la matrícula no existe o no está
  * activa, se rechaza el acceso.
+ *
+ * Toda la lógica de `esAdminEmergencia` e importación de
+ * emergencia está comentada temporalmente.
  * ======================================================= */
 
 import {
   buscarOperario,
-  esOperarioValido,
 } from '../helpers/operariosHelper';
 
 const MAX_LONGITUD = 20;
@@ -45,7 +47,6 @@ const validarMatricula = async (valor) => {
       valida: false,
       matricula: null,
       nombre: null,
-      esAdminEmergencia: false,
       error: `La matrícula ${matricula} no está registrada`,
     };
   }
@@ -55,7 +56,6 @@ const validarMatricula = async (valor) => {
       valida: false,
       matricula: null,
       nombre: operario.nombre,
-      esAdminEmergencia: Boolean(operario.esAdminEmergencia),
       error: `La matrícula ${matricula} está desactivada`,
     };
   }
@@ -64,19 +64,17 @@ const validarMatricula = async (valor) => {
     valida: true,
     matricula,
     nombre: operario.nombre,
-    esAdminEmergencia: Boolean(operario.esAdminEmergencia),
     error: null,
   };
 };
 
-const iniciarSesion = (matricula, nombre, esAdminEmergencia = false) => {
+const iniciarSesion = (matricula, nombre) => {
   const normalizada = normalizarMatricula(matricula);
 
   sesion = normalizada
     ? {
         matricula: normalizada,
         nombre: nombre ?? null,
-        esAdminEmergencia: Boolean(esAdminEmergencia),
         iniciadaAt: new Date().toISOString(),
       }
     : null;
@@ -96,9 +94,6 @@ const obtenerMatricula = () =>
 const obtenerNombre = () =>
   sesion?.nombre ?? null;
 
-const obtenerEsAdminEmergencia = () =>
-  Boolean(sesion?.esAdminEmergencia);
-
 const haySesion = () => sesion !== null;
 
 const authService = {
@@ -110,7 +105,6 @@ const authService = {
   obtenerSesion,
   obtenerMatricula,
   obtenerNombre,
-  obtenerEsAdminEmergencia,
   haySesion,
 };
 

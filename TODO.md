@@ -321,13 +321,23 @@
   - [x] `scripts/importUbicaciones.js` (SECCION,AREA,SUBZONA,CODIGO → maestroSeccion, maestroArea, maestroUbicacion)
   - [x] `scripts/importOperarios.js` (MATRICULA,NOMBRE,ACTIVO → operarios)
   - [x] `scripts/importTodos.js` (llama a los 3 anteriores, sin orden predefinido)
-- [x] **Importación de emergencia desde la nube**: botón oculto en Home, bloqueado por bandera, sobrescribe CSV local, muestra resumen
-  - [x] `src/components/ImportEmergenciaModal.js` — resumen de importación
-  - [x] `src/services/InventoryService.js` — `importarUbicacionDesdeNube()`
-  - [x] `src/providers/supabase/SupabaseProvider.js` — `obtenerConteoUbicacion()`
-  - [x] `src/services/maestrosService.js` — bandera de habilitación
-  - [x] `src/logic/HomeLogic.js` — lógica de importación
-  - [x] `src/views/HomeView.js` — botón oculto condicional
+- [x] **Importación de emergencia desde la nube — COMENTADO/PAUSADO**
+  - Toda la funcionalidad de importación de emergencia ha sido comentada:
+    - `src/components/HeaderTabs.js` — botón ⚡ eliminado, vuelve a versión simple
+    - `src/navigation/MainTabs.js` — sin props de emergencia, sin ImportarArchivoModal
+    - `src/components/ImportEmergenciaModal.js` — sin usar
+    - `src/components/ImportarArchivoModal.js` — sin usar
+    - `src/services/authService.js` — `esAdminEmergencia` comentado
+    - `src/context/AuthContext.js` — `esAdminEmergencia` comentado
+    - `src/services/maestrosService.js` — `puedeHabilitarImportacionEmergencia`, `habilitarImportacionEmergencia`, `deshabilitarImportacionEmergencia` comentados
+    - `src/services/InventoryService.js` — `importarUbicacionDesdeNube()` comentado
+    - `src/providers/supabase/SupabaseProvider.js` — `obtenerConteoUbicacion()` comentado
+    - `src/providers/csv/csvProvider.js` — `eliminarUbicacion()` comentado
+    - `src/logic/HomeLogic.js` — `importarDesdeNube` comentado
+    - `src/views/HomeView.js` — botón de emergencia comentado
+    - `src/data/operarios.json` — `esAdminEmergencia` comentado
+    - `supabase/migrations/20261114_operarios.sql` — `es_admin_emergencia` comentado
+  - Para reactivar, descomentar todos los bloques marcados con `// COMENTADO - emergencia`
 - [ ] **Prueba total de la app en dispositivo**:
   - [ ] Login con matrícula válida (muestra nombre en encabezado)
   - [ ] Login con matrícula inexistente (rechaza acceso)
