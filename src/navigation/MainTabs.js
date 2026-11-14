@@ -37,17 +37,14 @@ export default function MainTabs() {
               onImportarEmergencia={onImportarEmergencia}
             />
           ),
-        },
-
-        tabBarStyle: {
-          backgroundColor: colors.primary,
-          height: 60 + insets.bottom,
-          paddingBottom: insets.bottom,
-        },
-
-        tabBarActiveTintColor: colors.onPrimary,
-        tabBarInactiveTintColor: colors.onPrimaryMuted,
-      }}
+          tabBarStyle: {
+            backgroundColor: colors.primary,
+            height: 60 + insets.bottom,
+            paddingBottom: insets.bottom,
+          },
+          tabBarActiveTintColor: colors.onPrimary,
+          tabBarInactiveTintColor: colors.onPrimaryMuted,
+        }}
       >
         <Tab.Screen
           name="Home"
