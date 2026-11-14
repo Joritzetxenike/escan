@@ -25,7 +25,26 @@ const asegurarArchivoOperarios = async () => {
   try {
     const info = await FileSystem.getInfoAsync(ARCHIVO_OPERARIOS);
 
-    if (!info.exists) {
+    let necesitaEscribir = !info.exists;
+
+    if (info.exists) {
+      try {
+        const contenido = await FileSystem.readAsStringAsync(
+          ARCHIVO_OPERARIOS
+        );
+        const datos = JSON.parse(contenido);
+        if (
+          !Array.isArray(datos) ||
+          datos.some((op) => op.esAdminEmergencia === undefined)
+        ) {
+          necesitaEscribir = true;
+        }
+      } catch (e) {
+        necesitaEscribir = true;
+      }
+    }
+
+    if (necesitaEscribir) {
       await FileSystem.writeAsStringAsync(
         ARCHIVO_OPERARIOS,
         JSON.stringify(operariosPlantilla, null, 2)

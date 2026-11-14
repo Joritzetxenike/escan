@@ -12,6 +12,13 @@ export default function HeaderTabs({ titulo }) {
   const insets = useSafeAreaInsets();
   const { esAdminEmergencia, matricula } = useAuth();
 
+  console.log(
+    'HeaderTabs: esAdminEmergencia=',
+    esAdminEmergencia,
+    'matricula=',
+    matricula
+  );
+
   const toggleEmergencia = async () => {
     const activa = await maestrosService.estaHabilitadaImportacionEmergencia();
 
