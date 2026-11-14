@@ -1,36 +1,41 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useState } from 'react';
 
 import HomeScreen from '../screens/HomeScreen';
 import ListaScreen from '../screens/ListaScreen';
 import EstadoScreen from '../screens/EstadoScreen';
 import HeaderTabs from '../components/HeaderTabs';
+import ImportarArchivoModal from '../components/ImportarArchivoModal';
+import { useAuth } from '../context/AuthContext';
 import { colors } from '../styles/styles';
 
 const Tab = createBottomTabNavigator();
 
 export default function MainTabs() {
-
   const insets = useSafeAreaInsets();
+  const { esAdminEmergencia } = useAuth();
+
+  const [mostrarImportModal, setMostrarImportModal] = useState(false);
+
+  const onImportarEmergencia = () => {
+    setMostrarImportModal(true);
+  };
 
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: true,
         header: ({ options, route }) => (
-          <HeaderTabs titulo={options.title ?? route.name} />
+          <HeaderTabs
+            titulo={options.title ?? route.name}
+            esAdminEmergencia={
+              route.name === 'Lista' ? esAdminEmergencia : false
+            }
+            onImportarEmergencia={onImportarEmergencia}
+          />
         ),
-
-        /* Cabecera y tab bar en el celeste de marca, el mismo
-           de los botones de escanear. El casi negro se queda
-           para la cámara.
-
-           Contraste sobre `primary` (#00729E):
-             blanco            5.38:1  títulos y pestaña activa
-             onPrimaryMuted    4.71:1  etiqueta e icono inactivos
-           El inactivo no puede bajarse más: a 3.23:1 (un gris
-           tipo #C3C9D1) se queda por debajo del mínimo 4.5:1. */
 
         tabBarStyle: {
           backgroundColor: colors.primary,
@@ -75,5 +80,15 @@ export default function MainTabs() {
         }}
       />
     </Tab.Navigator>
+
+    {mostrarImportModal && (
+      <ImportarArchivoModal
+        visible={mostrarImportModal}
+        onCerrar={() => setMostrarImportModal(false)}
+        onArchivoSeleccionado={(resultado) => {
+          setMostrarImportModal(false);
+        }}
+      />
+    )}
   );
 }

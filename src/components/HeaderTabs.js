@@ -3,42 +3,20 @@ import {
   Text,
   View,
   TouchableOpacity,
-  Alert,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useState } from 'react';
 
 import HeaderSesion from './HeaderSesion';
-import { useAuth } from '../context/AuthContext';
-import ImportEmergenciaModal from './ImportEmergenciaModal';
-import ubicacionActivaService from '../services/ubicacionActivaService';
 import { colors } from '../styles/styles';
 
-export default function HeaderTabs({ titulo }) {
+export default function HeaderTabs({
+  titulo,
+  esAdminEmergencia,
+  onImportarEmergencia,
+}) {
   const insets = useSafeAreaInsets();
-  const { esAdminEmergencia, matricula } = useAuth();
-
-  const [mostrarImportModal, setMostrarImportModal] = useState(false);
-  const [ubicacionParaImportar, setUbicacionParaImportar] = useState(null);
-
-  const pulsarEmergencia = async () => {
-
-    /* Obtener la ubicación activa del dispositivo */
-    const ubicacion = await ubicacionActivaService.obtener();
-
-    if (!ubicacion) {
-      Alert.alert(
-        'Sin ubicación',
-        'Primero escanea o selecciona una ubicación antes de importar.'
-      );
-      return;
-    }
-
-    setUbicacionParaImportar(ubicacion);
-    setMostrarImportModal(true);
-  };
 
   return (
     <View style={{ paddingTop: insets.top, backgroundColor: colors.primary }}>
@@ -60,9 +38,9 @@ export default function HeaderTabs({ titulo }) {
         {esAdminEmergencia && (
           <TouchableOpacity
             style={styles.botonEmergencia}
-            onPress={pulsarEmergencia}
+            onPress={onImportarEmergencia}
             accessibilityRole="button"
-            accessibilityLabel="Activar importación de emergencia"
+            accessibilityLabel="Importación de emergencia"
             testID="btn-toggle-emergencia"
           >
             <MaterialIcons
@@ -73,15 +51,6 @@ export default function HeaderTabs({ titulo }) {
           </TouchableOpacity>
         )}
       </View>
-
-      <ImportEmergenciaModal
-        visible={mostrarImportModal}
-        ubicacion={ubicacionParaImportar}
-        onCerrar={() => {
-          setMostrarImportModal(false);
-          setUbicacionParaImportar(null);
-        }}
-      />
     </View>
   );
 }
