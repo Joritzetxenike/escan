@@ -1,32 +1,43 @@
-import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  View,
+  TouchableOpacity,
+  Alert,
+} from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useState } from 'react';
 
 import HeaderSesion from './HeaderSesion';
 import { useAuth } from '../context/AuthContext';
-import maestrosService from '../services/maestrosService';
+import ImportEmergenciaModal from './ImportEmergenciaModal';
+import ubicacionActivaService from '../services/ubicacionActivaService';
 import { colors } from '../styles/styles';
 
 export default function HeaderTabs({ titulo }) {
   const insets = useSafeAreaInsets();
   const { esAdminEmergencia, matricula } = useAuth();
 
-  console.log(
-    'HeaderTabs: esAdminEmergencia=',
-    esAdminEmergencia,
-    'matricula=',
-    matricula
-  );
+  const [mostrarImportModal, setMostrarImportModal] = useState(false);
+  const [ubicacionParaImportar, setUbicacionParaImportar] = useState(null);
 
-  const toggleEmergencia = async () => {
-    const activa = await maestrosService.estaHabilitadaImportacionEmergencia();
+  const pulsarEmergencia = async () => {
 
-    if (activa) {
-      await maestrosService.deshabilitarImportacionEmergencia(matricula);
-    } else {
-      await maestrosService.habilitarImportacionEmergencia(matricula);
+    /* Obtener la ubicación activa del dispositivo */
+    const ubicacion = await ubicacionActivaService.obtener();
+
+    if (!ubicacion) {
+      Alert.alert(
+        'Sin ubicación',
+        'Primero escanea o selecciona una ubicación antes de importar.'
+      );
+      return;
     }
+
+    setUbicacionParaImportar(ubicacion);
+    setMostrarImportModal(true);
   };
 
   return (
@@ -49,7 +60,7 @@ export default function HeaderTabs({ titulo }) {
         {esAdminEmergencia && (
           <TouchableOpacity
             style={styles.botonEmergencia}
-            onPress={toggleEmergencia}
+            onPress={pulsarEmergencia}
             accessibilityRole="button"
             accessibilityLabel="Activar importación de emergencia"
             testID="btn-toggle-emergencia"
@@ -62,6 +73,15 @@ export default function HeaderTabs({ titulo }) {
           </TouchableOpacity>
         )}
       </View>
+
+      <ImportEmergenciaModal
+        visible={mostrarImportModal}
+        ubicacion={ubicacionParaImportar}
+        onCerrar={() => {
+          setMostrarImportModal(false);
+          setUbicacionParaImportar(null);
+        }}
+      />
     </View>
   );
 }
