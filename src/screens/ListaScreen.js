@@ -425,6 +425,7 @@ export default function ListaScreen() {
         }}
         onChangeValor={setNuevaCantidad}
         onGuardarEdicion={guardarCantidad}
+        onCancelarEdicion={cerrarEdicion}
         onEliminar={borrarRegistro}
         onExportar={exportarCsv}
         onBorrar={borrarCsv}

@@ -87,47 +87,136 @@ describe('ArticulosModal', () => {
     });
   });
 
-  test('bloquea editar la cantidad si el servicio dice que está terminada', async () => {
-    InventoryService.estaUbicacionFinalizada.mockResolvedValue(true);
+  const pulsar = (testID) => {
+    const nodo = renderer.root.findByProps({ testID });
+    act(() => {
+      nodo.props.onPress();
+    });
+  };
 
-    await montar();
+  const existeTestID = (testID) =>
+    renderer.root.findAllByProps({ testID }).length > 0;
 
-    presionarPorTexto('3');
+  // ---------- Lista ----------
 
-    expect(Alert.alert).toHaveBeenCalledWith(
-      'Ubicación terminada',
-      expect.stringContaining('50100-111-Z101')
-    );
+  test('la lista enseña solo el código completo y la cantidad', async () => {
+    InventoryService.estaUbicacionFinalizada.mockResolvedValue(false);
 
-    expect(dataProps.onIniciarEdicion).not.toHaveBeenCalled();
+    await montar({
+      articulos: [
+        { articulo: '-BXC05.4010 -SUB', cantidad: 7, dsca: 'SUB-C.KIT ESTANT', unidad: 'U' },
+      ],
+    });
+
+    expect(existeTexto('-BXC05.4010 -SUB')).toBe(true);
+    expect(existeTexto('7')).toBe(true);
+
+    /* Descripción y unidad solo en el detalle */
+    expect(existeTexto('SUB-C.KIT ESTANT')).toBe(false);
+    expect(existeTexto('Descripción')).toBe(false);
+
+    /* El código no se recorta */
+    const codigo = renderer.root
+      .findAllByType(Text)
+      .find((t) => textoDe(t) === '-BXC05.4010 -SUB');
+    expect(codigo.props.numberOfLines).toBeUndefined();
   });
 
-  test('bloquea eliminar si el servicio dice que está terminada', async () => {
-    InventoryService.estaUbicacionFinalizada.mockResolvedValue(true);
-
-    await montar();
-
-    presionarPorTexto('delete-outline');
-
-    expect(Alert.alert).toHaveBeenCalledWith(
-      'Ubicación terminada',
-      expect.stringContaining('50100-111-Z101')
-    );
-
-    expect(dataProps.onEliminar).not.toHaveBeenCalled();
-  });
-
-  test('permite editar y eliminar si el servicio dice que no está terminada', async () => {
+  test('tocar una fila abre su detalle', async () => {
     InventoryService.estaUbicacionFinalizada.mockResolvedValue(false);
 
     await montar();
 
-    presionarPorTexto('3');
-    presionarPorTexto('delete-outline');
+    pulsar('fila-articulo-1');
 
-    expect(Alert.alert).not.toHaveBeenCalled();
-    expect(dataProps.onIniciarEdicion).toHaveBeenCalledWith(0);
+    expect(dataProps.onIniciarEdicion).toHaveBeenCalledWith(1);
+  });
+
+  // ---------- Detalle ----------
+
+  const conDetalle = {
+    articulos: [
+      { articulo: 'ABC123', cantidad: 3, dsca: 'Tornillo hexagonal', unidad: 'UD' },
+      { articulo: 'XYZ789', cantidad: 2, dsca: '', unidad: '' },
+    ],
+    editandoIndex: 0,
+    editandoValor: '3',
+  };
+
+  test('el detalle muestra artículo, descripción, unidad y cantidad editable', async () => {
+    InventoryService.estaUbicacionFinalizada.mockResolvedValue(false);
+
+    await montar(conDetalle);
+
+    expect(existeTestID('detalle-articulo')).toBe(true);
+    expect(existeTexto('Tornillo hexagonal')).toBe(true);
+    expect(existeTexto('UD')).toBe(true);
+
+    const input = renderer.root.findByProps({ testID: 'input-cantidad-detalle' });
+    expect(input.props.value).toBe('3');
+
+    act(() => {
+      input.props.onChangeText('9');
+    });
+    expect(dataProps.onChangeValor).toHaveBeenCalledWith('9');
+  });
+
+  test('sin descripción ni unidad muestra —', async () => {
+    InventoryService.estaUbicacionFinalizada.mockResolvedValue(false);
+
+    await montar({ ...conDetalle, editandoIndex: 1, editandoValor: '2' });
+
+    expect(
+      renderer.root.findAllByType(Text).filter((t) => textoDe(t) === '—')
+    ).toHaveLength(2);
+  });
+
+  test('Guardar, Eliminar y Cancelar llaman a la pantalla con el índice real', async () => {
+    InventoryService.estaUbicacionFinalizada.mockResolvedValue(false);
+
+    const onCancelarEdicion = jest.fn();
+
+    await montar({ ...conDetalle, onCancelarEdicion });
+
+    pulsar('btn-guardar-detalle');
+    pulsar('btn-eliminar-detalle');
+    pulsar('btn-cerrar-detalle');
+
+    expect(dataProps.onGuardarEdicion).toHaveBeenCalledWith(0);
     expect(dataProps.onEliminar).toHaveBeenCalledWith(0);
+    expect(onCancelarEdicion).toHaveBeenCalled();
+  });
+
+  test('sin onEliminar (pestaña Estado) no hay botón de eliminar', async () => {
+    InventoryService.estaUbicacionFinalizada.mockResolvedValue(false);
+
+    await montar({ ...conDetalle, onEliminar: undefined });
+
+    expect(existeTestID('btn-guardar-detalle')).toBe(true);
+    expect(existeTestID('btn-eliminar-detalle')).toBe(false);
+  });
+
+  test('ubicación terminada: el detalle es de solo lectura', async () => {
+    InventoryService.estaUbicacionFinalizada.mockResolvedValue(true);
+
+    await montar(conDetalle);
+
+    expect(existeTestID('detalle-articulo')).toBe(true);
+    expect(existeTexto('Tornillo hexagonal')).toBe(true);
+
+    expect(existeTestID('input-cantidad-detalle')).toBe(false);
+    expect(existeTestID('btn-guardar-detalle')).toBe(false);
+    expect(existeTestID('btn-eliminar-detalle')).toBe(false);
+    expect(existeTestID('aviso-terminada')).toBe(true);
+    expect(existeTexto('Cerrar')).toBe(true);
+  });
+
+  test('sin fila seleccionada no hay detalle', async () => {
+    InventoryService.estaUbicacionFinalizada.mockResolvedValue(false);
+
+    await montar();
+
+    expect(existeTestID('detalle-articulo')).toBe(false);
   });
 
   test('consulta el estado con codigoUbicacion si se pasa (aunque titulo lleve .csv)', async () => {
@@ -189,37 +278,6 @@ describe('ArticulosModal', () => {
     expect(existeTexto('xyz789')).toBe(true);
   });
 
-  test('muestra descripción y unidad de cada artículo', async () => {
-    InventoryService.estaUbicacionFinalizada.mockResolvedValue(false);
-
-    await montar({
-      articulos: [
-        {
-          articulo: 'ABC123',
-          cantidad: 1,
-          dsca: 'Tornillo hexagonal',
-          unidad: 'UD',
-        },
-        {
-          articulo: 'XYZ789',
-          cantidad: 2,
-          dsca: '',
-          unidad: '',
-        },
-      ],
-    });
-
-    expect(existeTexto('Descripción')).toBe(true);
-    expect(existeTexto('Unidad')).toBe(true);
-    expect(existeTexto('Tornillo hexagonal')).toBe(true);
-    expect(existeTexto('UD')).toBe(true);
-    expect(
-      renderer.root
-        .findAllByType(Text)
-        .filter((t) => textoDe(t) === '—')
-    ).toHaveLength(2);
-  });
-
   test('avisa cuando el filtro no encuentra ningún código', async () => {
     InventoryService.estaUbicacionFinalizada.mockResolvedValue(false);
 
@@ -231,7 +289,7 @@ describe('ArticulosModal', () => {
     expect(existeTexto('123456')).toBe(false);
   });
 
-  test('al filtrar, editar y eliminar usan el índice original', async () => {
+  test('al filtrar, la fila abre el detalle con el índice original', async () => {
     InventoryService.estaUbicacionFinalizada.mockResolvedValue(false);
 
     await montar({
@@ -247,11 +305,9 @@ describe('ArticulosModal', () => {
     expect(existeTexto('AA111')).toBe(false);
     expect(existeTexto('CC333')).toBe(true);
 
-    presionarPorTexto('33');
-    presionarPorTexto('delete-outline');
+    pulsar('fila-articulo-2');
 
     expect(dataProps.onIniciarEdicion).toHaveBeenCalledWith(2);
-    expect(dataProps.onEliminar).toHaveBeenCalledWith(2);
   });
 
   test('limpia el filtro al cerrar y volver a abrir', async () => {

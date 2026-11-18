@@ -1,9 +1,34 @@
 import { useEffect, useState } from 'react';
-import { Modal, View, Text, TouchableOpacity, ScrollView, TextInput, StyleSheet, Alert } from 'react-native';
+import { Modal, View, Text, TouchableOpacity, ScrollView, TextInput, StyleSheet } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { colors } from '../styles/styles';
 
 import InventoryService from '../services/InventoryService';
+
+/* =======================================================
+ * ARTÍCULOS DE UNA UBICACIÓN (Lista y Estado)
+ * =======================================================
+ *
+ * La lista solo enseña lo imprescindible para repasar un
+ * conteo: el CÓDIGO COMPLETO (sin recortar, aunque ocupe dos
+ * líneas) y la CANTIDAD. Al tocar una fila se abre el detalle
+ * con artículo, descripción, unidad y cantidad, y desde ahí se
+ * modifica o se elimina.
+ *
+ * El detalle lo controla la pantalla, igual que antes la
+ * edición en línea:
+ *
+ *   editandoIndex      índice (real, no el filtrado) abierto
+ *   editandoValor      cantidad que se está tecleando
+ *   onIniciarEdicion   abrir el detalle de una fila
+ *   onChangeValor      teclear la cantidad
+ *   onGuardarEdicion   guardar (CSV + Supabase o cola)
+ *   onEliminar         borrar la fila (solo Lista)
+ *   onCancelarEdicion  cerrar el detalle sin guardar
+ *
+ * Con la ubicación terminada (`Fin`) el detalle se abre igual,
+ * pero en solo lectura: se puede consultar, no modificar.
+ * ======================================================= */
 
 export default function ArticulosModal({
   visible,
@@ -16,6 +41,7 @@ export default function ArticulosModal({
   onChangeValor,
   onGuardarEdicion,
   onEliminar,
+  onCancelarEdicion,
   onExportar,
   onBorrar,
   codigoUbicacion,
@@ -60,11 +86,14 @@ export default function ArticulosModal({
         String(item.articulo ?? '').toUpperCase().includes(termino)
     );
 
-  const avisoFinalizada = () => {
-    Alert.alert(
-      'Ubicación terminada',
-      `La ubicación ${codigo} está terminada y no admite cambios`
-    );
+  const seleccionado =
+    editandoIndex != null ? articulos[editandoIndex] ?? null : null;
+
+  const puedeEditar = Boolean(onGuardarEdicion) && !finalizada;
+  const puedeEliminar = Boolean(onEliminar) && !finalizada;
+
+  const cerrarDetalle = () => {
+    onCancelarEdicion?.();
   };
 
   return (
@@ -72,6 +101,12 @@ export default function ArticulosModal({
       <View style={styles.overlay}>
         <View style={styles.modal}>
           <Text style={styles.title}>{titulo}</Text>
+
+          {finalizada && (
+            <Text style={styles.avisoTerminada} testID="aviso-terminada">
+              Ubicación terminada: solo consulta
+            </Text>
+          )}
 
           {articulos.length === 0 ? (
             <Text style={styles.empty}>No hay artículos en esta ubicación</Text>
@@ -100,13 +135,8 @@ export default function ArticulosModal({
               </View>
 
               <View style={styles.headerRow}>
-                <Text style={[styles.headerCell, { flex: 2 }]}>Artículo</Text>
-                <Text style={[styles.headerCell, { flex: 1.3, textAlign: 'center' }]}>Descripción</Text>
-                <Text style={[styles.headerCell, { flex: 0.5, textAlign: 'center' }]}>Unidad</Text>
-                <Text style={[styles.headerCell, { flex: 0.8, textAlign: 'center' }]}>Cantidad</Text>
-                {onEliminar && (
-                  <Text style={[styles.headerCell, { flex: 0.6, textAlign: 'center' }]}>Eliminar</Text>
-                )}
+                <Text style={[styles.headerCell, styles.colCodigo]}>Artículo</Text>
+                <Text style={[styles.headerCell, styles.colCantidad]}>Cantidad</Text>
               </View>
 
               <ScrollView style={styles.list}>
@@ -116,65 +146,26 @@ export default function ArticulosModal({
                   </Text>
                 ) : (
                   visibles.map(({ item, index }) => (
-                  <View key={index} style={styles.row}>
-                    <Text style={[styles.cell, { flex: 2 }]} numberOfLines={1}>
-                      {item.articulo}
-                    </Text>
-                    <Text style={[styles.cell, { flex: 1.3, textAlign: 'center', color: colors.textSecondary, fontSize: 12 }]} numberOfLines={1}>
-                      {item.dsca || '—'}
-                    </Text>
-                    <Text style={[styles.cell, { flex: 0.5, textAlign: 'center', color: colors.textSecondary, fontSize: 12 }]} numberOfLines={1}>
-                      {item.unidad || '—'}
-                    </Text>
-
-                    {editandoIndex === index ? (
-                      <View style={[styles.cell, { flex: 0.8, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }]}>
-                        <TextInput
-                          style={styles.input}
-                          keyboardType="numeric"
-                          value={editandoValor}
-                          onChangeText={onChangeValor}
-                          autoFocus
-                        />
-                        <TouchableOpacity
-                          onPress={() =>
-                            finalizada
-                              ? avisoFinalizada()
-                              : onGuardarEdicion(index)
-                          }
-                          style={{ marginLeft: 4 }}
-                        >
-                          <Text style={{ color: colors.primary, fontWeight: 'bold', fontSize: 16 }}>✓</Text>
-                        </TouchableOpacity>
-                      </View>
-                    ) : (
-                      <TouchableOpacity
-                        onPress={() =>
-                          finalizada
-                            ? avisoFinalizada()
-                            : onIniciarEdicion?.(index)
-                        }
-                        style={[styles.cell, { flex: 0.8, alignItems: 'center' }]}
-                      >
-                        <Text style={{ fontSize: 14, fontWeight: '600', color: onIniciarEdicion ? colors.primary : colors.text }}>
-                          {item.cantidad ?? 0}
-                        </Text>
-                      </TouchableOpacity>
-                    )}
-
-                    {onEliminar && (
-                      <TouchableOpacity
-                        onPress={() =>
-                          finalizada
-                            ? avisoFinalizada()
-                            : onEliminar(index)
-                        }
-                        style={[styles.cell, { flex: 0.6, alignItems: 'center' }]}
-                      >
-                        <MaterialIcons name="delete-outline" size={26} color={colors.danger} />
-                      </TouchableOpacity>
-                    )}
-                  </View>
+                    <TouchableOpacity
+                      key={index}
+                      style={styles.row}
+                      onPress={() => onIniciarEdicion?.(index)}
+                      disabled={!onIniciarEdicion}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Artículo ${item.articulo}, cantidad ${item.cantidad ?? 0}`}
+                      testID={`fila-articulo-${index}`}
+                    >
+                      {/* Sin numberOfLines: el código se ve entero */}
+                      <Text style={[styles.codigo, styles.colCodigo]}>
+                        {item.articulo}
+                      </Text>
+                      <Text style={[styles.cantidad, styles.colCantidad]}>
+                        {item.cantidad ?? 0}
+                      </Text>
+                      {onIniciarEdicion && (
+                        <MaterialIcons name="chevron-right" size={22} color={colors.textSecondary} />
+                      )}
+                    </TouchableOpacity>
                   ))
                 )}
               </ScrollView>
@@ -210,6 +201,85 @@ export default function ArticulosModal({
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* ---------- DETALLE DEL ARTÍCULO ---------- */}
+
+      <Modal
+        visible={visible && seleccionado !== null}
+        animationType="fade"
+        transparent
+        onRequestClose={cerrarDetalle}
+      >
+        <View style={styles.overlayDetalle}>
+          {seleccionado && (
+            <View style={styles.detalle} testID="detalle-articulo">
+              <Text style={styles.detalleTitulo}>Artículo</Text>
+
+              <Text style={styles.etiqueta}>Código</Text>
+              <Text style={styles.valorCodigo} selectable>
+                {seleccionado.articulo}
+              </Text>
+
+              <Text style={styles.etiqueta}>Descripción</Text>
+              <Text style={styles.valor}>{seleccionado.dsca || '—'}</Text>
+
+              <Text style={styles.etiqueta}>Unidad</Text>
+              <Text style={styles.valor}>{seleccionado.unidad || '—'}</Text>
+
+              <Text style={styles.etiqueta}>Cantidad</Text>
+              {puedeEditar ? (
+                <TextInput
+                  style={styles.inputCantidad}
+                  keyboardType="numeric"
+                  value={editandoValor}
+                  onChangeText={onChangeValor}
+                  selectTextOnFocus
+                  testID="input-cantidad-detalle"
+                />
+              ) : (
+                <Text style={styles.valorCantidad}>{seleccionado.cantidad ?? 0}</Text>
+              )}
+
+              {finalizada && (
+                <Text style={styles.avisoTerminada}>
+                  {`La ubicación ${codigo} está terminada y no admite cambios`}
+                </Text>
+              )}
+
+              {puedeEditar && (
+                <TouchableOpacity
+                  style={[styles.botonDetalle, styles.botonGuardar]}
+                  onPress={() => onGuardarEdicion(editandoIndex)}
+                  testID="btn-guardar-detalle"
+                >
+                  <Text style={styles.botonTexto}>Guardar</Text>
+                </TouchableOpacity>
+              )}
+
+              {puedeEliminar && (
+                <TouchableOpacity
+                  style={[styles.botonDetalle, styles.botonEliminar]}
+                  onPress={() => onEliminar(editandoIndex)}
+                  testID="btn-eliminar-detalle"
+                >
+                  <MaterialIcons name="delete-outline" size={20} color="#fff" />
+                  <Text style={styles.botonTexto}>Eliminar</Text>
+                </TouchableOpacity>
+              )}
+
+              <TouchableOpacity
+                style={[styles.botonDetalle, styles.botonCancelar]}
+                onPress={cerrarDetalle}
+                testID="btn-cerrar-detalle"
+              >
+                <Text style={styles.botonCancelarTexto}>
+                  {puedeEditar ? 'Cancelar' : 'Cerrar'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      </Modal>
     </Modal>
   );
 }
@@ -232,6 +302,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 15,
     textAlign: 'center',
+  },
+  avisoTerminada: {
+    textAlign: 'center',
+    color: colors.danger,
+    fontWeight: '600',
+    marginBottom: 10,
   },
   empty: {
     textAlign: 'center',
@@ -259,10 +335,18 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     borderBottomColor: colors.borderStrong,
     paddingHorizontal: 5,
+    paddingRight: 27,
   },
   headerCell: {
     fontWeight: 'bold',
     fontSize: 13,
+  },
+  colCodigo: {
+    flex: 1,
+  },
+  colCantidad: {
+    width: 80,
+    textAlign: 'right',
   },
   list: {
     flex: 1,
@@ -270,22 +354,19 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     paddingHorizontal: 5,
   },
-  cell: {
-    fontSize: 13,
+  codigo: {
+    fontSize: 15,
+    color: colors.text,
   },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.primary,
-    borderRadius: 4,
-    padding: 2,
-    width: 45,
-    textAlign: 'center',
-    fontSize: 13,
+  cantidad: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.primary,
   },
   accionesCsv: {
     flexDirection: 'row',
@@ -321,6 +402,85 @@ const styles = StyleSheet.create({
   },
   closeText: {
     color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+
+  /* ---------- Detalle ---------- */
+
+  overlayDetalle: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  detalle: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 20,
+  },
+  detalleTitulo: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  etiqueta: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 10,
+    textTransform: 'uppercase',
+  },
+  valorCodigo: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  valor: {
+    fontSize: 16,
+    color: colors.text,
+  },
+  valorCantidad: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  inputCantidad: {
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderRadius: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    fontSize: 22,
+    fontWeight: '700',
+    marginTop: 4,
+  },
+  botonDetalle: {
+    flexDirection: 'row',
+    gap: 6,
+    padding: 12,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+  },
+  botonGuardar: {
+    backgroundColor: colors.primary,
+  },
+  botonEliminar: {
+    backgroundColor: colors.danger,
+  },
+  botonCancelar: {
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+  },
+  botonTexto: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  botonCancelarTexto: {
+    color: colors.text,
     fontWeight: 'bold',
     fontSize: 16,
   },

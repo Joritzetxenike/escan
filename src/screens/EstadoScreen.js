@@ -666,6 +666,10 @@ export default function EstadoScreen({ navigation }) {
         }}
         onChangeValor={setNuevaCantidad}
         onGuardarEdicion={handleGuardarCantidad}
+        onCancelarEdicion={() => {
+          setEditandoCantidad(null);
+          setNuevaCantidad("");
+        }}
       />
     </View>
   );
