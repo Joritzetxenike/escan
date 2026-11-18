@@ -19,7 +19,6 @@
       "android": {
         "buildType": "apk"
       },
-      "appVersionSource": "local",
       "env": {
         "EXPO_PUBLIC_APP_ENV": "development",
         "EXPO_PUBLIC_SUPABASE_URL": "https://mxspzxddunufwdchsowt.supabase.co",
