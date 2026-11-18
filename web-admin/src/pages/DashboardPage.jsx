@@ -3,6 +3,7 @@ import { useAuth } from '../auth/AuthContext';
 import { obtenerResumen } from '../services/inventoryApi';
 import LocationDetail from '../components/LocationDetail';
 import LocationTree from '../components/LocationTree';
+import PlanosModal from '../components/PlanosModal';
 import SummaryCard from '../components/SummaryCard';
 
 export default function DashboardPage() {
@@ -13,6 +14,9 @@ export default function DashboardPage() {
   const [updatedLocation, setUpdatedLocation] = useState(null);
   const [loadingSummary, setLoadingSummary] = useState(true);
   const [summaryError, setSummaryError] = useState(null);
+  /* { seccion, area? } de los planos abiertos, o null */
+  const [planos, setPlanos] = useState(null);
+  const cerrarPlanos = useCallback(() => setPlanos(null), []);
 
   const loadSummary = useCallback(async () => {
     setLoadingSummary(true);
@@ -104,6 +108,7 @@ export default function DashboardPage() {
                 selectedLocation={selectedLocation}
                 onSelect={setSelectedLocation}
                 updatedLocation={updatedLocation}
+                onVerPlanos={setPlanos}
               />
             </div>
 
@@ -113,11 +118,22 @@ export default function DashboardPage() {
                 location={selectedLocation}
                 editMode={editMode}
                 onUpdated={handleStatusUpdated}
+                onVerPlanos={setPlanos}
               />
             )}
           </div>
         </section>
       </main>
+
+      {planos && (
+        <PlanosModal
+          key={`${planos.seccion}-${planos.area ?? ''}`}
+          seccion={planos.seccion}
+          area={planos.area}
+          editMode={editMode}
+          onCerrar={cerrarPlanos}
+        />
+      )}
     </div>
   );
 }

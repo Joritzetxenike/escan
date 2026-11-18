@@ -48,6 +48,25 @@ describe('LocationTree', () => {
     );
   });
 
+  test('el botón Planos de una sección avisa sin desplegarla', async () => {
+    const onVerPlanos = vi.fn();
+    render(
+      <LocationTree selectedLocation={null} onSelect={vi.fn()} onVerPlanos={onVerPlanos} />,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Ver planos de 01' }));
+
+    expect(onVerPlanos).toHaveBeenCalledWith({ seccion: '01' });
+    expect(listarAreas).not.toHaveBeenCalled();
+  });
+
+  test('sin onVerPlanos no hay botón Planos', async () => {
+    render(<LocationTree selectedLocation={null} onSelect={vi.fn()} />);
+
+    await screen.findByText('Sección 01');
+    expect(screen.queryByRole('button', { name: /Ver planos/ })).not.toBeInTheDocument();
+  });
+
   test('no vuelve a pedir áreas ni ubicaciones ya cargadas', async () => {
     render(<LocationTree selectedLocation={null} onSelect={vi.fn()} />);
 

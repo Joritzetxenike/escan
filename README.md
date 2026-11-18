@@ -784,6 +784,43 @@ eas update --channel preview --platform android
 
 ---
 
+## Panel web (`web-admin/`) — uso en local
+
+Pensado para correr en un PC el día del inventario y consultar el avance.
+
+```bash
+cd web-admin
+npm install                 # la primera vez
+npm run dev                 # abre http://localhost:5173
+```
+
+- Necesita `web-admin/.env.local` con `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`
+  (ver `.env.example`). Nunca la `service_role`.
+- Se entra con un usuario de Supabase Auth cuyo `app_metadata.role` sea `admin`.
+- «Modificar datos» activa el modo edición: cambiar el estado de una ubicación y
+  subir/borrar planos. Fuera de ese modo todo es de solo lectura.
+
+### Planos de sección / área
+
+Botón **Planos** en cada sección del árbol y en el detalle de una ubicación (ahí
+muestra los de su sección y los de su área). Se abren dentro del panel: los PDF
+con el visor del navegador (zoom, páginas, imprimir) y las imágenes ajustadas a la
+ventana (clic para tamaño real). También «Abrir en pestaña nueva» y «Descargar».
+
+- Se guardan en el bucket **privado** `planos` de Supabase Storage, una carpeta
+  por sección y, opcional, una subcarpeta por área:
+  `LIN2/plano general.pdf`, `LIN2/A01/detalle.jpg`. Varios ficheros por carpeta.
+- Formatos: PDF, PNG, JPG, WEBP. Máximo 50 MB.
+- **Subir**: desde el propio visor en modo edición (si ya existe uno con el mismo
+  nombre, pregunta antes de sustituirlo) o a mano en Supabase → Storage → `planos`
+  (la carpeta con el nombre exacto de la sección, en mayúsculas).
+- Solo los administradores pueden listar, ver, subir y borrar; la clave pública de
+  la app móvil no tiene acceso. El panel usa URLs firmadas que caducan en 1 h.
+- Migración: `supabase/migrations/20261118000200_planos_storage.sql`.
+- La app móvil no muestra planos.
+
+---
+
 ## Testing
 
 - **Preset**: `jest-expo` (configuración en `jest.config.js`, que además carga `.env`).

@@ -10,6 +10,7 @@ export default function LocationTree({
   selectedLocation,
   onSelect,
   updatedLocation,
+  onVerPlanos,
 }) {
   const [secciones, setSecciones] = useState([]);
   const [seccionesAbiertas, setSeccionesAbiertas] = useState({});
@@ -160,15 +161,27 @@ export default function LocationTree({
 
         return (
           <div className="tree-section" key={seccion.seccion}>
-            <button
-              className="tree-node tree-seccion"
-              type="button"
-              onClick={() => alternarSeccion(seccion.seccion)}
-            >
-              <span className="tree-caret">{seccionAbierta ? '▾' : '▸'}</span>
-              <span className="tree-label">Sección {seccion.seccion}</span>
-              <StatusBadge status={seccion.stat} />
-            </button>
+            <div className="tree-seccion-fila">
+              <button
+                className="tree-node tree-seccion"
+                type="button"
+                onClick={() => alternarSeccion(seccion.seccion)}
+              >
+                <span className="tree-caret">{seccionAbierta ? '▾' : '▸'}</span>
+                <span className="tree-label">Sección {seccion.seccion}</span>
+                <StatusBadge status={seccion.stat} />
+              </button>
+              {onVerPlanos && (
+                <button
+                  className="button button-secondary button-small tree-planos"
+                  type="button"
+                  aria-label={`Ver planos de ${seccion.seccion}`}
+                  onClick={() => onVerPlanos({ seccion: seccion.seccion })}
+                >
+                  Planos
+                </button>
+              )}
+            </div>
 
             {seccionAbierta && (
               <div className="tree-children">

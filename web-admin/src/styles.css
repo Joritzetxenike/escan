@@ -606,6 +606,279 @@ tbody tr:hover,
   color: var(--danger);
 }
 
+/* ---------- Planos ---------- */
+
+.button-danger {
+  background: var(--danger);
+}
+
+.button-danger:hover:not(:disabled) {
+  background: #8f1c13;
+}
+
+.eyebrow-dark {
+  color: var(--muted);
+}
+
+.tree-seccion-fila {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.tree-seccion-fila .tree-seccion {
+  flex: 1;
+}
+
+.tree-planos {
+  flex: 0 0 auto;
+  min-height: auto;
+}
+
+.detail-header-acciones {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.planos-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgb(15 30 45 / 55%);
+}
+
+.planos-modal {
+  display: flex;
+  width: min(1400px, 100%);
+  height: min(920px, 100%);
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 20px 50px rgb(15 30 45 / 35%);
+}
+
+.planos-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.planos-header h2 {
+  margin: 2px 0 0;
+  font-size: 1.15rem;
+}
+
+.planos-body {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  grid-template-columns: 300px minmax(0, 1fr);
+}
+
+.planos-lista {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: 18px;
+  overflow-y: auto;
+  padding: 16px;
+  border-right: 1px solid var(--border);
+  background: #f9fbfc;
+}
+
+.planos-grupo h3,
+.planos-subida h3 {
+  margin-bottom: 8px;
+  color: #5a6c7c;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.planos-grupo ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.planos-vacio {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.planos-item {
+  display: grid;
+  width: 100%;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: #1e2a35;
+  background: #fff;
+  text-align: left;
+}
+
+.planos-item:hover,
+.planos-item-activo {
+  border-color: #8cb7d9;
+  background: #e9f2f9;
+}
+
+.planos-tipo {
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #fff;
+  background: var(--primary);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.planos-nombre {
+  overflow: hidden;
+  font-size: 0.88rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.planos-tamano {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.planos-subida {
+  display: grid;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.planos-subida input[type="file"] {
+  min-height: auto;
+  padding: 6px;
+  font-size: 0.85rem;
+}
+
+.planos-subida small {
+  color: var(--muted);
+}
+
+.planos-mensaje {
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+.planos-mensaje-ok {
+  color: #1f6b3a;
+  background: #e8f6ee;
+}
+
+.planos-mensaje-info {
+  color: #385265;
+  background: #edf3f7;
+}
+
+.planos-mensaje-error {
+  color: var(--danger);
+  background: #fff1f0;
+}
+
+.planos-visor {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  padding: 12px;
+  background: #eef2f5;
+}
+
+.planos-visor-barra {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.planos-visor-barra strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.planos-visor-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.planos-visor-acciones a {
+  text-decoration: none;
+}
+
+.planos-pdf {
+  width: 100%;
+  min-height: 0;
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.planos-imagen {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  cursor: zoom-in;
+}
+
+.planos-imagen img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+@media (max-width: 760px) {
+  .planos-overlay {
+    padding: 0;
+  }
+
+  .planos-modal {
+    height: 100%;
+    border-radius: 0;
+  }
+
+  .planos-body {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .planos-lista {
+    max-height: 40vh;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+}
+
 @media (max-width: 1050px) {
   .filters {
     grid-template-columns: repeat(3, minmax(130px, 1fr));

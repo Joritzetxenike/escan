@@ -6,7 +6,7 @@ import { STATUSES } from '../lib/estados';
 
 const PAGE_SIZE = 25;
 
-export default function LocationDetail({ location, editMode, onUpdated }) {
+export default function LocationDetail({ location, editMode, onUpdated, onVerPlanos }) {
   const [articles, setArticles] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -116,7 +116,20 @@ export default function LocationDetail({ location, editMode, onUpdated }) {
           <p className="eyebrow">Ubicación seleccionada</p>
           <h2>{location.ubicacion}</h2>
         </div>
-        <StatusBadge status={location.stat} />
+        <div className="detail-header-acciones">
+          {onVerPlanos && (
+            <button
+              className="button button-secondary button-small"
+              type="button"
+              onClick={() =>
+                onVerPlanos({ seccion: location.seccion, area: location.area })
+              }
+            >
+              Planos
+            </button>
+          )}
+          <StatusBadge status={location.stat} />
+        </div>
       </div>
 
       {editMode && (
