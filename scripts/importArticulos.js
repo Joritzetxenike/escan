@@ -36,8 +36,17 @@ const { quitarTildes, crearReparador } = require('./lib/textoSinTildes');
  * son símbolos junto a números (Ø12, 20º) se dejan.
  *
  * Los artículos que ya existen SE ACTUALIZAN (dsca, tipo, unit).
- * No se borra nada: un artículo que ya no está en el CSV, o que
- * ahora es Manual, sigue en la tabla.
+ *
+ * Ceros perdidos: si Excel convirtió `0800715004` en `800715004`
+ * y el código con ceros existe en Supabase, se corrige solo.
+ *
+ * Sobrantes (en Supabase pero no en el CSV, p. ej. de un import
+ * antiguo o que ahora son Manual): se listan siempre. Con
+ * `--borrar-sobrantes` se borran, salvo los usados en `conteo`
+ * (la FK no lo permitiría y además son datos contados).
+ *
+ * Uso: node scripts/importArticulos.js [ruta.csv] [--dry-run] [--borrar-sobrantes]
+ * (el dry run solo LEE de Supabase para comparar).
  * ======================================================= */
 
 const TIPOS_VALIDOS = new Set(['MRP', 'SIC', 'GEN']);
@@ -77,6 +86,27 @@ function deducirTipo(fila, formato) {
   return { error: `no se puede deducir el tipo (Tipo artículo "${tipoArticulo}", Mét.plan. "${metodo}")` };
 }
 
+/* Los códigos numéricos del ERP tienen 10 cifras (`0180090000`). */
+const LONGITUD_CODIGO_NUMERICO = 10;
+
+const LOTE_BORRADO = 200;
+
+/** Todos los valores de una columna (PostgREST devuelve 1.000 por petición). */
+async function leerColumna(client, tabla, columna) {
+  const valores = new Set();
+  for (let desde = 0; ; desde += 1000) {
+    const { data, error } = await client
+      .from(tabla)
+      .select(columna)
+      .order(columna, { ascending: true })
+      .range(desde, desde + 999);
+    if (error) throw error;
+    data.forEach((fila) => valores.add(fila[columna]));
+    if (data.length < 1000) break;
+  }
+  return valores;
+}
+
 async function contar(client, tabla) {
   const { count, error } = await client
     .from(tabla)
@@ -93,10 +123,11 @@ async function main() {
     ? path.resolve(process.cwd(), posicionales[0])
     : path.resolve(__dirname, '..', 'articulos.csv');
   const dryRun = flags.includes('--dry-run');
+  const borrarSobrantes = flags.includes('--borrar-sobrantes');
 
   if (!fs.existsSync(filePath)) {
     console.error(`No existe el archivo: ${filePath}`);
-    console.error('Uso: node scripts/importArticulos.js [ruta.csv] [--dry-run]');
+    console.error('Uso: node scripts/importArticulos.js [ruta.csv] [--dry-run] [--borrar-sobrantes]');
     process.exit(1);
   }
 
@@ -191,6 +222,36 @@ async function main() {
     process.exit(1);
   }
 
+  /* ---------- Comparación con Supabase (solo lectura) ---------- */
+
+  const client = crearCliente();
+
+  const enSupabase = await leerColumna(client, 'maestroArticulo', 'item');
+
+  /* Ceros perdidos: Excel trata `0800715004` como número y lo
+     guarda como `800715004`. Si el código con ceros delante
+     existe en Supabase y no viene en el CSV, es el mismo
+     artículo: se corrige al código con ceros. */
+
+  const enCsvAntes = new Set(articulos.map((a) => a.item));
+  const ceros = [];
+
+  for (const a of articulos) {
+    if (!/^\d+$/.test(a.item)) continue;
+    for (let n = 1; a.item.length + n <= LONGITUD_CODIGO_NUMERICO; n += 1) {
+      const conCeros = '0'.repeat(n) + a.item;
+      if (enSupabase.has(conCeros) && !enCsvAntes.has(conCeros)) {
+        ceros.push([a.item, conCeros]);
+        a.item = conCeros;
+        break;
+      }
+    }
+  }
+
+  const enCsv = new Set(articulos.map((a) => a.item));
+
+  const sobrantes = [...enSupabase].filter((item) => !enCsv.has(item));
+
   const porTipo = {};
   articulos.forEach((a) => {
     porTipo[a.tipo ?? '(sin tipo)'] = (porTipo[a.tipo ?? '(sin tipo)'] ?? 0) + 1;
@@ -207,14 +268,46 @@ async function main() {
     console.log(`Palabras que siguen con "?" (no se pudieron deducir): ${[...pendientesDsca.keys()].slice(0, 15).join(', ')}`);
   }
 
+  if (ceros.length) {
+    console.log(`\nCódigos con el cero inicial perdido (corregidos): ${ceros.length}`);
+    ceros.slice(0, 20).forEach(([a, b]) => console.log(`  ${a} → ${b}`));
+  }
+
+  const cortos = articulos.filter(
+    (a) => /^\d+$/.test(a.item) && a.item.length < LONGITUD_CODIGO_NUMERICO
+  );
+  if (cortos.length) {
+    console.log(`Códigos numéricos de menos de ${LONGITUD_CODIGO_NUMERICO} cifras (revisar si perdieron ceros): ${cortos.map((a) => a.item).slice(0, 20).join(', ')}`);
+  }
+
+  /* ---------- Sobrantes: en Supabase pero no en el CSV ---------- */
+
+  let protegidos = [];
+  let aBorrar = [];
+
+  if (sobrantes.length) {
+    const enConteo = await leerColumna(client, 'conteo', 'item');
+    protegidos = sobrantes.filter((item) => enConteo.has(item));
+    aBorrar = sobrantes.filter((item) => !enConteo.has(item));
+
+    console.log(`\nEn Supabase pero NO en el CSV: ${sobrantes.length}`);
+    console.log(`  ${sobrantes.slice(0, 30).join(', ')}${sobrantes.length > 30 ? ' ...' : ''}`);
+    if (protegidos.length) {
+      console.log(`  Usados en conteo (no se borran nunca): ${protegidos.join(', ')}`);
+    }
+    console.log(
+      borrarSobrantes
+        ? `  Se borrarán ${aBorrar.length}.`
+        : '  No se borran (usa --borrar-sobrantes para que el maestro quede igual que el CSV).'
+    );
+  }
+
   if (dryRun) {
     console.log('\nMuestra:');
     articulos.slice(0, 5).forEach((f) => console.log('  ' + JSON.stringify(f)));
     console.log('\nDRY RUN: no se escribió nada en la base de datos.');
     return;
   }
-
-  const client = crearCliente();
 
   const antes = await contar(client, 'maestroArticulo');
 
@@ -224,9 +317,22 @@ async function main() {
   });
   console.log('');
 
+  let borrados = 0;
+
+  if (borrarSobrantes && aBorrar.length) {
+    for (let i = 0; i < aBorrar.length; i += LOTE_BORRADO) {
+      const lote = aBorrar.slice(i, i + LOTE_BORRADO);
+      const { error } = await client.from('maestroArticulo').delete().in('item', lote);
+      if (error) throw error;
+      borrados += lote.length;
+    }
+  }
+
   const despues = await contar(client, 'maestroArticulo');
 
-  console.log(`\nmaestroArticulo: ${antes} → ${despues} (nuevos: ${despues - antes}, actualizados: ${articulos.length - (despues - antes)})`);
+  console.log(`\nmaestroArticulo: ${antes} → ${despues}`);
+  console.log(`  importados (nuevos o actualizados): ${articulos.length}`);
+  if (borrados) console.log(`  borrados (no estaban en el CSV): ${borrados}`);
   console.log('\nImport completado. Recuerda actualizar la copia del maestro en los móviles (icono ⟳).');
 }
 
