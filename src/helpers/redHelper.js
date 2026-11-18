@@ -47,4 +47,15 @@ export function esErrorDeRed(error) {
 
 }
 
-export default { esErrorDeRed };
+/**
+ * El servidor rechaza el movimiento porque la ubicación ya está
+ * en `Fin` (ver `20261117000000_rpc_guardar_movimiento_v2.sql`,
+ * que lanza el error con `hint = 'UBICACION_TERMINADA'`). Puede
+ * pasar si otro dispositivo o el web-admin la cerró mientras
+ * tanto. No es un fallo de red: no se reintenta.
+ */
+export function esUbicacionTerminada(error) {
+  return error?.hint === 'UBICACION_TERMINADA';
+}
+
+export default { esErrorDeRed, esUbicacionTerminada };

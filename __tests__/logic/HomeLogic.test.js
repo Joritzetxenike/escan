@@ -68,6 +68,7 @@ jest.mock('expo-file-system/legacy', () => ({
 }));
 
 jest.mock('../../src/helpers/operariosHelper', () => ({
+  actualizarOperarios: jest.fn().mockResolvedValue(false),
   buscarOperario: jest.fn().mockResolvedValue(null),
 }));
 

@@ -387,8 +387,8 @@ que hacerlo con REST exigía unas 212 peticiones). Las ubicaciones se leen con l
 consulta anidada de siempre: son 199 filas.
 
 ```
-supabase/migrations/20261004_maestro_snapshot.sql
-supabase/migrations/20261014_maestro_genericos.sql
+supabase/migrations/20261004000000_maestro_snapshot.sql
+supabase/migrations/20261014000000_maestro_genericos.sql
 ```
 
 La primera migración ya está aplicada: la RPC devuelve 211.578 códigos y 1.669

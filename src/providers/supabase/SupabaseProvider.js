@@ -159,7 +159,8 @@ const SupabaseProvider = {
         ubicacion,
         maestroArticulo (
           dsca,
-          tipo
+          tipo,
+          unit
         )
       `
       )
@@ -173,6 +174,7 @@ const SupabaseProvider = {
       cantidad: row.cant,
       dsca: row.maestroArticulo?.dsca ?? null,
       tipo: row.maestroArticulo?.tipo ?? null,
+      unidad: row.maestroArticulo?.unit ?? null,
     }));
   },
 
@@ -219,7 +221,7 @@ const SupabaseProvider = {
    * rechazar los genéricos. No se copia `dsca` porque ocupa
    * la mitad del tamaño y el CSV local tampoco la guarda.
    *
-   * Ver `supabase/migrations/20261014_maestro_genericos.sql`.
+   * Ver `supabase/migrations/20261014000000_maestro_genericos.sql`.
    */
   async obtenerMaestroArticulos() {
 
@@ -234,7 +236,10 @@ const SupabaseProvider = {
       sic: data?.sic ?? [],
       genericos: data?.genericos ?? [],
       descripciones: data?.descripciones ?? {},
+      /* Solo las excepciones; el resto usa `unidadDefecto`.
+         Ver 20261118000000_descargar_maestro_articulos_unidades.sql */
       unidades: data?.unidades ?? {},
+      unidadDefecto: data?.unidad_defecto ?? null,
     };
   },
 
@@ -264,22 +269,63 @@ const SupabaseProvider = {
     };
   },
 
-  async actualizarMovimiento({ ubicacion, articulo, cantidad }) {
+  /**
+   * Editar una cantidad es lo mismo que guardarla: un upsert por
+   * (ubicacion, item). Antes era un `UPDATE ... .single()`, que
+   * fallaba si la fila no existía todavía en el servidor (p. ej.
+   * guardar + editar sin conexión, que la cola fusiona) y
+   * bloqueaba la ubicación en la sincronización. Con la RPC
+   * funciona exista o no la fila, deja la matrícula de quien
+   * corrige y actualiza `updated_at`.
+   */
+  async actualizarMovimiento({ ubicacion, articulo, cantidad, matricula }) {
+    return await SupabaseProvider.guardarMovimiento({
+      ubicacion,
+      articulo,
+      cantidad,
+      matricula,
+    });
+  },
+
+  /**
+   * Fila de `conteo` de un artículo en una ubicación, o `null`.
+   * Sirve para detectar un artículo ya contado aunque no esté
+   * en el CSV local.
+   */
+  async obtenerMovimiento(ubicacion, articulo) {
     const { data, error } = await supabase
       .from('conteo')
-      .update({ cant: cantidad })
+      .select('ubicacion, item, cant')
       .eq('ubicacion', ubicacion)
       .eq('item', articulo)
-      .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
+
+    if (!data) return null;
 
     return {
       ubicacion: data.ubicacion,
       articulo: data.item,
       cantidad: data.cant,
     };
+  },
+
+  /* =======================================================
+   * OPERARIOS
+   * ======================================================= */
+
+  /**
+   * Lista de operarios (`matricula`, `nombre`, `activo`) para la
+   * copia local del login. Ver
+   * `supabase/migrations/20261117000100_rpc_descargar_operarios.sql`.
+   */
+  async obtenerOperarios() {
+    const { data, error } = await supabase.rpc('descargar_operarios');
+
+    if (error) throw error;
+
+    return Array.isArray(data) ? data : [];
   },
 
   async eliminarMovimiento(ubicacion, articulo) {
@@ -305,7 +351,8 @@ const SupabaseProvider = {
         updated_at,
         maestroArticulo (
           dsca,
-          tipo
+          tipo,
+          unit
         )
       `
       )
@@ -322,6 +369,7 @@ const SupabaseProvider = {
       updated_at: row.updated_at ?? null,
       dsca: row.maestroArticulo?.dsca ?? null,
       tipo: row.maestroArticulo?.tipo ?? null,
+      unidad: row.maestroArticulo?.unit ?? null,
     }));
   },
 

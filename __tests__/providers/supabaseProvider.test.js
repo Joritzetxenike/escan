@@ -518,4 +518,128 @@ describe('SupabaseProvider', () => {
 
   });
 
+
+  // =====================================================
+  // actualizarMovimiento / obtenerMovimiento / operarios
+  // =====================================================
+
+  describe('actualizarMovimiento (A1)', () => {
+
+    test('usa la RPC guardar_movimiento (upsert) con la matrícula', async () => {
+
+      supabase.rpc.mockResolvedValue({
+        data: { ubicacion: 'A-1-Z1', articulo: '1', cantidad: 8, matricula: '2222' },
+        error: null,
+      });
+
+      const resultado = await SupabaseProvider.actualizarMovimiento({
+        ubicacion: 'A-1-Z1', articulo: '1', cantidad: 8, matricula: '2222',
+      });
+
+      expect(supabase.rpc).toHaveBeenCalledWith('guardar_movimiento', {
+        p_ubicacion: 'A-1-Z1',
+        p_articulo: '1',
+        p_cantidad: 8,
+        p_matricula: '2222',
+      });
+
+      expect(supabase.from).not.toHaveBeenCalled();
+      expect(resultado.cantidad).toBe(8);
+    });
+
+  });
+
+  describe('obtenerMovimiento (A5)', () => {
+
+    const montar = (respuesta) => {
+      const consulta = {
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        maybeSingle: jest.fn().mockResolvedValue(respuesta),
+      };
+      supabase.from.mockReturnValue(consulta);
+      return consulta;
+    };
+
+    test('devuelve la fila con nombres de la app', async () => {
+
+      const consulta = montar({
+        data: { ubicacion: 'A-1-Z1', item: '1', cant: 10 },
+        error: null,
+      });
+
+      expect(
+        await SupabaseProvider.obtenerMovimiento('A-1-Z1', '1')
+      ).toEqual({ ubicacion: 'A-1-Z1', articulo: '1', cantidad: 10 });
+
+      expect(supabase.from).toHaveBeenCalledWith('conteo');
+      expect(consulta.eq).toHaveBeenCalledWith('ubicacion', 'A-1-Z1');
+      expect(consulta.eq).toHaveBeenCalledWith('item', '1');
+    });
+
+    test('devuelve null si no existe', async () => {
+
+      montar({ data: null, error: null });
+
+      expect(
+        await SupabaseProvider.obtenerMovimiento('A-1-Z1', '1')
+      ).toBeNull();
+    });
+
+  });
+
+  describe('obtenerOperarios (A6)', () => {
+
+    test('llama a la RPC y devuelve la lista', async () => {
+
+      const lista = [{ matricula: '1', nombre: 'A', activo: true }];
+
+      supabase.rpc.mockResolvedValue({ data: lista, error: null });
+
+      expect(await SupabaseProvider.obtenerOperarios()).toEqual(lista);
+      expect(supabase.rpc).toHaveBeenCalledWith('descargar_operarios');
+    });
+
+    test('lanza si la RPC falla', async () => {
+
+      supabase.rpc.mockResolvedValue({ data: null, error: new Error('x') });
+
+      await expect(SupabaseProvider.obtenerOperarios()).rejects.toThrow('x');
+    });
+
+  });
+
+
+  describe('unidad', () => {
+
+    test('la descarga del maestro trae unidad_defecto y excepciones', async () => {
+      supabase.rpc.mockResolvedValue({
+        data: { codigos: ['A'], sic: [], genericos: [], unidad_defecto: 'U', unidades: { B: 'KG' } },
+        error: null,
+      });
+
+      const maestro = await SupabaseProvider.obtenerMaestroArticulos();
+
+      expect(maestro.unidadDefecto).toBe('U');
+      expect(maestro.unidades).toEqual({ B: 'KG' });
+    });
+
+    test('los artículos de una ubicación traen la unidad del maestro', async () => {
+      const consulta = {
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockResolvedValue({
+          data: [{ ubicacion: 'A-1-Z1', item: 'X', cant: 2, maestroArticulo: { dsca: 'D', tipo: 'MRP', unit: 'M2' } }],
+          error: null,
+        }),
+      };
+      supabase.from.mockReturnValue(consulta);
+
+      const [fila] = await SupabaseProvider.obtenerArticulosUbicacion('A-1-Z1');
+
+      expect(fila.unidad).toBe('M2');
+      expect(consulta.select.mock.calls[0][0]).toContain('unit');
+    });
+
+  });
+
 });

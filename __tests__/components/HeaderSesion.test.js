@@ -11,6 +11,7 @@ jest.mock('@expo/vector-icons', () => ({
 }));
 
 jest.mock('../../src/helpers/operariosHelper', () => ({
+  actualizarOperarios: jest.fn().mockResolvedValue(false),
   buscarOperario: jest.fn(),
 }));
 

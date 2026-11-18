@@ -16,7 +16,7 @@
  * castear a `::text` para poder comparar.
  *
  * NOTA: convive con la definición de
- * `20261004_maestro_snapshot.sql`; este fichero la reemplaza
+ * `20261004000000_maestro_snapshot.sql`; este fichero la reemplaza
  * añadiendo `genericos`.
  * ======================================================= */
 

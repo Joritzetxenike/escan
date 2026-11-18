@@ -1,5 +1,7 @@
 import * as FileSystem from 'expo-file-system/legacy';
 
+import { escribirJson } from '../helpers/archivoHelper';
+
 /* =======================================================
  * COLA DE OPERACIONES PENDIENTES
  * =======================================================
@@ -74,6 +76,10 @@ const colaVacia = () => ({
   operaciones: [],
 });
 
+/**
+ * Devuelve la cola, o `null` si el contenido no es una cola
+ * válida (JSON roto o sin `operaciones`).
+ */
 const parsear = (contenido) => {
 
   if (!contenido) return colaVacia();
@@ -83,7 +89,7 @@ const parsear = (contenido) => {
     const datos = JSON.parse(contenido);
 
     if (!datos || !Array.isArray(datos.operaciones)) {
-      return colaVacia();
+      return null;
     }
 
     return {
@@ -93,19 +99,59 @@ const parsear = (contenido) => {
 
   } catch (e) {
 
+    return null;
+
+  }
+};
+
+/* ---------- Cuarentena ----------
+ *
+ * Antes, una cola corrupta se reiniciaba vacía y la siguiente
+ * escritura pisaba el fichero: lo no sincronizado se perdía sin
+ * rastro. Ahora el fichero se aparta con otro nombre (que sigue
+ * sin acabar en `.csv`, así que no aparece en Lista) para poder
+ * recuperarlo a mano, y la app continúa con una cola nueva.
+ */
+
+const nombreCuarentena = () =>
+  `${DIR}pending-operations.corrupt-${Date.now()}.json`;
+
+const ponerEnCuarentena = async () => {
+
+  const destino = nombreCuarentena();
+
+  try {
+
+    await FileSystem.moveAsync({
+      from: ARCHIVO,
+      to: destino,
+    });
+
     console.error(
-      'Cola de pendientes corrupta, se reinicia:',
+      'Cola de pendientes corrupta: se conserva en',
+      destino
+    );
+
+  } catch (e) {
+
+    console.error(
+      'Cola de pendientes corrupta y no se pudo apartar:',
       e
     );
 
-    return colaVacia();
+    /* Sin poder apartarla no se debe seguir: escribir encima
+       destruiría lo que quede de ella. */
+    throw e;
 
   }
+
 };
 
 const Persistencia = {
 
   async leer() {
+
+    let contenido;
 
     try {
 
@@ -116,13 +162,12 @@ const Persistencia = {
         return colaVacia();
       }
 
-      const contenido =
+      contenido =
         await FileSystem.readAsStringAsync(ARCHIVO);
-
-      return parsear(contenido);
 
     } catch (e) {
 
+      /* Fallo de E/S (no de contenido): no se toca el fichero. */
       console.error(
         'Error leyendo la cola de pendientes:',
         e
@@ -132,21 +177,50 @@ const Persistencia = {
 
     }
 
+    const cola = parsear(contenido);
+
+    if (cola) return cola;
+
+    await ponerEnCuarentena();
+
+    return colaVacia();
+
   },
 
+  /* Escritura atómica (`.tmp` + renombrado): si la app muere a
+     mitad, queda la versión anterior entera, no un JSON
+     truncado. */
   async escribir(operaciones) {
 
-    const contenido = JSON.stringify({
+    await escribirJson(ARCHIVO, {
       version: VERSION,
       operaciones,
     });
 
-    await FileSystem.writeAsStringAsync(
-      ARCHIVO,
-      contenido
-    );
-
   },
+
+};
+
+/* ---------- Escrituras en serie ----------
+ *
+ * `encolar`, `quitar` y `registrarFallo` leen, modifican y
+ * escriben el fichero entero. Si dos se solapan (la
+ * sincronización corre en segundo plano mientras el operario
+ * sigue guardando), la última escritura pisa a la otra y se
+ * pierde una operación. Encadenarlas en una única promesa
+ * garantiza que cada una ve el resultado de la anterior.
+ */
+
+let colaEscrituras = Promise.resolve();
+
+const enSerie = (tarea) => {
+
+  const resultado = colaEscrituras.then(tarea);
+
+  /* Un fallo no debe bloquear las escrituras siguientes. */
+  colaEscrituras = resultado.catch(() => {});
+
+  return resultado;
 
 };
 
@@ -164,9 +238,16 @@ const pendientesService = {
    * LECTURA
    * ===================================================== */
 
+  /* Una lectura nunca debe tumbar la UI: si la cola no se
+     puede leer (ni apartar), se informa como vacía. Las
+     escrituras, en cambio, sí fallan, para no pisarla. */
   async listar() {
-    const cola = await Persistencia.leer();
-    return cola.operaciones;
+    try {
+      const cola = await Persistencia.leer();
+      return cola.operaciones;
+    } catch (e) {
+      return [];
+    }
   },
 
   async contar() {
@@ -201,60 +282,76 @@ const pendientesService = {
    * pendiente es un guardado/actualización del mismo
    * artículo, se fusionan conservando el `operation_id`
    * original.
+   *
+   * `matricula` se guarda con la operación: sin ella, lo
+   * contado sin conexión llegaría a Supabase sin operario.
    */
-  async encolar({
+  encolar({
     tipo,
     ubicacion,
     articulo = null,
     cantidad = null,
+    matricula = null,
     provisional = false,
     ubicacionProvisional = false,
   }) {
 
-    const cola = await Persistencia.leer();
+    return enSerie(async () => {
 
-    const ultima = cola.operaciones.at(-1);
+      const cola = await Persistencia.leer();
 
-    if (ultima && sonFusionables(ultima, { tipo, ubicacion, articulo })) {
+      const ultima = cola.operaciones.at(-1);
 
-      const fusionada = {
-        ...ultima,
+      if (ultima && sonFusionables(ultima, { tipo, ubicacion, articulo })) {
+
+        const fusionada = {
+          ...ultima,
+          /* `guardar` + `actualizar` sigue siendo un `guardar`:
+             la fila puede no existir aún en el servidor. */
+          tipo:
+            ultima.tipo === TIPOS.GUARDAR
+              ? TIPOS.GUARDAR
+              : tipo,
+          cantidad: cantidad ?? ultima.cantidad,
+          /* Gana el último operario que tocó el artículo. */
+          matricula: matricula ?? ultima.matricula ?? null,
+          provisional: provisional || ultima.provisional,
+          ubicacion_provisional:
+            ubicacionProvisional || ultima.ubicacion_provisional,
+          ultimo_error: null,
+        };
+
+        cola.operaciones[cola.operaciones.length - 1] =
+          fusionada;
+
+        await Persistencia.escribir(cola.operaciones);
+
+        return fusionada;
+
+      }
+
+      const operacion = {
+        operation_id: nuevoOperationId(),
         tipo,
-        cantidad: cantidad ?? ultima.cantidad,
-        provisional: provisional || ultima.provisional,
-        ubicacion_provisional:
-          ubicacionProvisional || ultima.ubicacion_provisional,
+        ubicacion,
+        articulo,
+        cantidad,
+        matricula,
+        created_at: new Date().toISOString(),
+        intentos: 0,
         ultimo_error: null,
+        provisional: Boolean(provisional),
+        ubicacion_provisional:
+          Boolean(ubicacionProvisional),
       };
 
-      cola.operaciones[cola.operaciones.length - 1] =
-        fusionada;
+      cola.operaciones.push(operacion);
 
       await Persistencia.escribir(cola.operaciones);
 
-      return fusionada;
+      return operacion;
 
-    }
-
-    const operacion = {
-      operation_id: nuevoOperationId(),
-      tipo,
-      ubicacion,
-      articulo,
-      cantidad,
-      created_at: new Date().toISOString(),
-      intentos: 0,
-      ultimo_error: null,
-      provisional: Boolean(provisional),
-      ubicacion_provisional:
-        Boolean(ubicacionProvisional),
-    };
-
-    cola.operaciones.push(operacion);
-
-    await Persistencia.escribir(cola.operaciones);
-
-    return operacion;
+    });
 
   },
 
@@ -262,17 +359,21 @@ const pendientesService = {
    * Elimina una operación. Solo se llama tras la
    * confirmación del servidor.
    */
-  async quitar(operationId) {
+  quitar(operationId) {
 
-    const cola = await Persistencia.leer();
+    return enSerie(async () => {
 
-    cola.operaciones = cola.operaciones.filter(
-      (op) => op.operation_id !== operationId
-    );
+      const cola = await Persistencia.leer();
 
-    await Persistencia.escribir(cola.operaciones);
+      cola.operaciones = cola.operaciones.filter(
+        (op) => op.operation_id !== operationId
+      );
 
-    return true;
+      await Persistencia.escribir(cola.operaciones);
+
+      return true;
+
+    });
 
   },
 
@@ -281,37 +382,42 @@ const pendientesService = {
    * La operación se conserva siempre: nunca se descarta
    * en silencio.
    */
-  async registrarFallo(operationId, mensaje) {
+  registrarFallo(operationId, mensaje) {
 
-    const cola = await Persistencia.leer();
+    return enSerie(async () => {
 
-    const operacion = cola.operaciones.find(
-      (op) => op.operation_id === operationId
-    );
+      const cola = await Persistencia.leer();
 
-    if (!operacion) return false;
+      const operacion = cola.operaciones.find(
+        (op) => op.operation_id === operationId
+      );
 
-    operacion.intentos += 1;
+      if (!operacion) return false;
 
-    operacion.ultimo_error = mensaje ?? 'Error desconocido';
+      operacion.intentos += 1;
 
-    await Persistencia.escribir(cola.operaciones);
+      operacion.ultimo_error = mensaje ?? 'Error desconocido';
 
-    return true;
+      await Persistencia.escribir(cola.operaciones);
+
+      return true;
+
+    });
 
   },
 
   /**
    * Borra toda la cola (solo para pruebas).
    */
-  async vaciar() {
+  vaciar() {
 
-    await Persistencia.escribir({
-      version: VERSION,
-      operaciones: [],
+    return enSerie(async () => {
+
+      await Persistencia.escribir([]);
+
+      return true;
+
     });
-
-    return true;
 
   },
 

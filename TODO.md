@@ -17,7 +17,7 @@
   - Prioridad: media.
 
 - [ ] **Rechazar artículos genéricos al escanear** (código HECHO, falta migración): los tipos de artículo son MRP, SIC y genérico (`GEN`/`GENERICO`). Al escanear se mantiene el aviso de SIC (deja continuar) y se rechaza el genérico indicando el motivo; un código que no está en el maestro avisa "No existe en el maestro".
-  - Nueva migración `supabase/migrations/20261014_maestro_genericos.sql`: la RPC `descargar_maestro_articulos()` pasa a devolver `{ codigos, sic, genericos }`.
+  - Nueva migración `supabase/migrations/20261014000000_maestro_genericos.sql`: la RPC `descargar_maestro_articulos()` pasa a devolver `{ codigos, sic, genericos }`.
   - `maestrosService` guarda `genericos` en `maestro-articulos.json` y expone `esGenerico()`; `ArticuloValidator` lo rechaza. Tests y README actualizados (337 tests).
   - **Pendiente**: aplicar la migración en Supabase y **refrescar la copia local** (icono ⟳). Sin ese refresh, una copia antigua no lleva `genericos` y los genéricos se siguen aceptando.
   - Prioridad: alta.
@@ -124,7 +124,7 @@
     `maestros-meta.json` (`src/services/maestrosService.js`), aparte del CSV.
   - Solo guarda códigos, no descripciones: 211.578 artículos en ~3 MB.
   - El maestro de artículos se baja con la RPC `descargar_maestro_articulos()`
-    (en `supabase/migrations/20261004_maestro_snapshot.sql`) porque PostgREST
+    (en `supabase/migrations/20261004000000_maestro_snapshot.sql`) porque PostgREST
     limita a 1.000 filas por respuesta.
 - La validación es local y estricta: un código que no está en la copia se
     rechaza. Las operaciones `provisional` de versiones anteriores se siguen
@@ -336,7 +336,7 @@
     - `src/logic/HomeLogic.js` — `importarDesdeNube` comentado
     - `src/views/HomeView.js` — botón de emergencia comentado
     - `src/data/operarios.json` — `esAdminEmergencia` comentado
-    - `supabase/migrations/20261114_operarios.sql` — `es_admin_emergencia` comentado
+    - `supabase/migrations/20261114000000_operarios.sql` — `es_admin_emergencia` comentado
   - Para reactivar, descomentar todos los bloques marcados con `// COMENTADO - emergencia`
 - [ ] **Prueba total de la app en dispositivo**:
   - [ ] Login con matrícula válida (muestra nombre en encabezado)

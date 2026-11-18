@@ -316,7 +316,56 @@ describe('conectividadService', () => {
 
       let resolver;
 
-      syncService.sincronizar.mockImplementation(
+      syncService.sincronizar
+        .mockImplementationOnce(
+          () =>
+            new Promise((r) => {
+              resolver = r;
+            })
+        )
+        .mockResolvedValue({ aplicadas: 0, fallidas: 0, errores: [] });
+
+      const primera = conectividadService.sincronizar();
+      const segunda = await conectividadService.sincronizar();
+
+      expect(segunda).toBeNull();
+      expect(syncService.sincronizar).toHaveBeenCalledTimes(1);
+
+      resolver({ aplicadas: 0, fallidas: 0, errores: [] });
+
+      await primera;
+    });
+
+    test('si se pidió durante un drenado, repite al terminar (A3)', async () => {
+
+      let resolver;
+
+      syncService.sincronizar
+        .mockImplementationOnce(
+          () =>
+            new Promise((r) => {
+              resolver = r;
+            })
+        )
+        .mockResolvedValue({ aplicadas: 1, fallidas: 0, errores: [] });
+
+      const primera = conectividadService.sincronizar();
+
+      /* Llega una operación nueva mientras se drena */
+      await conectividadService.sincronizar();
+
+      resolver({ aplicadas: 0, fallidas: 0, errores: [] });
+
+      await primera;
+
+      expect(syncService.sincronizar).toHaveBeenCalledTimes(2);
+    });
+
+    test('no repite si la red se cayó durante el drenado', async () => {
+
+      let resolver;
+
+      syncService.sincronizar.mockImplementationOnce(
         () =>
           new Promise((r) => {
             resolver = r;
@@ -324,13 +373,14 @@ describe('conectividadService', () => {
       );
 
       const primera = conectividadService.sincronizar();
-      const segunda = await conectividadService.sincronizar();
 
-      expect(segunda).toBeNull();
+      await conectividadService.sincronizar();
 
-      resolver({ aplicadas: 0, fallidas: 0, errores: [] });
+      resolver({ aplicadas: 0, fallidas: 0, errores: [], redCaida: true });
 
       await primera;
+
+      expect(syncService.sincronizar).toHaveBeenCalledTimes(1);
     });
 
   });
