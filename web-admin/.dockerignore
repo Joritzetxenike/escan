@@ -1,0 +1,9 @@
+node_modules
+dist
+coverage
+.git
+*.log
+Dockerfile
+docker-compose.yml
+panel-inventario.ps1
+# `.env.local` SÍ se copia: Vite lo necesita al compilar

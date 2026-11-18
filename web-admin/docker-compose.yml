@@ -1,0 +1,20 @@
+# Panel de inventario en Docker.
+#
+#   docker compose up -d --build    arrancar (o actualizar tras un git pull)
+#   docker compose down             parar
+#   docker compose logs -f          ver qué pasa
+#
+# `restart: unless-stopped`: vuelve a arrancar solo cuando arranca
+# Docker (p. ej. al encender el PC), salvo que lo pares a mano.
+#
+# Puerto: 80 por defecto, para entrar con http://panelinventario sin
+# escribir puerto. Si el 80 está ocupado: PANEL_PUERTO=8080 docker compose up -d
+
+services:
+  panel:
+    build: .
+    image: panel-inventario
+    container_name: panelinventario
+    restart: unless-stopped
+    ports:
+      - "${PANEL_PUERTO:-80}:80"

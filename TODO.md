@@ -93,9 +93,42 @@
   - Prioridad: media.
 
 - [ ] **Preparar despliegue web**:
-  - Build de producción, variables públicas de Supabase y despliegue del panel.
-  - Integrar el build y las pruebas en CI/CD.
-  - Documentar uso, configuración y seguridad en `README.md`.
+  - [x] Build de producción y servirlo en la red local con Docker:
+    `web-admin/Dockerfile` (nginx), `docker-compose.yml` (puerto 80,
+    `restart: unless-stopped`) y `web-admin/panel-inventario.ps1`, que arranca
+    Docker, levanta/actualiza el contenedor, comprueba que responde y avisa de lo
+    que falta. Probado: el contenedor `panelinventario` responde en
+    `http://localhost`.
+  - [x] Integrar el build y las pruebas en CI/CD (job `web` de `tests.yml`).
+  - [x] Documentar uso en `README.md` («Panel web — uso en local»).
+  - [ ] **PENDIENTE: nombre `panelinventario` en la red** (que los demás entren
+    sin escribir la IP). Decidido: **no renombrar el PC servidor**. Opciones
+    estudiadas, falta elegir:
+    1. **Fichero `hosts` en cada PC cliente**: una línea
+       `<IP del servidor>  panelinventario`. Lo más directo; solo PCs (no
+       móviles), hay que hacerlo en cada uno como administrador y la IP del
+       servidor tiene que ser fija. Se puede preparar un `alias-panel.ps1` que
+       añada o actualice la línea.
+    2. **DNS del router** (`panelinventario` → IP fija reservada): vale para
+       todos los dispositivos; necesita acceso al router (en el almacén, sistemas).
+    3. **Anuncio mDNS desde el servidor** (`http://panelinventario.local`), un
+       pequeño script de Node lanzado por `panel-inventario.ps1`: sin tocar
+       clientes ni router; PCs con Windows, iPhone/Mac, Android depende. No puede
+       ir dentro del contenedor (Docker Desktop aísla la red).
+    4. **Alias NetBIOS** (`OptionalNames` en el registro del servidor):
+       `http://panelinventario` sin `.local`, solo entre PCs con Windows; un
+       cambio de registro como administrador.
+    5. **Nombre público** (ngrok con su dominio gratuito, o Vercel/Netlify): en
+       cualquier dispositivo con internet, pero no es local ni se elige el nombre.
+  - [ ] **Pendiente en el PC servidor** (una vez, como administrador), sea cual
+    sea la opción de nombre:
+    - Regla del firewall para el puerto 80 (el comando lo muestra el script).
+    - Red como **Privada**: con «Pública» la regla no se aplica (ahora la de casa
+      está como Pública).
+    - Docker Desktop → *Start Docker Desktop when you sign in* (ahora
+      desactivado): si no, tras reiniciar el panel no vuelve hasta abrir Docker.
+  - [ ] Crear un usuario `admin` de Supabase Auth por persona que vaya a entrar
+    (ahora hay uno).
   - Prioridad: media.
 
 ## Conectividad: CSV local y sincronización diferida

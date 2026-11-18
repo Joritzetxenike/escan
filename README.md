@@ -800,6 +800,40 @@ npm run dev                 # abre http://localhost:5173
 - «Modificar datos» activa el modo edición: cambiar el estado de una ubicación y
   subir/borrar planos. Fuera de ese modo todo es de solo lectura.
 
+### Servirlo en la red con Docker (`http://panelinventario`)
+
+Para que otros equipos de la red entren sin escribir IPs. El contenedor compila
+el panel y lo sirve con nginx en el puerto 80; se reinicia solo
+(`restart: unless-stopped`).
+
+```powershell
+cd web-admin
+powershell -ExecutionPolicy Bypass -File .\panel-inventario.ps1
+```
+
+El script arranca Docker Desktop si hace falta, construye y levanta el
+contenedor (`docker compose up -d --build`), comprueba que responde, revisa
+firewall y nombre del PC, y muestra las direcciones. Volver a lanzarlo tras un
+`git pull` actualiza el panel.
+
+Una sola vez, en el PC servidor (PowerShell como administrador):
+
+1. **Nombre**: `Rename-Computer -NewName "panelinventario" -Restart`. El nombre lo
+   resuelve la red, no Docker: así `http://panelinventario` funciona desde PCs
+   con Windows de la misma red (si no, `http://panelinventario.local`). En
+   móviles/tablets Android usar la IP, o añadir `panelinventario` en el DNS del
+   router.
+2. **Firewall**: `New-NetFirewallRule -DisplayName "Panel inventario" -Direction Inbound -Protocol TCP -LocalPort 80 -Action Allow -Profile Private,Domain`.
+   La red tiene que estar como **Privada** (con «Pública» la regla no se aplica).
+3. **Arranque automático**: Docker Desktop → Settings → General → *Start Docker
+   Desktop when you sign in*. El contenedor vuelve solo cuando Docker arranca
+   (necesita que alguien inicie sesión en el PC).
+
+Comandos: `docker compose down` (parar), `docker compose logs -f` (registros).
+Si el puerto 80 está ocupado: `$env:PANEL_PUERTO=8080` antes del script.
+La web compilada lleva la URL y la clave pública de `.env.local`; si cambian,
+volver a lanzar el script.
+
 ### Planos de sección / área
 
 Botón **Planos** en cada sección del árbol y en el detalle de una ubicación (ahí
