@@ -211,17 +211,16 @@ const SupabaseProvider = {
   /**
    * Descarga TODO el maestro de artículos de una sola vez.
    *
-   * Son ~211.000 filas, así que pedirlas por REST serían ~212
-   * peticiones (PostgREST devuelve 1.000 por petición) y unos
-   * 40 segundos. La RPC `descargar_maestro_articulos()` lo
-   * resuelve en una.
+   * Son ~279.000 filas, así que pedirlas por REST serían ~280
+   * peticiones (PostgREST devuelve 1.000 por petición). La RPC
+   * `descargar_maestro_articulos()` lo resuelve en una.
    *
-   * Devuelve `{ codigos, sic, genericos }`: solo lo
-   * necesario para validar y para avisar de los SIC y
-   * rechazar los genéricos. No se copia `dsca` porque ocupa
-   * la mitad del tamaño y el CSV local tampoco la guarda.
+   * Devuelve `{ codigos, sic, genericos, descripciones,
+   * unidad_defecto, unidades }`. Las descripciones (~10 MB de
+   * los ~14 MB) se traen para verlas sin conexión en todas las
+   * pantallas; las unidades van como "por defecto + excepciones".
    *
-   * Ver `supabase/migrations/20261014000000_maestro_genericos.sql`.
+   * Ver `supabase/migrations/20261118000100_descargar_maestro_articulos_descripciones.sql`.
    */
   async obtenerMaestroArticulos() {
 

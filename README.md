@@ -376,10 +376,14 @@ poder validar artículos y ubicaciones **sin red**. En memoria son tres `Set`
 | `maestro-ubicaciones.json` | `version`, `actualizado_at`, `ubicaciones` (`seccion-area-subzona`) |
 | `maestros-meta.json`   | Fechas de descarga y `rechazada_hasta` (aplazamiento) |
 
-`descripciones` y `unidades` son mapas **código → valor** opcionales, pensados
-para enriquecer la UI sin tocar el CSV. De momento se guardan **vacíos** porque
-la RPC `descargar_maestro_articulos()` no devuelve esos datos; los maestros
-antiguos siguen siendo válidos y los campos se muestran como `—` cuando faltan.
+`descripciones` y `unidades` son mapas **código → valor** para enriquecer la UI
+sin tocar el CSV (pantalla del CSV en Lista, modal de cantidad, artículo ya
+contado, entrada manual). La RPC `descargar_maestro_articulos()` manda todas las
+descripciones (~10 MB de los ~14 MB de la descarga) y las unidades como
+`unidad_defecto` (la más común, `U`) + `unidades` solo con las excepciones. Las
+copias antiguas siguen siendo válidas y muestran `—` hasta refrescarlas (⟳).
+La RPC amplía su `statement_timeout` a 30 s: con ~279.000 artículos el límite
+de ~3 s de `anon` no basta.
 
 El maestro de artículos se baja con una única llamada a la RPC
 `descargar_maestro_articulos()` (PostgREST limita a 1.000 filas por respuesta, así
@@ -533,12 +537,11 @@ sí distinguen mayúsculas y minúsculas (`-BXC05.4010 -SUB`).
 1. `guardarMovimiento` en Supabase son 4 peticiones: si la red se cae a mitad,
    el `conteo` puede quedar guardado y los `stat` no. El reintento lo converge,
    pero la solución definitiva es la RPC transaccional (ver `TODO.md`).
-2. La copia local del maestro guarda los **códigos** y, opcionalmente,
-   `descripciones`/`unidades`; ahora mismo esos mapas están vacíos porque la RPC
-   no los devuelve. Sin conexión, un artículo se acepta o se rechaza por el
-   código; la descripción y la unidad solo se muestran si están en la copia. El
-   riesgo real es que un código nuevo se rechace porque la copia tiene más de
-   24 h: de ahí el aviso de refresco.
+2. La copia local del maestro guarda códigos, descripciones y unidades
+   (~14 MB en disco, unos 40-60 MB de RAM al cargarla). Sin conexión, un
+   artículo se acepta o se rechaza por el código. El riesgo real es que un
+   código nuevo se rechace porque la copia tiene más de 24 h: de ahí el aviso
+   de refresco.
 3. Validar una ubicación **exige** la copia de ubicaciones, sin excepción. Antes,
    si ese fichero faltaba, se aceptaba cualquier código con formato correcto
    como provisional; con la entrada manual abierta eso habría dejado pasar
