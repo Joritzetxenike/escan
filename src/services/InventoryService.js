@@ -57,7 +57,7 @@ const enviarOEncolar = async (
 
   const online = await conectividadService.estaOnline();
 
-  const encolar = async () => {
+  const encolar = async ({ sinConexion }) => {
     await pendientesService.encolar({
       tipo,
       ...datos,
@@ -66,7 +66,11 @@ const enviarOEncolar = async (
         opciones.ubicacionProvisional === true,
     });
 
-    conectividadService.marcarSinConexion();
+    if (sinConexion) {
+      conectividadService.marcarSinConexion();
+    } else {
+      conectividadService.refrescarPendientes();
+    }
 
     return { pendiente: true };
   };
@@ -74,7 +78,22 @@ const enviarOEncolar = async (
   /* ---------- Sin conexión: solo cola ---------- */
 
   if (!online) {
-    return await encolar();
+    return await encolar({ sinConexion: true });
+  }
+
+  /* ---------- Con conexión pero con cola pendiente ----------
+
+     Enviar directo saltándose la cola rompe el orden: un
+     `eliminar` antiguo encolado se aplicaría DESPUÉS de un
+     guardado nuevo y lo borraría. Mientras quede algo en la
+     cola, lo nuevo va detrás y se lanza la sincronización. */
+
+  const pendientes = await pendientesService.contar();
+
+  if (pendientes > 0) {
+    const resultado = await encolar({ sinConexion: false });
+    conectividadService.sincronizar();
+    return resultado;
   }
 
   /* ---------- Con conexión: se envía ---------- */
@@ -93,7 +112,7 @@ const enviarOEncolar = async (
 
     conectividadService.marcarSinConexion(e);
 
-    return await encolar();
+    return await encolar({ sinConexion: true });
   }
 };
 
@@ -180,7 +199,57 @@ const InventoryService = {
         articulo
       );
 
-    return registro?.cantidad ?? null;
+    if (registro) return registro.cantidad ?? null;
+
+    /* ---------- No está en el CSV: ¿está en el servidor? ----------
+
+       El CSV puede no tenerlo aunque ya esté contado: se borró
+       el CSV, o lo contó otro dispositivo. Sin esta consulta el
+       artículo se daría por nuevo y el guardado (cantidad
+       absoluta) pisaría en silencio lo que había en `conteo`.
+
+       Si la cola tiene operaciones de este artículo, manda el
+       CSV: el servidor aún no refleja lo hecho en el móvil
+       (p. ej. un borrado sin sincronizar). */
+
+    const operaciones = await pendientesService.listar();
+
+    const hayPendientes = (operaciones ?? []).some(
+      (op) =>
+        op.ubicacion === ubicacion &&
+        op.articulo === articulo
+    );
+
+    if (hayPendientes) return null;
+
+    if (!(await conectividadService.estaOnline())) return null;
+
+    try {
+
+      const remoto =
+        await DataProvider.obtenerMovimiento(
+          ubicacion,
+          articulo
+        );
+
+      conectividadService.marcarConexion();
+
+      return remoto?.cantidad ?? null;
+
+    } catch (e) {
+
+      /* Nunca bloquea el conteo: sin respuesta del servidor se
+         sigue como hasta ahora, solo con el CSV. */
+
+      if (esErrorDeRed(e)) {
+        conectividadService.marcarSinConexion(e);
+      } else {
+        console.error('No se pudo consultar el conteo remoto:', e);
+      }
+
+      return null;
+
+    }
 
   },
 
@@ -260,9 +329,11 @@ const InventoryService = {
 
   async actualizarMovimiento(movimiento, opciones = {}) {
 
+    const matricula = authService.obtenerMatricula();
+
     const movimientoLocal = {
       ...movimiento,
-      matricula: authService.obtenerMatricula(),
+      matricula,
     };
 
     await CsvProvider.guardarMovimiento(movimientoLocal)
@@ -270,16 +341,22 @@ const InventoryService = {
         console.error('Error actualizando en CSV:', e)
       );
 
+    /* La matrícula viaja también al servidor: quien corrige la
+       cantidad es quien queda registrado, igual que en el CSV. */
+
+    const datos = {
+      ubicacion: movimiento.ubicacion,
+      articulo: movimiento.articulo,
+      cantidad: movimiento.cantidad,
+      matricula,
+    };
+
     return await enviarOEncolar(
       TIPOS.ACTUALIZAR,
-      {
-        ubicacion: movimiento.ubicacion,
-        articulo: movimiento.articulo,
-        cantidad: movimiento.cantidad,
-      },
+      datos,
       opciones,
       () =>
-        DataProvider.actualizarMovimiento(movimiento)
+        DataProvider.actualizarMovimiento(datos)
     );
   },
 

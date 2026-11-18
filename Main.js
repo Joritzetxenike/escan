@@ -7,6 +7,7 @@ import UpdateModal from './src/components/UpdateModal';
 import { comprobarActualizacion } from './src/services/updateService';
 import conectividadService from './src/services/conectividadService';
 import maestrosService from './src/services/maestrosService';
+import { actualizarOperarios } from './src/helpers/operariosHelper';
 
 const ES_DESPLIEGUE = process.env.EXPO_PUBLIC_APP_ENV === 'production';
 
@@ -27,6 +28,15 @@ export default function Main() {
 
   useEffect(() => {
     maestrosService.iniciar();
+  }, []);
+
+  /* ---------- Operarios del login ----------
+     Se refresca la lista desde Supabase en cada arranque (es
+     pequeña). Sin red no pasa nada: el login usa la última
+     copia descargada o, la primera vez, la plantilla. */
+
+  useEffect(() => {
+    actualizarOperarios();
   }, []);
 
   useEffect(() => {

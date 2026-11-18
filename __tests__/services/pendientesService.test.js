@@ -1,5 +1,16 @@
 import pendientesService from '../../src/services/pendientesService';
+import syncService from '../../src/services/syncService';
+import DataProvider from '../../src/providers/DataProvider';
 import * as FileSystem from 'expo-file-system/legacy';
+
+jest.mock('../../src/providers/DataProvider', () => ({
+  guardarMovimiento: jest.fn(async () => ({})),
+  actualizarMovimiento: jest.fn(async () => ({})),
+  eliminarMovimiento: jest.fn(async () => true),
+  finalizarUbicacion: jest.fn(async () => ({})),
+  obtenerArticulo: jest.fn(),
+  obtenerUbicacion: jest.fn(),
+}));
 
 /* =====================================================
  * COLA DE OPERACIONES PENDIENTES
@@ -20,6 +31,13 @@ jest.mock('expo-file-system/legacy', () => ({
   ),
   writeAsStringAsync: jest.fn(async (path, contenido) => {
     mockArchivos[path] = contenido;
+  }),
+  moveAsync: jest.fn(async ({ from, to }) => {
+    mockArchivos[to] = mockArchivos[from];
+    delete mockArchivos[from];
+  }),
+  deleteAsync: jest.fn(async (path) => {
+    delete mockArchivos[path];
   }),
 }));
 
@@ -181,8 +199,52 @@ describe('pendientesService', () => {
       const [op] = colaEnDisco().operaciones;
 
       expect(op.provisional).toBe(true);
-      expect(op.tipo).toBe('actualizar');
+      /* guardar + actualizar sigue siendo guardar (A1) */
+      expect(op.tipo).toBe('guardar');
       expect(op.cantidad).toBe(9);
+    });
+
+    test('actualizar + actualizar sigue siendo actualizar', async () => {
+
+      await pendientesService.encolar({
+        tipo: 'actualizar', ubicacion: 'A1', articulo: '1', cantidad: 5,
+      });
+
+      await pendientesService.encolar({
+        tipo: 'actualizar', ubicacion: 'A1', articulo: '1', cantidad: 6,
+      });
+
+      const operaciones = colaEnDisco().operaciones;
+
+      expect(operaciones).toHaveLength(1);
+      expect(operaciones[0].tipo).toBe('actualizar');
+      expect(operaciones[0].cantidad).toBe(6);
+    });
+
+    test('guardar + editar sin conexión se sincroniza como guardado (A1)', async () => {
+
+      await pendientesService.encolar({
+        tipo: 'guardar', ubicacion: 'A-1-Z1', articulo: '1',
+        cantidad: 5, matricula: '1111',
+      });
+
+      await pendientesService.encolar({
+        tipo: 'actualizar', ubicacion: 'A-1-Z1', articulo: '1',
+        cantidad: 8, matricula: '2222',
+      });
+
+      const resumen = await syncService.sincronizar();
+
+      expect(DataProvider.guardarMovimiento).toHaveBeenCalledWith({
+        ubicacion: 'A-1-Z1',
+        articulo: '1',
+        cantidad: 8,
+        matricula: '2222',
+      });
+
+      expect(DataProvider.actualizarMovimiento).not.toHaveBeenCalled();
+      expect(resumen.fallidas).toBe(0);
+      expect(colaEnDisco().operaciones).toHaveLength(0);
     });
 
   });
@@ -321,6 +383,221 @@ describe('pendientesService', () => {
       });
 
       expect(await pendientesService.listar()).toEqual([]);
+    });
+
+  });
+
+
+  // =====================================================
+  // MATRÍCULA (C3)
+  // =====================================================
+
+  describe('matrícula', () => {
+
+    test('se guarda con la operación', async () => {
+
+      const op = await pendientesService.encolar({
+        tipo: 'guardar',
+        ubicacion: 'A-1-Z1',
+        articulo: '123456',
+        cantidad: 5,
+        matricula: '1234',
+      });
+
+      expect(op.matricula).toBe('1234');
+      expect(colaEnDisco().operaciones[0].matricula).toBe('1234');
+    });
+
+    test('sin matrícula queda null, no undefined', async () => {
+
+      await pendientesService.encolar({
+        tipo: 'guardar',
+        ubicacion: 'A-1-Z1',
+        articulo: '123456',
+        cantidad: 5,
+      });
+
+      expect(colaEnDisco().operaciones[0].matricula).toBeNull();
+    });
+
+    test('la fusión se queda con la última matrícula', async () => {
+
+      await pendientesService.encolar({
+        tipo: 'guardar', ubicacion: 'A-1-Z1', articulo: '1',
+        cantidad: 5, matricula: '1111',
+      });
+
+      await pendientesService.encolar({
+        tipo: 'guardar', ubicacion: 'A-1-Z1', articulo: '1',
+        cantidad: 7, matricula: '2222',
+      });
+
+      const [op] = colaEnDisco().operaciones;
+
+      expect(op.cantidad).toBe(7);
+      expect(op.matricula).toBe('2222');
+    });
+
+    test('la fusión conserva la matrícula si la nueva no trae', async () => {
+
+      await pendientesService.encolar({
+        tipo: 'guardar', ubicacion: 'A-1-Z1', articulo: '1',
+        cantidad: 5, matricula: '1111',
+      });
+
+      await pendientesService.encolar({
+        tipo: 'actualizar', ubicacion: 'A-1-Z1', articulo: '1',
+        cantidad: 7,
+      });
+
+      expect(colaEnDisco().operaciones[0].matricula).toBe('1111');
+    });
+
+    test('llega a Supabase al sincronizar (cola real + syncService)', async () => {
+
+      await pendientesService.encolar({
+        tipo: 'guardar',
+        ubicacion: 'A-1-Z1',
+        articulo: '123456',
+        cantidad: 5,
+        matricula: '1234',
+      });
+
+      const resumen = await syncService.sincronizar();
+
+      expect(DataProvider.guardarMovimiento).toHaveBeenCalledWith({
+        ubicacion: 'A-1-Z1',
+        articulo: '123456',
+        cantidad: 5,
+        matricula: '1234',
+      });
+
+      expect(resumen.aplicadas).toBe(1);
+      expect(colaEnDisco().operaciones).toHaveLength(0);
+    });
+
+  });
+
+
+  // =====================================================
+  // PERSISTENCIA SEGURA (C4)
+  // =====================================================
+
+  describe('persistencia segura', () => {
+
+    const ficherosCuarentena = () =>
+      Object.keys(mockArchivos).filter((p) =>
+        p.startsWith('file:///test/pending-operations.corrupt-')
+      );
+
+    test('escribe de forma atómica (.tmp + renombrado)', async () => {
+
+      await pendientesService.encolar({
+        tipo: 'guardar', ubicacion: 'A-1-Z1', articulo: '1', cantidad: 1,
+      });
+
+      expect(FileSystem.writeAsStringAsync).toHaveBeenCalledWith(
+        `${ARCHIVO}.tmp`,
+        expect.any(String)
+      );
+
+      expect(FileSystem.moveAsync).toHaveBeenCalledWith({
+        from: `${ARCHIVO}.tmp`,
+        to: ARCHIVO,
+      });
+
+      expect(mockArchivos[`${ARCHIVO}.tmp`]).toBeUndefined();
+    });
+
+    test('una cola corrupta se aparta en vez de perderse', async () => {
+
+      mockArchivos[ARCHIVO] = '{"version":1,"operaciones":[{"op';
+
+      await pendientesService.encolar({
+        tipo: 'guardar', ubicacion: 'A-1-Z1', articulo: '1', cantidad: 1,
+      });
+
+      const apartados = ficherosCuarentena();
+
+      expect(apartados).toHaveLength(1);
+      expect(mockArchivos[apartados[0]])
+        .toBe('{"version":1,"operaciones":[{"op');
+
+      /* La cola nueva sigue funcionando */
+      expect(colaEnDisco().operaciones).toHaveLength(1);
+    });
+
+    test('si no se puede apartar, no se escribe encima', async () => {
+
+      mockArchivos[ARCHIVO] = '{ roto';
+
+      FileSystem.moveAsync.mockImplementationOnce(async () => {
+        throw new Error('disco lleno');
+      });
+
+      await expect(
+        pendientesService.encolar({
+          tipo: 'guardar', ubicacion: 'A-1-Z1', articulo: '1', cantidad: 1,
+        })
+      ).rejects.toThrow('disco lleno');
+
+      expect(mockArchivos[ARCHIVO]).toBe('{ roto');
+    });
+
+    test('escrituras simultáneas no se pisan', async () => {
+
+      const a = await pendientesService.encolar({
+        tipo: 'guardar', ubicacion: 'A-1-Z1', articulo: '1', cantidad: 1,
+      });
+
+      /* La sincronización quita `a` mientras el operario encola
+         otras dos: sin serializar, `quitar` reescribiría la cola
+         leída antes y perdería alguna. */
+
+      await Promise.all([
+        pendientesService.quitar(a.operation_id),
+        pendientesService.encolar({
+          tipo: 'guardar', ubicacion: 'A-1-Z1', articulo: '2', cantidad: 2,
+        }),
+        pendientesService.encolar({
+          tipo: 'guardar', ubicacion: 'A-1-Z1', articulo: '3', cantidad: 3,
+        }),
+      ]);
+
+      const articulos = colaEnDisco().operaciones.map((op) => op.articulo);
+
+      expect(articulos).toEqual(['2', '3']);
+    });
+
+    test('un fallo de escritura no bloquea las siguientes', async () => {
+
+      FileSystem.writeAsStringAsync.mockImplementationOnce(async () => {
+        throw new Error('fallo puntual');
+      });
+
+      await expect(
+        pendientesService.encolar({
+          tipo: 'guardar', ubicacion: 'A-1-Z1', articulo: '1', cantidad: 1,
+        })
+      ).rejects.toThrow('fallo puntual');
+
+      await pendientesService.encolar({
+        tipo: 'guardar', ubicacion: 'A-1-Z1', articulo: '2', cantidad: 2,
+      });
+
+      expect(colaEnDisco().operaciones).toHaveLength(1);
+    });
+
+    test('vaciar deja una cola válida', async () => {
+
+      await pendientesService.encolar({
+        tipo: 'guardar', ubicacion: 'A-1-Z1', articulo: '1', cantidad: 1,
+      });
+
+      await pendientesService.vaciar();
+
+      expect(colaEnDisco()).toEqual({ version: 1, operaciones: [] });
+      expect(ficherosCuarentena()).toHaveLength(0);
     });
 
   });

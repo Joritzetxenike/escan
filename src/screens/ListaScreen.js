@@ -188,8 +188,28 @@ export default function ListaScreen() {
   };
 
   /* ---------- BORRAR CSV ---------- */
-  const borrarCsv = (nombre) => {
-    Alert.alert('Borrar CSV', `¿Eliminar ${nombre}?`, [
+  const borrarCsv = async (nombre) => {
+    const ubicacion = nombre.replace(/\.csv$/i, '');
+
+    /* Borrar el CSV solo borra la copia del móvil: lo ya enviado
+       sigue en la base de datos y la cola no se toca. Si la
+       ubicación sigue abierta, se avisa de qué pasa al volver a
+       contarla (el aviso de "ya contado" se basa en el servidor
+       cuando el CSV no está). */
+
+    let abierta = false;
+
+    try {
+      abierta = !(await InventoryService.estaUbicacionFinalizada(ubicacion));
+    } catch (e) {
+      console.error('No se pudo comprobar el estado de la ubicación:', e);
+    }
+
+    const mensaje = abierta
+      ? `¿Eliminar ${nombre}?\n\nLa ubicación ${ubicacion} sigue abierta. Solo se borra la copia de este móvil: lo ya enviado se queda en la base de datos. Si vuelves a contar un artículo con conexión, se te avisará de la cantidad que ya tenía para que elijas sumar o sobrescribir; sin conexión no se puede saber y se guardará como nuevo.`
+      : `¿Eliminar ${nombre}?\n\nSolo se borra la copia de este móvil; la base de datos no cambia.`;
+
+    Alert.alert('Borrar CSV', mensaje, [
       { text: 'Cancelar', style: 'cancel' },
       {
         text: 'Borrar',

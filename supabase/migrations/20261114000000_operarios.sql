@@ -7,9 +7,9 @@
  * movimiento (matricula en la tabla conteo).
  *
  * La app móvil valida contra una copia local (operarios.json)
- * para funcionar sin conexi�n. Esta tabla es la fuente de
+ * para funcionar sin conexión. Esta tabla es la fuente de
  * verdad en Supabase para administrar operarios desde el
- * panel web o scripts de importaci�n.
+ * panel web o scripts de importación.
  */
 
 create table if not exists public."operarios" (
@@ -53,13 +53,6 @@ create policy "operarios_delete_admin"
 grant select on public."operarios" to anon, authenticated;
 grant insert, update, delete on public."operarios" to authenticated;
 
--- Datos de ejemplo (opcional, borrar en producci�n real)
--- insert into public."operarios" (matricula, nombre, activo, es_admin_emergencia) values -- COMENTADO - emergencia
---   ('00123', 'Juan Pérez', true, false),
---   ('00456', 'María García', true, true)
--- on conflict (matricula) do nothing;
-
-insert into public."operarios" (matricula, nombre, activo) values
-  ('00123', 'Juan Pérez', true),
-  ('00456', 'María García', true)
-on conflict (matricula) do nothing;
+-- Sin datos de ejemplo: los operarios reales se cargan con
+-- `npm run import:operarios -- matriculas.csv --matricula-col=3`.
+-- (Los de prueba 00123 / 00456 se borraron el 18 nov 2026.)

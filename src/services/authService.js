@@ -15,8 +15,10 @@
  * ======================================================= */
 
 import {
+  actualizarOperarios,
   buscarOperario,
 } from '../helpers/operariosHelper';
+import conectividadService from './conectividadService';
 
 const MAX_LONGITUD = 20;
 
@@ -40,7 +42,20 @@ const validarMatricula = async (valor) => {
     };
   }
 
-  const operario = await buscarOperario(matricula);
+  let operario = await buscarOperario(matricula);
+
+  /* Matrícula desconocida: puede ser un alta reciente que la
+     copia local aún no tiene. Con conexión se refresca la lista
+     una vez y se vuelve a buscar. Sin conexión no se intenta,
+     para no hacer esperar al operario. */
+
+  if (!operario && conectividadService.obtenerEstado().online !== false) {
+    const actualizada = await actualizarOperarios();
+
+    if (actualizada) {
+      operario = await buscarOperario(matricula);
+    }
+  }
 
   if (!operario) {
     return {

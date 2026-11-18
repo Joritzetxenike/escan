@@ -6,6 +6,7 @@ import InventoryService from '../services/InventoryService';
 import ubicacionActivaService from '../services/ubicacionActivaService';
 // import maestrosService from '../services/maestrosService'; // COMENTADO - emergencia
 import useConectividad from './useConectividad';
+import { esUbicacionTerminada } from '../helpers/redHelper';
 
 export function useHomeLogic(navigation) {
 
@@ -963,6 +964,25 @@ InventoryService.crearMovimiento(
     } catch (e) {
 
       console.error(e);
+
+      /* La ubicación se cerró en el servidor (otro dispositivo o
+         el web-admin) después de abrirla aquí: se bloquea también
+         en local para no seguir contando en ella. */
+
+      if (esUbicacionTerminada(e)) {
+
+        setUbicacionFinalizada(true);
+
+        limpiarArticulo();
+
+        Alert.alert(
+          'Ubicación terminada',
+          `La ubicación ${ubicacion} se ha terminado desde otro dispositivo y ya no admite más artículos.`
+        );
+
+        return;
+
+      }
 
       Alert.alert(
         'Error',

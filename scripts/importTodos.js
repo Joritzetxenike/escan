@@ -19,7 +19,7 @@ async function main() {
   const dryRun = flags.includes('--dry-run');
 
   if (posicionales.length !== 3) {
-    console.error('Uso: node scripts/importTodos.js <articulos.csv> <ubicaciones.csv> <operarios.csv> [--dry-run]');
+    console.error('Uso: node scripts/importTodos.js <articulos.csv> <ubicaciones.csv> <operarios.csv> [--matricula-col=N] [--dry-run]');
     process.exit(1);
   }
 
@@ -45,12 +45,15 @@ async function main() {
   let todosOk = true;
 
   for (const ej of ejecuciones) {
-    const args = [ej.csv];
-    if (dryRun) args.push('--dry-run');
+    /* Se pasan todas las opciones (--dry-run, --matricula-col=N…)
+       a cada script; cada uno ignora las que no son suyas. */
+    const args = [ej.csv, ...flags];
 
-    console.log(`--- Ejecutando ${ej.script} con ${path.basename(ej.csv)} ---`);
+    console.log(`--- Ejecutando ${ej.script} con ${path.basename(ej.csv)}${dryRun ? ' (dry run)' : ''} ---`);
 
-    const resultado = spawnSync('node', [path.resolve(__dirname, ej.script), ...args], {
+    /* `process.execPath` = el mismo node que ejecuta este script
+       (evita depender del PATH en Windows). */
+    const resultado = spawnSync(process.execPath, [path.resolve(__dirname, ej.script), ...args], {
       stdio: 'inherit',
       encoding: 'utf8',
     });

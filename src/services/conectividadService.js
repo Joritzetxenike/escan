@@ -110,9 +110,22 @@ const refrescarPendientes = async () => {
  * SINCRONIZACIÓN
  * ======================================================= */
 
+/* Si se pide sincronizar mientras ya hay un drenado en curso, ese
+   drenado ya listó la cola y no verá lo nuevo. Se marca para
+   repetir al terminar; si no, lo encolado con conexión
+   (`InventoryService` encola cuando la cola no está vacía)
+   esperaría hasta el próximo arranque o vuelta a primer plano. */
+
+let repetirSincronizacion = false;
+
 const sincronizar = async () => {
 
-  if (estado.sincronizando) return null;
+  if (estado.sincronizando) {
+    repetirSincronizacion = true;
+    return null;
+  }
+
+  repetirSincronizacion = false;
 
   setEstado({ sincronizando: true });
 
@@ -170,6 +183,12 @@ const sincronizar = async () => {
   await refrescarPendientes();
 
   setEstado({ sincronizando: false });
+
+  /* ---------- Llegó algo nuevo durante el drenado ---------- */
+
+  if (repetirSincronizacion && !resumen?.redCaida) {
+    return await sincronizar();
+  }
 
   return resumen;
 

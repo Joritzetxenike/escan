@@ -12,6 +12,7 @@ jest.mock('../../src/providers/DataProvider', () => ({
   obtenerArticulosUbicacion: jest.fn(),
   guardarMovimiento: jest.fn(),
   actualizarMovimiento: jest.fn(),
+  obtenerMovimiento: jest.fn(),
   obtenerArticulo: jest.fn(),
   obtenerUbicacion: jest.fn(),
   eliminarMovimiento: jest.fn(),
@@ -381,7 +382,7 @@ describe('InventoryService', () => {
 
       expect(
         DataProvider.actualizarMovimiento
-      ).toHaveBeenCalledWith(movimiento);
+      ).toHaveBeenCalledWith({ ...movimiento, matricula: '1234' });
 
       expect(
         FileSystem.writeAsStringAsync
@@ -450,6 +451,68 @@ describe('InventoryService', () => {
 
       expect(resultado).toBeNull();
 
+    });
+
+    test('si no está en el CSV, consulta el servidor (A5)', async () => {
+
+      DataProvider.obtenerMovimiento.mockResolvedValue({
+        ubicacion: 'A1', articulo: '123456', cantidad: 10,
+      });
+
+      const resultado =
+        await InventoryService.obtenerCantidadGuardada('A1', '123456');
+
+      expect(DataProvider.obtenerMovimiento)
+        .toHaveBeenCalledWith('A1', '123456');
+      expect(resultado).toBe(10);
+    });
+
+    test('el CSV manda sobre el servidor', async () => {
+
+      mockArchivos['file:///test/A1.csv'] = 'A1,123456,5';
+
+      DataProvider.obtenerMovimiento.mockResolvedValue({ cantidad: 10 });
+
+      expect(
+        await InventoryService.obtenerCantidadGuardada('A1', '123456')
+      ).toBe(5);
+
+      expect(DataProvider.obtenerMovimiento).not.toHaveBeenCalled();
+    });
+
+    test('con operaciones del artículo en la cola no consulta el servidor', async () => {
+
+      pendientesService.listar.mockResolvedValue([
+        { tipo: 'eliminar', ubicacion: 'A1', articulo: '123456' },
+      ]);
+
+      expect(
+        await InventoryService.obtenerCantidadGuardada('A1', '123456')
+      ).toBeNull();
+
+      expect(DataProvider.obtenerMovimiento).not.toHaveBeenCalled();
+    });
+
+    test('sin conexión no consulta el servidor', async () => {
+
+      conectividadService.estaOnline.mockResolvedValue(false);
+
+      expect(
+        await InventoryService.obtenerCantidadGuardada('A1', '123456')
+      ).toBeNull();
+
+      expect(DataProvider.obtenerMovimiento).not.toHaveBeenCalled();
+    });
+
+    test('un error del servidor no bloquea el conteo', async () => {
+
+      DataProvider.obtenerMovimiento.mockRejectedValue(
+        Object.assign(new Error('permission denied'), { code: '42501' })
+      );
+
+      expect(
+        await InventoryService.obtenerCantidadGuardada('A1', '123456')
+      ).toBeNull();
     });
 
     test('devuelve null si no hay CSV de la ubicación', async () => {
@@ -936,6 +999,54 @@ describe('InventoryService', () => {
         await InventoryService.sincronizarPendientes();
 
       expect(resultado).toEqual(resumen);
+    });
+
+  });
+
+
+  // =====================================================
+  // ORDEN CON COLA PENDIENTE (A3)
+  // =====================================================
+
+  describe('con conexión y cola pendiente', () => {
+
+    test('encola detrás en vez de enviar directo, y sincroniza', async () => {
+
+      pendientesService.contar.mockResolvedValue(2);
+
+      const resultado = await InventoryService.guardarMovimiento({
+        ubicacion: 'A1', articulo: '123456', cantidad: 5,
+      });
+
+      expect(resultado).toEqual({ pendiente: true });
+      expect(DataProvider.guardarMovimiento).not.toHaveBeenCalled();
+      expect(pendientesService.encolar).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tipo: 'guardar',
+          ubicacion: 'A1',
+          articulo: '123456',
+          cantidad: 5,
+          matricula: '1234',
+        })
+      );
+      expect(conectividadService.sincronizar).toHaveBeenCalled();
+
+      /* Hay conexión: no se debe marcar la app como offline */
+      expect(conectividadService.marcarSinConexion).not.toHaveBeenCalled();
+    });
+
+    test('con la cola vacía envía directo', async () => {
+
+      pendientesService.contar.mockResolvedValue(0);
+      DataProvider.guardarMovimiento.mockResolvedValue({});
+
+      const resultado = await InventoryService.guardarMovimiento({
+        ubicacion: 'A1', articulo: '123456', cantidad: 5,
+      });
+
+      expect(resultado.pendiente).toBe(false);
+      expect(DataProvider.guardarMovimiento).toHaveBeenCalled();
+      expect(pendientesService.encolar).not.toHaveBeenCalled();
     });
 
   });

@@ -40,6 +40,8 @@ yarn-error.*
 /plantilla_import.xlsx
 /excelQR.xlsx
 /maestro_articulos.xlsx
+/maestroTratado.csv
+/matriculas.csv
 
 # typescript
 *.tsbuildinfo

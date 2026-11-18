@@ -867,4 +867,61 @@ describe('maestrosService', () => {
 
   });
 
+
+  // =====================================================
+  // UNIDAD POR DEFECTO
+  // =====================================================
+
+  describe('unidad por defecto + excepciones', () => {
+
+    beforeEach(() => {
+      DataProvider.obtenerMaestroArticulos.mockResolvedValue({
+        ...MAESTRO,
+        unidades: { '123999': 'KG' },
+        unidadDefecto: 'U',
+      });
+    });
+
+    test('un artículo sin excepción usa la unidad por defecto', async () => {
+      await maestrosService.descargar();
+
+      expect(maestrosService.obtenerDetalleArticulo('789012').unidad).toBe('U');
+    });
+
+    test('la excepción manda sobre la unidad por defecto', async () => {
+      await maestrosService.descargar();
+
+      expect(maestrosService.obtenerDetalleArticulo('123999').unidad).toBe('KG');
+    });
+
+    test('un código que no existe no recibe unidad', async () => {
+      await maestrosService.descargar();
+
+      expect(maestrosService.obtenerDetalleArticulo('000000').unidad).toBe('');
+    });
+
+    test('se guarda en disco y se recupera al arrancar', async () => {
+      await maestrosService.descargar();
+
+      expect(JSON.parse(mockArchivos[ARTICULOS]).unidad_defecto).toBe('U');
+
+      jest.resetModules();
+      const otro = require('../../src/services/maestrosService').default;
+      await otro.asegurarListo();
+
+      expect(otro.obtenerDetalleArticulo('789012').unidad).toBe('U');
+    });
+
+    test('una copia antigua sin unidad_defecto sigue funcionando', async () => {
+      escribirArticulos(new Date().toISOString());
+      escribirUbicaciones();
+
+      await maestrosService.asegurarListo();
+
+      expect(maestrosService.obtenerDetalleArticulo('123456').unidad).toBe('UD');
+      expect(maestrosService.obtenerDetalleArticulo('789012').unidad).toBe('');
+    });
+
+  });
+
 });

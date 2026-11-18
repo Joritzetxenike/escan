@@ -39,6 +39,7 @@ jest.mock('../../src/components/MaestrosBanner', () => {
 });
 
 jest.mock('../../src/helpers/operariosHelper', () => ({
+  actualizarOperarios: jest.fn().mockResolvedValue(false),
   buscarOperario: jest.fn(),
 }));
 

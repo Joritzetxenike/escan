@@ -1,6 +1,1 @@
-[
-  { "matricula": "00123", "nombre": "Juan Pérez", "activo": true },
-  { "matricula": "00456", "nombre": "María García", "activo": true }
-/*   { "matricula": "00123", "nombre": "Juan Pérez", "activo": true, "esAdminEmergencia": false },
-  { "matricula": "00456", "nombre": "María García", "activo": true, "esAdminEmergencia": true } */
-]
+[]

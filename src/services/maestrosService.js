@@ -203,6 +203,13 @@ const normalizarMapa = (valor) =>
 const crearMapa = (valor) =>
   new Map(Object.entries(normalizarMapa(valor)));
 
+/* La RPC manda la unidad más común aparte y en `unidades`
+   solo las excepciones (para no añadir ~6 MB a la descarga). */
+const normalizarUnidad = (valor) =>
+  typeof valor === 'string' && valor.trim() !== ''
+    ? valor.trim()
+    : null;
+
 const construirCache = (articulos, ubicaciones) => {
 
   if (!Array.isArray(articulos?.codigos)) {
@@ -215,6 +222,7 @@ const construirCache = (articulos, ubicaciones) => {
     genericos: new Set(articulos.genericos ?? []),
     descripciones: crearMapa(articulos.descripciones),
     unidades: crearMapa(articulos.unidades),
+    unidadDefecto: normalizarUnidad(articulos.unidad_defecto),
     ubicaciones: Array.isArray(ubicaciones?.ubicaciones)
       ? new Set(ubicaciones.ubicaciones)
       : null,
@@ -424,6 +432,9 @@ const descargar = async () => {
     const unidades =
       normalizarMapa(maestro?.unidades);
 
+    const unidadDefecto =
+      normalizarUnidad(maestro?.unidadDefecto);
+
     /* Validar que ambos maestros tengan datos antes de
        escribir cualquier fichero en disco. Si falla
        cualquiera de los dos, no se escribe nada. */
@@ -453,6 +464,7 @@ const descargar = async () => {
       genericos,
       descripciones,
       unidades,
+      unidad_defecto: unidadDefecto,
     });
 
     await guardarMeta({
@@ -469,6 +481,7 @@ const descargar = async () => {
       genericos: new Set(genericos),
       descripciones: crearMapa(descripciones),
       unidades: crearMapa(unidades),
+      unidadDefecto,
       ubicaciones: new Set(ubicaciones),
       actualizadoAt: Date.parse(actualizado),
     };
@@ -606,10 +619,25 @@ const esSIC = (codigo) =>
 const esGenerico = (codigo) =>
   cache?.genericos.has(codigo) ?? false;
 
-const obtenerDetalleArticulo = (codigo) => ({
-  descripcion: cache?.descripciones.get(codigo) ?? '',
-  unidad: cache?.unidades.get(codigo) ?? '',
-});
+/* Unidad: la excepción si la hay; si no, la unidad por defecto,
+   pero solo para códigos que existen en la copia (a un código
+   desconocido no se le inventa unidad). */
+const obtenerDetalleArticulo = (codigo) => {
+
+  const excepcion = cache?.unidades.get(codigo);
+
+  const unidad =
+    excepcion !== undefined
+      ? excepcion
+      : cache?.codigos.has(codigo)
+        ? cache.unidadDefecto ?? ''
+        : '';
+
+  return {
+    descripcion: cache?.descripciones.get(codigo) ?? '',
+    unidad,
+  };
+};
 
 /* =======================================================
  * SUGERENCIAS (ENTRADA MANUAL)

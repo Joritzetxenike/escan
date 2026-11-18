@@ -1,11 +1,18 @@
 import authService from '../../src/services/authService';
 
 import {
+  actualizarOperarios,
   buscarOperario,
 } from '../../src/helpers/operariosHelper';
+import conectividadService from '../../src/services/conectividadService';
 
 jest.mock('../../src/helpers/operariosHelper', () => ({
+  actualizarOperarios: jest.fn().mockResolvedValue(false),
   buscarOperario: jest.fn(),
+}));
+
+jest.mock('../../src/services/conectividadService', () => ({
+  obtenerEstado: jest.fn(() => ({ online: true })),
 }));
 
 describe('authService', () => {
@@ -94,6 +101,41 @@ describe('authService', () => {
     expect(authService.haySesion()).toBe(false);
     expect(authService.obtenerMatricula()).toBeNull();
     expect(authService.obtenerNombre()).toBeNull();
+  });
+
+
+  // ---------- Alta reciente (A6) ----------
+
+  test('matrícula desconocida: refresca operarios y vuelve a buscar', async () => {
+    buscarOperario
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ matricula: '777', nombre: 'Nuevo', activo: true });
+
+    actualizarOperarios.mockResolvedValueOnce(true);
+
+    const resultado = await authService.validarMatricula('777');
+
+    expect(actualizarOperarios).toHaveBeenCalledTimes(1);
+    expect(resultado.valida).toBe(true);
+    expect(resultado.nombre).toBe('Nuevo');
+  });
+
+  test('sin conexión no intenta refrescar', async () => {
+    conectividadService.obtenerEstado.mockReturnValueOnce({ online: false });
+    buscarOperario.mockResolvedValue(null);
+
+    const resultado = await authService.validarMatricula('777');
+
+    expect(actualizarOperarios).not.toHaveBeenCalled();
+    expect(resultado.valida).toBe(false);
+  });
+
+  test('una matrícula conocida no provoca descarga', async () => {
+    buscarOperario.mockResolvedValue({ matricula: '00123', nombre: 'A', activo: true });
+
+    await authService.validarMatricula('00123');
+
+    expect(actualizarOperarios).not.toHaveBeenCalled();
   });
 
 });

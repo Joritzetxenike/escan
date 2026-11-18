@@ -10,6 +10,7 @@ import {
 } from '../../src/helpers/operariosHelper';
 
 jest.mock('../../src/helpers/operariosHelper', () => ({
+  actualizarOperarios: jest.fn().mockResolvedValue(false),
   buscarOperario: jest.fn(),
 }));
 
