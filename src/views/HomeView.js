@@ -219,22 +219,38 @@ export default function HomeView({
             {state.ultimosArticulos.map(
               (item, index) => (
 
-                <View key={index}>
+                /* Una fila por artículo: código completo y, debajo,
+                   la descripción en pequeño (una línea, con "…" si
+                   no cabe); cantidad + unidad a la derecha. */
+                <View
+                  key={index}
+                  style={styles.filaUltimo}
+                  testID={`ultimo-${index}`}
+                >
 
-                  <Text style={styles.itemArticulo}>
-                    {`${item.articulo} — Cantidad: ${item.cantidad}${
-                      item.pendiente ? ' (pendiente)' : ''
-                    }`}
-                  </Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.ultimoCodigo}>
+                      {item.articulo}
+                    </Text>
 
-                  <Text
-                    style={{
-                      fontSize: 12,
-                      color: '#6B7280',
-                      marginBottom: 6,
-                    }}
-                  >
-                    {`${item.descripcion || '—'} · ${item.unidad || '—'}`}
+                    {!!item.descripcion && (
+                      <Text
+                        style={styles.ultimoDescripcion}
+                        numberOfLines={1}
+                      >
+                        {item.descripcion}
+                      </Text>
+                    )}
+
+                    {item.pendiente && (
+                      <Text style={styles.ultimoPendiente}>
+                        Pendiente de enviar
+                      </Text>
+                    )}
+                  </View>
+
+                  <Text style={styles.ultimoCantidad}>
+                    {`${item.cantidad}${item.unidad ? ` ${item.unidad}` : ''}`}
                   </Text>
 
                 </View>

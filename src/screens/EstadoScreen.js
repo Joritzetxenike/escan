@@ -373,11 +373,15 @@ export default function EstadoScreen({ navigation }) {
                 }}
               >
 
+                {/* `minWidth: 0` + `flexShrink` en el texto: si no cabe,
+                    el nombre se recorta con "…" en vez de montarse sobre
+                    el botón de planos y el estado. */}
                 <View
                   style={{
                     flexDirection: "row",
                     alignItems: "center",
                     flex: 1,
+                    minWidth: 0,
                   }}
                 >
 
@@ -392,9 +396,11 @@ export default function EstadoScreen({ navigation }) {
                   </Text>
 
                   <Text
+                    numberOfLines={1}
                     style={{
                       fontSize: 20,
                       fontWeight: "bold",
+                      flexShrink: 1,
                     }}
                   >
                     Sección {seccion.seccion}
@@ -402,7 +408,8 @@ export default function EstadoScreen({ navigation }) {
 
                 </View>
 
-                {/* Planos: botón aparte, no despliega la sección */}
+                {/* Planos: solo el icono para no quitar sitio al nombre.
+                    Botón aparte: no despliega la sección. */}
                 <TouchableOpacity
                   onPress={() => setPlanosSeccion(seccion.seccion)}
                   accessibilityRole="button"
@@ -410,28 +417,25 @@ export default function EstadoScreen({ navigation }) {
                   testID={`btn-planos-${seccion.seccion}`}
                   hitSlop={8}
                   style={{
-                    flexDirection: "row",
+                    width: 38,
+                    height: 38,
                     alignItems: "center",
-                    gap: 3,
-                    paddingVertical: 6,
-                    paddingHorizontal: 8,
-                    marginRight: 10,
+                    justifyContent: "center",
+                    marginHorizontal: 10,
                     borderWidth: 1,
                     borderColor: colors.primary,
-                    borderRadius: 6,
+                    borderRadius: 19,
                     backgroundColor: "#fff",
                   }}
                 >
-                  <MaterialIcons name="map" size={18} color={colors.primary} />
-                  <Text style={{ color: colors.primary, fontWeight: "bold" }}>
-                    Planos
-                  </Text>
+                  <MaterialIcons name="map" size={20} color={colors.primary} />
                 </TouchableOpacity>
 
                 <View
                   style={{
                     flexDirection: "row",
                     alignItems: "center",
+                    flexShrink: 0,
                   }}
                 >
 

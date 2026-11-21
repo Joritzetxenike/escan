@@ -4,6 +4,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { colors } from '../styles/styles';
 
 import InventoryService from '../services/InventoryService';
+import PlanosModal from './PlanosModal';
 
 /* =======================================================
  * ARTÍCULOS DE UNA UBICACIÓN (Lista y Estado)
@@ -28,6 +29,9 @@ import InventoryService from '../services/InventoryService';
  *
  * Con la ubicación terminada (`Fin`) el detalle se abre igual,
  * pero en solo lectura: se puede consultar, no modificar.
+ *
+ *   conPlanos          muestra en la cabecera el botón de planos
+ *                      de la sección y el área de la ubicación
  * ======================================================= */
 
 export default function ArticulosModal({
@@ -45,9 +49,11 @@ export default function ArticulosModal({
   onExportar,
   onBorrar,
   codigoUbicacion,
+  conPlanos = false,
 }) {
   const [finalizada, setFinalizada] = useState(false);
   const [busqueda, setBusqueda] = useState('');
+  const [verPlanos, setVerPlanos] = useState(false);
 
   const codigo = codigoUbicacion ?? titulo;
 
@@ -55,6 +61,7 @@ export default function ArticulosModal({
     if (!visible) {
       setFinalizada(false);
       setBusqueda('');
+      setVerPlanos(false);
       return;
     }
 
@@ -96,11 +103,30 @@ export default function ArticulosModal({
     onCancelarEdicion?.();
   };
 
+  /* Sección y área salen del código `SECCION-AREA-SUBZONA` */
+  const [planosSeccion = null, planosArea = null] =
+    String(codigo ?? '').split('-');
+
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onCerrar}>
       <View style={styles.overlay}>
         <View style={styles.modal}>
-          <Text style={styles.title}>{titulo}</Text>
+          <View style={styles.cabecera}>
+            <Text style={styles.title}>{titulo}</Text>
+
+            {conPlanos && planosSeccion && (
+              <TouchableOpacity
+                style={styles.botonPlanos}
+                onPress={() => setVerPlanos(true)}
+                accessibilityRole="button"
+                accessibilityLabel={`Ver planos de ${planosSeccion}`}
+                hitSlop={8}
+                testID="btn-planos-csv"
+              >
+                <MaterialIcons name="map" size={20} color={colors.primary} />
+              </TouchableOpacity>
+            )}
+          </View>
 
           {finalizada && (
             <Text style={styles.avisoTerminada} testID="aviso-terminada">
@@ -280,6 +306,17 @@ export default function ArticulosModal({
           )}
         </View>
       </Modal>
+
+      {/* ---------- PLANOS DE LA SECCIÓN / ÁREA ---------- */}
+
+      {conPlanos && planosSeccion && (
+        <PlanosModal
+          visible={visible && verPlanos}
+          seccion={planosSeccion}
+          area={planosArea}
+          onCerrar={() => setVerPlanos(false)}
+        />
+      )}
     </Modal>
   );
 }
@@ -297,11 +334,31 @@ const styles = StyleSheet.create({
     padding: 15,
     height: '92%',
   },
+  /* El título queda centrado; el botón de planos va a la
+     derecha sin empujarlo (mismo hueco a la izquierda). */
+  cabecera: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+    paddingHorizontal: 46,
+  },
   title: {
+    flex: 1,
     fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 15,
     textAlign: 'center',
+  },
+  botonPlanos: {
+    position: 'absolute',
+    right: 0,
+    width: 38,
+    height: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderRadius: 19,
+    backgroundColor: '#fff',
   },
   avisoTerminada: {
     textAlign: 'center',

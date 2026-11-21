@@ -9,6 +9,12 @@ jest.mock('../../src/services/InventoryService', () => ({
   estaUbicacionFinalizada: jest.fn(),
 }));
 
+jest.mock('../../src/components/PlanosModal', () => (props) => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return React.createElement(View, { testID: 'planos-modal', ...props });
+});
+
 jest.mock('@expo/vector-icons', () => ({
   MaterialIcons: (props) => {
     const React = require('react');
@@ -217,6 +223,41 @@ describe('ArticulosModal', () => {
     await montar();
 
     expect(existeTestID('detalle-articulo')).toBe(false);
+  });
+
+  // ---------- Planos ----------
+
+  test('sin conPlanos no hay botón de planos', async () => {
+    InventoryService.estaUbicacionFinalizada.mockResolvedValue(false);
+
+    await montar();
+
+    expect(existeTestID('btn-planos-csv')).toBe(false);
+    expect(existeTestID('planos-modal')).toBe(false);
+  });
+
+  test('con conPlanos abre los planos de la sección y el área de la ubicación', async () => {
+    InventoryService.estaUbicacionFinalizada.mockResolvedValue(false);
+
+    await montar({
+      titulo: 'CARP-A01-Z05.csv',
+      codigoUbicacion: 'CARP-A01-Z05',
+      conPlanos: true,
+    });
+
+    const modal = () => renderer.root.findByProps({ testID: 'planos-modal' });
+
+    expect(modal().props.seccion).toBe('CARP');
+    expect(modal().props.area).toBe('A01');
+    expect(modal().props.visible).toBe(false);
+
+    pulsar('btn-planos-csv');
+    expect(modal().props.visible).toBe(true);
+
+    act(() => {
+      modal().props.onCerrar();
+    });
+    expect(modal().props.visible).toBe(false);
   });
 
   test('consulta el estado con codigoUbicacion si se pasa (aunque titulo lleve .csv)', async () => {

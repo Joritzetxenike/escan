@@ -417,6 +417,7 @@ export default function ListaScreen() {
           setModalVisible(false);
         }}
         codigoUbicacion={csvSeleccionado?.replace(/\.csv$/i, '')}
+        conPlanos
         editandoIndex={editandoIndex}
         editandoValor={nuevaCantidad}
         onIniciarEdicion={(index) => {

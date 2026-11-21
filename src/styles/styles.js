@@ -116,6 +116,40 @@ homeContent: {
     textAlign: 'center',
   },
 
+  /* ---------- Últimos artículos (Home) ---------- */
+
+  filaUltimo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+
+  ultimoCodigo: {
+    fontSize: 16,
+    color: colors.text,
+  },
+
+  ultimoDescripcion: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+
+  ultimoPendiente: {
+    fontSize: 12,
+    color: colors.warning,
+    marginTop: 2,
+  },
+
+  ultimoCantidad: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+
   /* ---------- CÁMARA ---------- */
   scannerContainer: {
     flex: 1,

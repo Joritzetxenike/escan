@@ -853,8 +853,9 @@ ventana (clic para tamaño real). También «Abrir en pestaña nueva» y «Desca
 - Migración: `supabase/migrations/20261118000200_planos_storage.sql`.
 
 **En la app móvil** (solo consulta, con conexión): botón **Planos** junto a
-«Ubicación actual» en Home (planos de su sección y de su área) y en cada sección
-de la pestaña Estado. Los PDF se abren fuera de la app (navegador o visor de PDF
+«Ubicación actual» en Home (planos de su sección y de su área), en cada sección
+de la pestaña Estado y en la cabecera del modal del CSV de la pestaña Lista
+(sección y área de esa ubicación). Los PDF se abren fuera de la app (navegador o visor de PDF
 del móvil); las imágenes se ven dentro, con «Abrir en el navegador» para hacer
 zoom. Sin conexión avisa «Necesitas conexión para ver los planos». Código:
 `src/services/planosService.js` y `src/components/PlanosModal.js`. Necesita la
