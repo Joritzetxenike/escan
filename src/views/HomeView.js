@@ -4,9 +4,12 @@ import CantidadModal from '../components/CantidadModal';
 import ArticuloExistenteModal from '../components/ArticuloExistenteModal';
 import ManualCodeModal from '../components/ManualCodeModal';
 import EstadoBanner from '../components/EstadoBanner';
+import PlanosModal from '../components/PlanosModal';
 // import ImportEmergenciaModal from '../components/ImportEmergenciaModal'; // COMENTADO - emergencia
 
-import { styles } from '../styles/styles';
+import { MaterialIcons } from '@expo/vector-icons';
+
+import { styles, colors } from '../styles/styles';
 
 export default function HomeView({
   state,
@@ -84,9 +87,47 @@ export default function HomeView({
 
         {/* ---------- UBICACIÓN ACTUAL ---------- */}
 
-        <Text style={styles.ubicacionText}>
-          Ubicación actual: {state.ubicacion ?? '—'}
-        </Text>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 10,
+          }}
+        >
+
+          <Text style={[styles.ubicacionText, { flex: 1 }]}>
+            Ubicación actual: {state.ubicacion ?? '—'}
+          </Text>
+
+          {/* ---------- PLANOS DE LA SECCIÓN / ÁREA ---------- */}
+
+          {state.ubicacion && (
+            <TouchableOpacity
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 4,
+                paddingVertical: 8,
+                paddingHorizontal: 12,
+                marginBottom: 20,
+                borderWidth: 1,
+                borderColor: colors.primary,
+                borderRadius: 6,
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Ver planos de la sección"
+              testID="btn-planos-home"
+              onPress={actions.abrirPlanos}
+            >
+              <MaterialIcons name="map" size={20} color={colors.primary} />
+              <Text style={{ color: colors.primary, fontWeight: 'bold' }}>
+                Planos
+              </Text>
+            </TouchableOpacity>
+          )}
+
+        </View>
 
         {/* ---------- IMPORTACIÓN DE EMERGENCIA — COMENTADO ---------- */}
         {/* Solo visible si el administrador habilitó la bandera y
@@ -325,6 +366,22 @@ export default function HomeView({
 
         onCancel={actions.descartarArticulo}
       />
+
+      {/* =====================================================
+          MODAL PLANOS
+      ===================================================== */}
+
+      {state.planosSeccion && (
+        <PlanosModal
+          visible={state.mostrarPlanos === true}
+
+          seccion={state.planosSeccion}
+
+          area={state.planosArea}
+
+          onCerrar={actions.cerrarPlanos}
+        />
+      )}
 
       {/* =====================================================
           MODAL IMPORTACIÓN DE EMERGENCIA — COMENTADO

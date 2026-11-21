@@ -851,7 +851,16 @@ ventana (clic para tamaño real). También «Abrir en pestaña nueva» y «Desca
 - Solo los administradores pueden listar, ver, subir y borrar; la clave pública de
   la app móvil no tiene acceso. El panel usa URLs firmadas que caducan en 1 h.
 - Migración: `supabase/migrations/20261118000200_planos_storage.sql`.
-- La app móvil no muestra planos.
+
+**En la app móvil** (solo consulta, con conexión): botón **Planos** junto a
+«Ubicación actual» en Home (planos de su sección y de su área) y en cada sección
+de la pestaña Estado. Los PDF se abren fuera de la app (navegador o visor de PDF
+del móvil); las imágenes se ven dentro, con «Abrir en el navegador» para hacer
+zoom. Sin conexión avisa «Necesitas conexión para ver los planos». Código:
+`src/services/planosService.js` y `src/components/PlanosModal.js`. Necesita la
+migración `20261121000000_planos_lectura_movil.sql`, que da **solo lectura** del
+bucket a la clave pública: quien tenga la clave del APK puede ver los planos
+(subir y borrar siguen siendo solo del panel).
 
 ---
 

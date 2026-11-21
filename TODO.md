@@ -131,6 +131,16 @@
     (ahora hay uno).
   - Prioridad: media.
 
+- [x] **Planos de sección/área**:
+  - [x] Panel web: ver, subir y borrar (bucket privado `planos`, solo
+    administradores).
+  - [x] App móvil: solo consulta, con conexión. Botón «Planos» en Home (sección
+    y área de la ubicación actual) y en cada sección de Estado. PDF fuera de la
+    app, imágenes dentro.
+  - [ ] Aplicar en Supabase `20261121000000_planos_lectura_movil.sql` (lectura
+    del bucket para la clave pública). Sin ella, el móvil dice que no hay planos.
+  - Prioridad: media.
+
 ## Conectividad: CSV local y sincronización diferida
 
 > Entregado en dos fases. La **fase 1** (vertical) está hecha: detección de

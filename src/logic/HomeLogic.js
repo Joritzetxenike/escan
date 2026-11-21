@@ -78,6 +78,9 @@ export function useHomeLogic(navigation) {
   const [mostrarImportEmergencia, setMostrarImportEmergencia] =
     useState(false);
 
+  /* Planos de la sección (y área) de la ubicación actual */
+  const [mostrarPlanos, setMostrarPlanos] = useState(false);
+
 // const [importResult, setImportResult] = useState(null); // COMENTADO - emergencia
 
   const conectividad = useConectividad();
@@ -314,6 +317,31 @@ export function useHomeLogic(navigation) {
     setMostrarManualUbicacion(true);
 
   };
+
+  /* =====================================================
+   * PLANOS
+   * =====================================================
+   *
+   * Los de la sección y el área de la ubicación actual
+   * (`SECCION-AREA-SUBZONA`). Solo consulta y con conexión:
+   * el aviso de "sin conexión" lo da el propio modal.
+   * ===================================================== */
+
+  const [planosSeccion = null, planosArea = null] =
+    ubicacion ? ubicacion.split('-') : [];
+
+  const abrirPlanos = () => {
+
+    if (!ubicacion) {
+      avisoSinUbicacion();
+      return;
+    }
+
+    setMostrarPlanos(true);
+
+  };
+
+  const cerrarPlanos = () => setMostrarPlanos(false);
 
   /* =====================================================
    * IMPORTACIÓN DE EMERGENCIA DESDE LA NUBE
@@ -1090,6 +1118,19 @@ InventoryService.crearMovimiento(
     abrirModalManualUbicacion,
 
     setMostrarManualUbicacion,
+
+
+    /* ---------- PLANOS ---------- */
+
+    mostrarPlanos,
+
+    planosSeccion,
+
+    planosArea,
+
+    abrirPlanos,
+
+    cerrarPlanos,
 
 
     /* ---------- IMPORTACIÓN DE EMERGENCIA — COMENTADO ---------- */

@@ -372,6 +372,45 @@ describe('useHomeLogic', () => {
   // cargarUbicacion
   // =====================================================
 
+  describe('planos', () => {
+
+    test('sin ubicación avisa y no abre los planos', () => {
+      act(() => {
+        current.abrirPlanos();
+      });
+
+      expect(Alert.alert).toHaveBeenCalledWith('Error', 'Primero escanea una ubicación');
+      expect(current.mostrarPlanos).toBe(false);
+      expect(current.planosSeccion).toBeNull();
+    });
+
+    test('con ubicación abre los planos de su sección y área', async () => {
+      InventoryService.validarUbicacion.mockResolvedValue({
+        ok: true,
+        ubicacion: { ubicacion: 'CARP-A01-Z05', stat: null },
+      });
+      InventoryService.cargarUbicacion.mockResolvedValue([]);
+
+      await act(async () => {
+        await current.procesarEscaneo('ubicacion', 'CARP-A01-Z05');
+      });
+
+      expect(current.planosSeccion).toBe('CARP');
+      expect(current.planosArea).toBe('A01');
+
+      act(() => {
+        current.abrirPlanos();
+      });
+      expect(current.mostrarPlanos).toBe(true);
+
+      act(() => {
+        current.cerrarPlanos();
+      });
+      expect(current.mostrarPlanos).toBe(false);
+    });
+
+  });
+
   describe('cargarUbicacion', () => {
 
     test('guarda la ubicación y devuelve sus artículos si es válida', async () => {

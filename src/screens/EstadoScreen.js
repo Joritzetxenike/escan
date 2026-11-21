@@ -23,6 +23,7 @@ import {
 import { resumirEstados } from "../helpers/estadosResumenHelper";
 import InventoryService from "../services/InventoryService";
 import ArticulosModal from "../components/ArticulosModal";
+import PlanosModal from "../components/PlanosModal";
 import EstadoResumen, {
   COLORES_ESTADO,
 } from "../components/EstadoResumen";
@@ -66,6 +67,9 @@ export default function EstadoScreen({ navigation }) {
 
   // Modal de artículos
   const [modalVisible, setModalVisible] = useState(false);
+
+  /* Sección cuyos planos se están viendo, o null */
+  const [planosSeccion, setPlanosSeccion] = useState(null);
   const [modalUbicacion, setModalUbicacion] = useState(null);
   const [articulosUbicacion, setArticulosUbicacion] = useState([]);
   const [editandoCantidad, setEditandoCantidad] = useState(null);
@@ -398,6 +402,32 @@ export default function EstadoScreen({ navigation }) {
 
                 </View>
 
+                {/* Planos: botón aparte, no despliega la sección */}
+                <TouchableOpacity
+                  onPress={() => setPlanosSeccion(seccion.seccion)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Ver planos de ${seccion.seccion}`}
+                  testID={`btn-planos-${seccion.seccion}`}
+                  hitSlop={8}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 3,
+                    paddingVertical: 6,
+                    paddingHorizontal: 8,
+                    marginRight: 10,
+                    borderWidth: 1,
+                    borderColor: colors.primary,
+                    borderRadius: 6,
+                    backgroundColor: "#fff",
+                  }}
+                >
+                  <MaterialIcons name="map" size={18} color={colors.primary} />
+                  <Text style={{ color: colors.primary, fontWeight: "bold" }}>
+                    Planos
+                  </Text>
+                </TouchableOpacity>
+
                 <View
                   style={{
                     flexDirection: "row",
@@ -671,6 +701,14 @@ export default function EstadoScreen({ navigation }) {
           setNuevaCantidad("");
         }}
       />
+
+      {planosSeccion && (
+        <PlanosModal
+          visible
+          seccion={planosSeccion}
+          onCerrar={() => setPlanosSeccion(null)}
+        />
+      )}
     </View>
   );
 
